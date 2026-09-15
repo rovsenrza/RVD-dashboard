@@ -1,0 +1,6 @@
+node_modules
+dist
+coverage
+public/mockServiceWorker.js
+docs/customer
+package-lock.json
