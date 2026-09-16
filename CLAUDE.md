@@ -4,27 +4,28 @@ React 19 + TS + Vite + Tailwind v4 client cabinet for hydraulic-hose lifecycle. 
 
 ## Session start (token budget: ≤ 3k before real work)
 
-1. `manage_adr(project="Users-User-Desktop-dashboard", mode="get")` — architecture, stack, patterns, philosophy. **This replaces reading PLAN.md / DESIGN.md / PRODUCT.md.**
+1. `manage_adr(project="Users-User-Desktop-dashboard", mode="get")` — architecture, stack, patterns, philosophy. **This replaces reading PLAN.md / DESIGN.md / PRODUCT.md.** If it returns `no_adr` (the DB was reset by a tool update), restore it: `codebase-memory-mcp cli manage_adr --args-file <json with project, mode:"update", content: docs/ADR.md>`. Keep `docs/ADR.md` and the DB copy identical.
 2. Read `docs/PLAN-STATUS.md` (short) — current day, blockers, open questions.
 3. Only then, if the task needs it: `grep -n "^\*\*Д<N>" docs/PLAN.md` and read just that day's block. Never read PLAN.md whole.
 
 ## Code discovery protocol (mandatory — the graph is indexed and auto-watched)
 
-| Need                                  | Do                                                     | Don't                     |
-| ------------------------------------- | ------------------------------------------------------ | ------------------------- |
-| Find a symbol / where something lives | `search_graph(query="natural words")` (BM25, one call) | `grep -r`, `ls -R`, `cat` |
-| Read one function/component           | `get_code_snippet(qualified_name)`                     | `Read` the whole file     |
-| Who calls / what it calls             | `trace_path(function_name, direction="both", depth≤3)` | grep for the name         |
-| Text/string search                    | `search_code(pattern, mode="compact")`                 | Grep                      |
-| Structure overview                    | `get_architecture(aspects=["overview"])`               | walking the tree          |
-| Impact before commit                  | `detect_changes()`                                     | re-reading changed files  |
+| Need                                  | Do                                                                                                     | Don't                     |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------ | ------------------------- |
+| Find a symbol / where something lives | `search_graph(query="natural words")` (BM25) or `semantic_query=["word","word"]` (index is `moderate`) | `grep -r`, `ls -R`, `cat` |
+| Read one function/component           | `get_code_snippet(qualified_name)`                                                                     | `Read` the whole file     |
+| Who calls / what it calls             | `trace_path(function_name, direction="both", depth≤3)`                                                 | grep for the name         |
+| Text/string search                    | `search_code(pattern, mode="compact")`                                                                 | Grep                      |
+| Structure overview                    | `get_architecture(aspects=["overview"])`                                                               | walking the tree          |
+| Impact before commit                  | `detect_changes()`                                                                                     | re-reading changed files  |
 
 Rules:
 
 - `Read` a file only when you are about to `Edit` it (and read only the needed range). Batch several graph calls in one turn.
 - Do **not** run `index_repository` for freshness — the watcher (`auto_watch=true`) re-indexes on save. Run it only after adding many new files, with `persistence=true`, then commit `.codebase-memory/`.
 - Do not `cat` directories, do not paste long files into the transcript, do not screenshot repeatedly (one batched capture round, fix, one confirm — max two).
-- Update the ADR (`manage_adr(mode="update")`) when architecture, stack or conventions change; it is the durable memory other sessions boot from.
+- Update the ADR when architecture, stack or conventions change: edit `docs/ADR.md`, then push the same text with `manage_adr(mode="update")`.
+- Broad, multi-file discovery ("where is X used across the app?", "audit all pages for Y") may be delegated to the tool's own subagents `codebase-memory-scout` (fast, provisional) / `codebase-memory` (verified) / `codebase-memory-auditor` (exhaustive) so the main context receives only the conclusion. Prefer a direct graph call when one or two calls suffice.
 
 ## Working rules
 
