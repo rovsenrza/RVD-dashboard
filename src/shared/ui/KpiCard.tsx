@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react'
-import { cn } from '@/shared/lib/utils'
+import { cn, formatNumber } from '@/shared/lib/utils'
 
 export function KpiCard({
   label,
@@ -27,7 +27,7 @@ export function KpiCard({
         {label}
       </div>
       <div className={cn('mt-2 text-3xl font-semibold tabular-nums', toneClass)}>
-        {value.toLocaleString('ru-RU')}
+        {formatNumber(value)}
       </div>
       {delta !== undefined && (
         <div className="mt-1 text-xs text-ink-muted">

@@ -1,0 +1,28 @@
+import { createColumnHelper } from '@tanstack/react-table'
+import type { Equipment } from '@/entities/types'
+import { ProductStatusBar } from '@/entities/product'
+import { formatDate } from '@/shared/lib/utils'
+
+const col = createColumnHelper<Equipment>()
+
+export const equipmentColumns = [
+  col.accessor('garageNumber', {
+    header: 'Гаражный №',
+    cell: (c) => <span className="font-medium text-brand-dark">{c.getValue()}</span>,
+  }),
+  col.accessor((r) => `${r.brand} ${r.model}`, { id: 'model', header: 'Марка / модель' }),
+  col.accessor('hoseCount', { header: 'Кол-во РВД' }),
+  col.accessor('lastRepairDate', {
+    header: 'Крайний ремонт',
+    cell: (c) => formatDate(c.getValue()),
+  }),
+  col.accessor('nextPlannedReplacement', {
+    header: 'Ближайшая замена',
+    cell: (c) => formatDate(c.getValue()),
+  }),
+  col.accessor('statusBreakdown', {
+    header: 'Статус техники',
+    enableSorting: false,
+    cell: (c) => <ProductStatusBar breakdown={c.getValue()} />,
+  }),
+]

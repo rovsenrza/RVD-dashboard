@@ -11,6 +11,19 @@ import {
 } from '@tanstack/react-table'
 import { ArrowDown, ArrowUp, ChevronLeft, ChevronRight } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
+import { Button } from './Button'
+import { EmptyState } from './States'
+
+export interface DataTableProps<T> {
+  data: T[]
+  columns: ColumnDef<T, unknown>[]
+  globalFilter?: string
+  onRowClick?: (row: T) => void
+  pageSize?: number
+  /** Borderless variant for embedding inside a Card; hides pagination when everything fits. */
+  compact?: boolean
+  emptyTitle?: string
+}
 
 export function DataTable<T>({
   data,
@@ -18,13 +31,9 @@ export function DataTable<T>({
   globalFilter,
   onRowClick,
   pageSize = 20,
-}: {
-  data: T[]
-  columns: ColumnDef<T, unknown>[]
-  globalFilter?: string
-  onRowClick?: (row: T) => void
-  pageSize?: number
-}) {
+  compact = false,
+  emptyTitle,
+}: DataTableProps<T>) {
   const [sorting, setSorting] = useState<SortingState>([])
   const table = useReactTable({
     data,
@@ -39,12 +48,18 @@ export function DataTable<T>({
   })
   const { pageIndex } = table.getState().pagination
   const total = table.getFilteredRowModel().rows.length
+  const rows = table.getRowModel().rows
+  const showPagination = !compact || total > pageSize
+
+  if (!rows.length && !globalFilter) return <EmptyState title={emptyTitle} />
 
   return (
     <div className="space-y-3">
-      <div className="overflow-x-auto rounded-xl border border-line bg-surface">
+      <div
+        className={cn('overflow-x-auto', !compact && 'rounded-xl border border-line bg-surface')}
+      >
         <table className="w-full text-sm">
-          <thead className="bg-surface-muted text-left text-xs text-ink-muted">
+          <thead className={cn('text-left text-xs text-ink-muted', !compact && 'bg-surface-muted')}>
             {table.getHeaderGroups().map((hg) => (
               <tr key={hg.id}>
                 {hg.headers.map((h) => (
@@ -53,6 +68,7 @@ export function DataTable<T>({
                     onClick={h.column.getToggleSortingHandler()}
                     className={cn(
                       'px-3 py-2 font-medium whitespace-nowrap select-none',
+                      compact && 'px-0 pb-1',
                       h.column.getCanSort() && 'cursor-pointer hover:text-ink',
                     )}
                   >
@@ -67,7 +83,7 @@ export function DataTable<T>({
             ))}
           </thead>
           <tbody>
-            {table.getRowModel().rows.map((row) => (
+            {rows.map((row) => (
               <tr
                 key={row.id}
                 onClick={() => onRowClick?.(row.original)}
@@ -77,49 +93,54 @@ export function DataTable<T>({
                 )}
               >
                 {row.getVisibleCells().map((cell) => (
-                  <td key={cell.id} className="px-3 py-2 whitespace-nowrap">
+                  <td
+                    key={cell.id}
+                    className={cn('px-3 py-2 whitespace-nowrap', compact && 'px-0 py-1.5')}
+                  >
                     {flexRender(cell.column.columnDef.cell, cell.getContext())}
                   </td>
                 ))}
               </tr>
             ))}
-            {!table.getRowModel().rows.length && (
+            {!rows.length && (
               <tr>
                 <td colSpan={columns.length} className="px-3 py-8 text-center text-ink-muted">
-                  Нет данных
+                  Ничего не найдено
                 </td>
               </tr>
             )}
           </tbody>
         </table>
       </div>
-      <div className="flex items-center justify-between text-xs text-ink-muted">
-        <span>
-          Показано {Math.min(pageIndex * pageSize + 1, total)}–
-          {Math.min((pageIndex + 1) * pageSize, total)} из {total}
-        </span>
-        <div className="flex items-center gap-1">
-          <button
-            className="rounded border border-line p-1 disabled:opacity-40"
-            onClick={() => table.previousPage()}
-            disabled={!table.getCanPreviousPage()}
-            aria-label="Назад"
-          >
-            <ChevronLeft size={14} />
-          </button>
-          <span className="px-2">
-            {pageIndex + 1} / {table.getPageCount() || 1}
+      {showPagination && (
+        <div className="flex items-center justify-between text-xs text-ink-muted">
+          <span>
+            Показано {Math.min(pageIndex * pageSize + 1, total)}–
+            {Math.min((pageIndex + 1) * pageSize, total)} из {total}
           </span>
-          <button
-            className="rounded border border-line p-1 disabled:opacity-40"
-            onClick={() => table.nextPage()}
-            disabled={!table.getCanNextPage()}
-            aria-label="Вперёд"
-          >
-            <ChevronRight size={14} />
-          </button>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="secondary"
+              size="icon"
+              icon={ChevronLeft}
+              onClick={() => table.previousPage()}
+              disabled={!table.getCanPreviousPage()}
+              aria-label="Назад"
+            />
+            <span className="px-2 tabular-nums">
+              {pageIndex + 1} / {table.getPageCount() || 1}
+            </span>
+            <Button
+              variant="secondary"
+              size="icon"
+              icon={ChevronRight}
+              onClick={() => table.nextPage()}
+              disabled={!table.getCanNextPage()}
+              aria-label="Вперёд"
+            />
+          </div>
         </div>
-      </div>
+      )}
     </div>
   )
 }

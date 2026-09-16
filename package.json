@@ -13,7 +13,8 @@
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "msw:init": "msw init public --save"
+    "msw:init": "msw init public --save",
+    "lint:arch": "bash scripts/check-arch.sh"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.102.8",

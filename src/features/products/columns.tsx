@@ -1,6 +1,6 @@
 import { createColumnHelper } from '@tanstack/react-table'
 import type { Product } from '@/entities/types'
-import { StatusBadge } from '@/shared/ui/StatusBadge'
+import { ProductStatusBadge } from '@/entities/product'
 import { formatDate } from '@/shared/lib/utils'
 
 const col = createColumnHelper<Product>()
@@ -16,6 +16,9 @@ export const productColumns = [
   col.accessor('manufacturer', { header: 'Производитель' }),
   col.accessor('shippedAt', { header: 'Отгрузка', cell: (c) => formatDate(c.getValue()) }),
   col.accessor('installedAt', { header: 'Установка', cell: (c) => formatDate(c.getValue()) }),
-  col.accessor('status', { header: 'Статус', cell: (c) => <StatusBadge status={c.getValue()} /> }),
+  col.accessor('status', {
+    header: 'Статус',
+    cell: (c) => <ProductStatusBadge status={c.getValue()} />,
+  }),
   col.accessor('installPlace', { header: 'Место установки', cell: (c) => c.getValue() ?? '—' }),
 ]
