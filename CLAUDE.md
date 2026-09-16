@@ -8,6 +8,12 @@
 
 ## Before Any Code Operation
 
+### 0. **Read the Plan** (every session)
+- [docs/PLAN.md](docs/PLAN.md) — 40-day implementation plan, architecture, DoD, risks
+- [docs/PLAN-STATUS.md](docs/PLAN-STATUS.md) — what is done / in progress / blocked; **update it at the end of each working day**
+- [docs/competitor-esm-analysis.md](docs/competitor-esm-analysis.md) — reference system analysis (two-level model: Рукав в сборе → Изделие)
+- `docs/1c/` — OData metadata, entity list, mapping (appears from Д1)
+
 ### 1. **Query the Codebase Graph First** (Not File Read)
 Every session, before `Read`, `grep`, or `ls`:
 
