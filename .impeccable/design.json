@@ -1,0 +1,87 @@
+{
+  "schemaVersion": 2,
+  "source": "DESIGN.md",
+  "northStar": "A control room, not a card wall: dark rail, warm field, unbordered white sheets, one amber accent, a four-colour status vocabulary that never decorates.",
+  "colorMeta": {
+    "brand": {
+      "displayName": "Amber",
+      "role": "accent: active nav fill, primary button, chart bars, current page"
+    },
+    "brand-deep": { "displayName": "Amber ink", "role": "amber as text on white (AA)" },
+    "field": { "displayName": "Field", "role": "page ground" },
+    "sheet": { "displayName": "Sheet", "role": "the only container; never outlined" },
+    "status-ok": {
+      "displayName": "Норма",
+      "ramp": { "mark": "#2e9e5b", "soft": "#e5f5ea", "ink": "#1b6f3d" }
+    },
+    "status-warn": {
+      "displayName": "Внимание",
+      "ramp": { "mark": "#e8961b", "soft": "#fdf1dc", "ink": "#8f5300" }
+    },
+    "status-replace": {
+      "displayName": "Требуется замена",
+      "ramp": { "mark": "#d9463b", "soft": "#fbe6e4", "ink": "#b02a22" }
+    },
+    "status-none": {
+      "displayName": "Не на гарантии",
+      "ramp": { "mark": "#8b8f94", "soft": "#eceef0", "ink": "#5b6066" }
+    }
+  },
+  "typographyMeta": {
+    "body": {
+      "displayName": "Golos Text",
+      "source": "public/fonts/golos.css (self-hosted, variable 400–700, OFL-1.1)",
+      "features": "tnum, ss01"
+    }
+  },
+  "elevation": {
+    "sheet": "0 1px 2px rgb(20 20 18 / 0.04), 0 2px 8px rgb(20 20 18 / 0.05)",
+    "pop": "0 4px 12px rgb(20 20 18 / 0.08), 0 12px 32px rgb(20 20 18 / 0.1)",
+    "control-edge": "inset 0 0 0 1px #d6d6d0",
+    "focus": "outline 2px solid #f5a623, offset 2px"
+  },
+  "motion": {
+    "control": "150ms ease-out on background-color, color, box-shadow",
+    "rail": "200ms transform for the off-canvas rail",
+    "rule": "state changes only; no page-load choreography; prefers-reduced-motion collapses all durations"
+  },
+  "breakpoints": {
+    "sm": "640px",
+    "md": "768px",
+    "lg": "1024px (rail becomes static)",
+    "xl": "1280px (KPI strip 6 columns)"
+  },
+  "components": {
+    "button-primary": {
+      "html": "<button class=\"btn btn-primary\"><svg width=\"16\" height=\"16\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\"><path d=\"M12 5v14M5 12h14\"/></svg>Новая заявка</button>",
+      "css": ".btn{display:inline-flex;align-items:center;gap:6px;height:36px;padding:8px 14px;border:0;border-radius:8px;font:500 14px/1.45 'Golos Text',system-ui,sans-serif;cursor:pointer;transition:background-color .15s,color .15s,box-shadow .15s}.btn-primary{background:#f5a623;color:#191919;box-shadow:inset 0 -1px 0 rgb(0 0 0/.08)}.btn-primary:hover{background:#d98c0c}.btn:focus-visible{outline:2px solid #f5a623;outline-offset:2px}"
+    },
+    "button-secondary": {
+      "html": "<button class=\"btn btn-secondary\">Экспорт</button>",
+      "css": ".btn-secondary{background:#fff;color:#191919;box-shadow:inset 0 0 0 1px #d6d6d0}.btn-secondary:hover{background:#f8f8f6}"
+    },
+    "input-search": {
+      "html": "<label class=\"search\"><svg width=\"15\" height=\"15\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.75\"><circle cx=\"11\" cy=\"11\" r=\"8\"/><path d=\"m21 21-4.3-4.3\"/></svg><input placeholder=\"Номер EHS, OEM, гаражный номер…\"><kbd>⌘K</kbd></label>",
+      "css": ".search{position:relative;display:block;border-radius:8px;background:#fff}.search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:#6b6b66}.search input{height:36px;width:100%;box-sizing:border-box;border:0;border-radius:8px;background:transparent;padding:0 56px 0 36px;font:14px 'Golos Text',system-ui,sans-serif;color:#191919;box-shadow:inset 0 0 0 1px #d6d6d0;outline:0}.search input:focus{box-shadow:inset 0 0 0 2px #f5a623}.search kbd{position:absolute;right:10px;top:50%;transform:translateY(-50%);height:20px;padding:0 6px;border-radius:6px;background:#f3f3f1;font:500 11px/20px 'Golos Text',system-ui,sans-serif;color:#6b6b66;box-shadow:inset 0 0 0 1px #e6e6e2}"
+    },
+    "badge-status": {
+      "html": "<span class=\"badge ok\"><i></i>Норма</span> <span class=\"badge warn\"><i></i>Внимание</span> <span class=\"badge replace\"><i></i>Требуется замена</span> <span class=\"badge none\"><i></i>Не на гарантии</span>",
+      "css": ".badge{display:inline-flex;align-items:center;gap:6px;padding:2px 8px;border-radius:9999px;font:500 12px/20px 'Golos Text',system-ui,sans-serif;white-space:nowrap;margin-right:6px}.badge i{width:6px;height:6px;border-radius:50%;background:currentColor}.ok{background:#e5f5ea;color:#1b6f3d}.warn{background:#fdf1dc;color:#8f5300}.replace{background:#fbe6e4;color:#b02a22}.none{background:#eceef0;color:#5b6066}"
+    },
+    "nav-rail": {
+      "html": "<nav class=\"rail\"><a class=\"item active\">Главная</a><a class=\"item\">Мои изделия</a><a class=\"item\">Моя техника</a></nav>",
+      "css": ".rail{display:flex;flex-direction:column;gap:2px;width:216px;padding:12px;background:#161616;border-radius:12px}.item{display:flex;align-items:center;height:40px;padding:0 12px;border-radius:8px;font:13.5px 'Golos Text',system-ui,sans-serif;color:#8a8a86;text-decoration:none}.item:hover{background:rgb(255 255 255/.06);color:#f3f3f1}.item.active{background:#f5a623;color:#191919;font-weight:500}"
+    },
+    "sheet": {
+      "html": "<section class=\"sheet\"><h2>Ближайшие плановые замены</h2><p>Содержимое лежит на листе; лист лежит на поле.</p></section>",
+      "css": "body{background:#f3f3f1}.sheet{background:#fff;border-radius:14px;padding:20px;box-shadow:0 1px 2px rgb(20 20 18/.04),0 2px 8px rgb(20 20 18/.05);font-family:'Golos Text',system-ui,sans-serif;color:#191919}.sheet h2{margin:0 0 8px;font-size:15px;font-weight:600;letter-spacing:-.01em}.sheet p{margin:0;font-size:14px;color:#4c4c49}"
+    }
+  },
+  "rules": [
+    "Sheet is the only container; never outline it; never nest sheets.",
+    "Amber means current/primary; status colours mean state; neither decorates.",
+    "Text in a status colour always uses the -ink tier.",
+    "Tables: uppercase muted headers, hairline rows, tabular numerals, no zebra, no cell borders.",
+    "Empty values render through EmptyValue; loading through skeletons shaped like the content."
+  ]
+}

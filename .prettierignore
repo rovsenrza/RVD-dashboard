@@ -4,3 +4,7 @@ coverage
 public/mockServiceWorker.js
 docs/customer
 package-lock.json
+
+.claude/
+.impeccable/
+.codebase-memory/

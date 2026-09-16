@@ -1,23 +1,62 @@
 @import 'tailwindcss';
 
 /*
- * Design tokens. Brand palette is a placeholder (amber accent on neutral),
- * swap once the customer supplies corporate colours.
+ * Design tokens — see DESIGN.md.
+ * World: dark navigation rail, warm-neutral working field, white unbordered
+ * sheets, one amber accent. Semantic status colours are separate from the accent.
  */
 @theme {
+  --font-sans:
+    'Golos Text', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+
+  /* Field & sheets */
+  --color-field: #f3f3f1;
+  --color-sheet: #ffffff;
+  --color-sheet-muted: #f8f8f6;
+  --color-line: #e6e6e2;
+  --color-line-strong: #d6d6d0;
+
+  /* Rail */
+  --color-rail: #161616;
+  --color-rail-raised: #222222;
+  --color-rail-ink: #f3f3f1;
+  --color-rail-muted: #8a8a86;
+
+  /* Ink */
+  --color-ink: #191919;
+  --color-ink-secondary: #4c4c49;
+  --color-ink-muted: #6b6b66;
+  --color-ink-faint: #a3a39d;
+
+  /* Accent */
   --color-brand: #f5a623;
   --color-brand-dark: #d98c0c;
-  --color-surface: #ffffff;
-  --color-surface-muted: #f6f6f4;
-  --color-ink: #17181a;
-  --color-ink-muted: #6b6f76;
-  --color-line: #e4e4e0;
+  --color-brand-deep: #9a6206;
+  --color-brand-soft: #fff3dc;
 
-  /* Status colours: normal / attention / replace / no-warranty */
+  /* Status: ok / warn / replace / none */
   --color-status-ok: #2e9e5b;
-  --color-status-warn: #f0a020;
-  --color-status-replace: #e04b3f;
-  --color-status-none: #9aa0a6;
+  --color-status-ok-soft: #e5f5ea;
+  --color-status-warn: #e8961b;
+  --color-status-warn-soft: #fdf1dc;
+  --color-status-replace: #d9463b;
+  --color-status-replace-soft: #fbe6e4;
+  --color-status-none: #8b8f94;
+  --color-status-none-soft: #eceef0;
+
+  /* Text-on-tint variants (AA on the *-soft backgrounds and on white) */
+  --color-status-ok-ink: #1b6f3d;
+  --color-status-warn-ink: #8f5300;
+  --color-status-replace-ink: #b02a22;
+  --color-status-none-ink: #5b6066;
+
+  /* Legacy aliases kept for existing utilities */
+  --color-surface: var(--color-sheet);
+  --color-surface-muted: var(--color-field);
+
+  --radius-sheet: 14px;
+  --shadow-sheet: 0 1px 2px rgb(20 20 18 / 0.04), 0 2px 8px rgb(20 20 18 / 0.05);
+  --shadow-pop: 0 4px 12px rgb(20 20 18 / 0.08), 0 12px 32px rgb(20 20 18 / 0.1);
 }
 
 html,
@@ -27,12 +66,58 @@ body,
 }
 
 body {
-  @apply bg-surface-muted text-ink antialiased;
-  font-family:
-    ui-sans-serif,
-    system-ui,
-    -apple-system,
-    'Segoe UI',
-    Roboto,
-    sans-serif;
+  background: var(--color-field);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  font-size: 14px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+  font-feature-settings:
+    'tnum' 1,
+    'ss01' 1;
+}
+
+::selection {
+  background: var(--color-brand-soft);
+  color: var(--color-ink);
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-brand);
+  outline-offset: 2px;
+}
+
+/* Thin scrollbars in the field and sheets */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-line-strong) transparent;
+}
+*::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+*::-webkit-scrollbar-thumb {
+  background: var(--color-line-strong);
+  border-radius: 8px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Utilities */
+@utility sheet {
+  background: var(--color-sheet);
+  border-radius: var(--radius-sheet);
+  box-shadow: var(--shadow-sheet);
+}
+@utility tabular {
+  font-variant-numeric: tabular-nums;
 }

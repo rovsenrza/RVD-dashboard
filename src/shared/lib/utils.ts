@@ -6,8 +6,9 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-export function formatDate(iso: string | null | undefined) {
-  if (!iso) return '—'
+/** Returns null for missing dates so callers can render <EmptyValue />. */
+export function formatDate(iso: string | null | undefined): string | null {
+  if (!iso) return null
   return format(parseISO(iso), 'dd.MM.yyyy')
 }
 

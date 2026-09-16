@@ -1,37 +1,50 @@
 import type { ReactNode } from 'react'
 import { AlertCircle, Inbox, type LucideIcon } from 'lucide-react'
 import type { UseQueryResult } from '@tanstack/react-query'
+import { cn } from '@/shared/lib/utils'
 import { Button } from './Button'
 
 export function EmptyState({
   icon: Icon = Inbox,
-  title = 'Нет данных',
+  title = 'Пока пусто',
   description,
   action,
+  inset = false,
 }: {
   icon?: LucideIcon
   title?: string
   description?: string
   action?: ReactNode
+  /** Rendered inside a sheet already: no own surface. */
+  inset?: boolean
 }) {
   return (
-    <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-line px-4 py-12 text-center">
-      <Icon size={28} className="text-ink-muted/60" />
-      <p className="text-sm font-medium">{title}</p>
-      {description && <p className="max-w-sm text-xs text-ink-muted">{description}</p>}
-      {action}
+    <div
+      className={cn(
+        'flex flex-col items-center gap-2 px-4 text-center',
+        inset ? 'py-10' : 'sheet py-14',
+      )}
+    >
+      <span className="grid size-11 place-items-center rounded-full bg-field text-ink-muted">
+        <Icon size={20} strokeWidth={1.75} />
+      </span>
+      <p className="mt-1 text-sm font-medium">{title}</p>
+      {description && <p className="max-w-sm text-[13px] text-ink-muted">{description}</p>}
+      {action && <div className="mt-2">{action}</div>}
     </div>
   )
 }
 
 export function ErrorState({ message, onRetry }: { message?: string; onRetry?: () => void }) {
   return (
-    <div className="flex flex-col items-center gap-2 rounded-xl border border-status-replace/30 bg-status-replace/5 px-4 py-10 text-center">
-      <AlertCircle size={28} className="text-status-replace" />
-      <p className="text-sm font-medium">Не удалось загрузить данные</p>
-      {message && <p className="text-xs text-ink-muted">{message}</p>}
+    <div className="sheet flex flex-col items-center gap-2 px-4 py-12 text-center">
+      <span className="grid size-11 place-items-center rounded-full bg-status-replace-soft text-status-replace">
+        <AlertCircle size={20} strokeWidth={1.75} />
+      </span>
+      <p className="mt-1 text-sm font-medium">Не удалось загрузить данные</p>
+      {message && <p className="max-w-md text-[13px] text-ink-muted">{message}</p>}
       {onRetry && (
-        <Button variant="secondary" size="sm" onClick={onRetry}>
+        <Button variant="secondary" size="sm" onClick={onRetry} className="mt-2">
           Повторить
         </Button>
       )}

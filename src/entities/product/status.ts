@@ -17,6 +17,14 @@ export const STATUS_TONE = {
   no_warranty: 'none',
 } as const satisfies Record<ProductStatus, string>
 
+/** Tailwind text classes (AA on white) for counts and labels tinted by status. */
+export const STATUS_TEXT_CLASS: Record<ProductStatus, string> = {
+  ok: 'text-status-ok-ink',
+  warn: 'text-status-warn-ink',
+  replace: 'text-status-replace-ink',
+  no_warranty: 'text-status-none-ink',
+}
+
 /** CSS custom property per status — for charts and inline styles. */
 export const STATUS_COLOR: Record<ProductStatus, string> = {
   ok: 'var(--color-status-ok)',

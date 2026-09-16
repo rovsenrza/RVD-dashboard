@@ -41,3 +41,11 @@ coverage
 
 # MSW worker is generated
 public/mockServiceWorker.js
+
+# impeccable local artefacts (screenshots, live-mode state)
+.impeccable/review/
+.impeccable/live/
+.impeccable/config.local.json
+
+# impeccable engine binary (re-created by `npx impeccable install`)
+.claude/skills/impeccable/scripts/bin/

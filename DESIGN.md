@@ -1,0 +1,242 @@
+---
+name: РВД Кабинет
+description: Control-room UI for hydraulic-hose lifecycle — dark navigation rail, warm working field, unbordered white sheets, one amber accent.
+colors:
+  field: '#f3f3f1'
+  sheet: '#ffffff'
+  sheet-muted: '#f8f8f6'
+  line: '#e6e6e2'
+  line-strong: '#d6d6d0'
+  rail: '#161616'
+  rail-raised: '#222222'
+  rail-ink: '#f3f3f1'
+  rail-muted: '#8a8a86'
+  ink: '#191919'
+  ink-secondary: '#4c4c49'
+  ink-muted: '#6b6b66'
+  ink-faint: '#a3a39d'
+  brand: '#f5a623'
+  brand-dark: '#d98c0c'
+  brand-deep: '#9a6206'
+  brand-soft: '#fff3dc'
+  status-ok: '#2e9e5b'
+  status-ok-soft: '#e5f5ea'
+  status-ok-ink: '#1b6f3d'
+  status-warn: '#e8961b'
+  status-warn-soft: '#fdf1dc'
+  status-warn-ink: '#8f5300'
+  status-replace: '#d9463b'
+  status-replace-soft: '#fbe6e4'
+  status-replace-ink: '#b02a22'
+  status-none: '#8b8f94'
+  status-none-soft: '#eceef0'
+  status-none-ink: '#5b6066'
+typography:
+  page-title:
+    fontFamily: 'Golos Text, ui-sans-serif, system-ui, sans-serif'
+    fontSize: '22px'
+    fontWeight: 600
+    lineHeight: 1.2
+    letterSpacing: '-0.02em'
+  sheet-title:
+    fontFamily: 'Golos Text, ui-sans-serif, system-ui, sans-serif'
+    fontSize: '15px'
+    fontWeight: 600
+    lineHeight: 1.3
+    letterSpacing: '-0.01em'
+  kpi-number:
+    fontFamily: 'Golos Text, ui-sans-serif, system-ui, sans-serif'
+    fontSize: '28px'
+    fontWeight: 600
+    lineHeight: 1
+    letterSpacing: '-0.02em'
+  body:
+    fontFamily: 'Golos Text, ui-sans-serif, system-ui, sans-serif'
+    fontSize: '14px'
+    fontWeight: 400
+    lineHeight: 1.45
+    letterSpacing: 'normal'
+  table-cell:
+    fontFamily: 'Golos Text, ui-sans-serif, system-ui, sans-serif'
+    fontSize: '14px'
+    fontWeight: 400
+    lineHeight: 1.45
+    letterSpacing: 'normal'
+  table-header:
+    fontFamily: 'Golos Text, ui-sans-serif, system-ui, sans-serif'
+    fontSize: '12px'
+    fontWeight: 500
+    lineHeight: 1.3
+    letterSpacing: '0.025em'
+  label:
+    fontFamily: 'Golos Text, ui-sans-serif, system-ui, sans-serif'
+    fontSize: '12.5px'
+    fontWeight: 400
+    lineHeight: 1.4
+    letterSpacing: 'normal'
+  badge:
+    fontFamily: 'Golos Text, ui-sans-serif, system-ui, sans-serif'
+    fontSize: '12px'
+    fontWeight: 500
+    lineHeight: 1.65
+    letterSpacing: 'normal'
+rounded:
+  sm: '6px'
+  md: '8px'
+  lg: '12px'
+  sheet: '14px'
+  full: '9999px'
+spacing:
+  xs: '4px'
+  sm: '8px'
+  md: '12px'
+  lg: '16px'
+  xl: '20px'
+  2xl: '24px'
+  3xl: '32px'
+components:
+  sheet:
+    backgroundColor: '{colors.sheet}'
+    rounded: '{rounded.sheet}'
+    padding: '20px'
+  button-primary:
+    backgroundColor: '{colors.brand}'
+    textColor: '{colors.ink}'
+    typography: '{typography.body}'
+    rounded: '{rounded.md}'
+    padding: '8px 14px'
+    height: '36px'
+  button-primary-hover:
+    backgroundColor: '{colors.brand-dark}'
+  button-secondary:
+    backgroundColor: '{colors.sheet}'
+    textColor: '{colors.ink}'
+    rounded: '{rounded.md}'
+    padding: '8px 14px'
+    height: '36px'
+  button-secondary-hover:
+    backgroundColor: '{colors.sheet-muted}'
+  button-ghost:
+    backgroundColor: 'transparent'
+    textColor: '{colors.ink-secondary}'
+    rounded: '{rounded.md}'
+    height: '36px'
+  input:
+    backgroundColor: '{colors.sheet}'
+    textColor: '{colors.ink}'
+    rounded: '{rounded.md}'
+    padding: '0 12px'
+    height: '36px'
+  nav-item:
+    backgroundColor: 'transparent'
+    textColor: '{colors.rail-muted}'
+    rounded: '{rounded.md}'
+    padding: '0 12px'
+    height: '40px'
+  nav-item-active:
+    backgroundColor: '{colors.brand}'
+    textColor: '{colors.ink}'
+  badge-ok:
+    backgroundColor: '{colors.status-ok-soft}'
+    textColor: '{colors.status-ok-ink}'
+    typography: '{typography.badge}'
+    rounded: '{rounded.full}'
+    padding: '2px 8px'
+  badge-warn:
+    backgroundColor: '{colors.status-warn-soft}'
+    textColor: '{colors.status-warn-ink}'
+    rounded: '{rounded.full}'
+    padding: '2px 8px'
+  badge-replace:
+    backgroundColor: '{colors.status-replace-soft}'
+    textColor: '{colors.status-replace-ink}'
+    rounded: '{rounded.full}'
+    padding: '2px 8px'
+  badge-none:
+    backgroundColor: '{colors.status-none-soft}'
+    textColor: '{colors.status-none-ink}'
+    rounded: '{rounded.full}'
+    padding: '2px 8px'
+  page-current:
+    backgroundColor: '{colors.brand}'
+    textColor: '{colors.ink}'
+    rounded: '{rounded.md}'
+    height: '32px'
+---
+
+# РВД Кабинет — Design System
+
+## Overview
+
+A control room, not a card wall. The screen has three materials and nothing else: a near-black **rail** on the left that holds navigation, a warm-neutral **field** that is the working ground, and white **sheets** laid on the field that hold every table, chart and form. The sheet is the only container in the system and it is never outlined — depth comes from one soft, offset shadow. Amber is the single accent and it means "current" or "primary": the active nav item, the primary button, links, focus rings, the current page number. Status (норма / внимание / требуется замена / не на гарантии) has its own four-colour vocabulary that never doubles as decoration.
+
+The world is pinned to the customer's reference (Eurohydroservice ESM): dark sidebar, amber, light content, dense data tables — executed with modern spacing, one workhorse Cyrillic typeface and no chrome the reference does not have. Mode is Operate: engineers and managers at a desk; scanability and consistency beat expression.
+
+Source of truth for tokens: `src/index.css` (`@theme`). Primitives: `src/shared/ui/`. Domain status UI: `src/entities/product/`, `src/entities/request/`.
+
+## Colors
+
+- **Field** `#f3f3f1` is the page ground; **sheet** `#ffffff` sits on it. `sheet-muted` is the only hover tint for rows and cells inside a sheet.
+- **Rail** `#161616` with `rail-ink` / `rail-muted` text. Hover on rail items is `white/6`; the active item is a solid amber fill with dark ink text (never amber text on black).
+- **Ink** ramp: `ink` for content, `ink-secondary` for secondary cells, `ink-muted` for labels and table headers (4.5:1 on the field), `ink-faint` only for placeholders and the empty-value dash.
+- **Brand** amber: `brand` for fills (buttons, active nav, current page, chart bars); `brand-deep` for text links and amber text on white (AA); `brand-soft` as the row-hover tint under a pointer and the filter-chip ground. `brand-dark` is hover for amber fills.
+- **Status** has three tiers per state: the base hue for marks (dots, bars, chart slices), `-soft` for pill grounds, `-ink` for any text set in that status colour. Text on a `-soft` tint or on white is always the `-ink` tier; base hues are never used as text. Status colours are semantic and appear only on pills, bars, chart marks and the tinted KPI numbers — never as section colour or decoration.
+- Hairline `line` divides rows and KPI cells; `line-strong` is the resting outline of inputs and secondary buttons (rendered as an inset ring, not a border). Nothing else is outlined.
+- Dark theme: not built. Tokens are structured so a dark set can be redefined under `@media (prefers-color-scheme: dark)` later; do not hand-pick dark colours per component.
+
+## Typography
+
+One family: **Golos Text** (variable 400–700, self-hosted in `public/fonts/`, Cyrillic + Latin subsets). Fallback stack `ui-sans-serif, system-ui`. No display face; hierarchy comes from size and weight steps on a ~1.125 scale.
+
+- Page title 22/600, tracking −0.02em, `text-wrap: balance`. One per screen, left, with a 13.5px muted description under it.
+- Sheet title 15/600. Table header 12/500 uppercase, tracking +0.025em, `ink-muted`. Body and table cells 14/400. Labels 12.5. Badges 12/500. Nothing below 11px.
+- Numerals: `font-variant-numeric: tabular-nums` is set globally (`tnum`) and reinforced with the `tabular` utility wherever digits align (tables, KPI numbers, pagination, legends).
+- Dates are `dd.MM.yyyy`; numbers use `ru-RU` grouping. Empty values render through `EmptyValue` (a muted `—`), never a hard-coded dash.
+
+## Layout
+
+- Rail 240px fixed on ≥lg; off-canvas with a scrim below. Header 64px, white, with a 1px `line` underline; content area scrolls independently.
+- Content column: max-width 1440px, padding 32px×28px on desktop, 16px×20px on phones. Every screen is `PageHeader` (title left, actions right) then sheets.
+- Sheets stack with 20px gaps. The dashboard grid is KPI strip (full width) → 2/3 + 1/3 charts → full-width table. KPI strip is one sheet with a 1px `line` gap-grid: 6 columns ≥xl, 3 on md, 2 on phones.
+- Tables: full-bleed inside their sheet (cells padded 20px horizontally, 12px vertically), hairline rows, header underline. Horizontal overflow scrolls inside the sheet with a right-edge fade + chevron cue; the key column pins once the table actually overflows. Toolbar row: tabs/chips left, search right (its own row on phones), column chooser at the end.
+- Breakpoints are structural (rail collapse, KPI column count, hide low-priority columns), never fluid type.
+
+## Elevation & Depth
+
+Two shadows only, both with offset and blur:
+
+- `--shadow-sheet`: `0 1px 2px rgb(20 20 18 / .04), 0 2px 8px rgb(20 20 18 / .05)` — every sheet.
+- `--shadow-pop`: `0 4px 12px rgb(20 20 18 / .08), 0 12px 32px rgb(20 20 18 / .1)` — menus, tooltips.
+
+Inputs and secondary buttons express their edge with an inset ring (`inset 0 0 0 1px line-strong`), so they read as controls without adding a border vocabulary. No glass, no gradients, no coloured halos. Never nest a sheet inside a sheet; embedded tables and empty states use their `embedded` / `inset` variants.
+
+## Shapes
+
+- Sheet 14px. Controls (buttons, inputs, nav items, menu items, page numbers) 8px. Menus 12px. Pills, chips, avatars, status dots fully round. Icon tiles 8px.
+- Icons: Lucide, 16px in controls (15px in `sm`), 17px in the rail, stroke 1.75. Never emoji or Unicode glyphs as icons.
+- Status bar: 10px tall rounded track with 1px gaps between segments; counts sit beside it as 10px dots + status-ink numbers.
+
+## Components
+
+- **Button** (`shared/ui/Button`): `primary` amber/ink, `secondary` white with inset ring, `ghost` text-only, `rail` for the dark rail, `danger`. Sizes `sm` 32px, `md` 36px, `icon` 36px, `icon-sm` 32px, `auto` for composite triggers. Icons via `icon` / `trailingIcon`. Focus ring is the amber outline.
+- **Input / SearchInput / Kbd**: 36px, inset-ring edge, amber 2px ring on focus. Search carries a leading magnifier and an optional trailing hint (`⌘K`). The global search in the header sits on the field tint until focused.
+- **Card** is the sheet: `title` + optional `action` header, 20px padding, `padded={false}` for full-bleed content.
+- **KpiStrip / KpiCard**: one sheet, cells divided by 1px `line`; each cell is icon (amber) + label (12.5 muted) + 28px number (tinted by tone) + delta pill (`ok`/`replace` soft tints) + period text. Cells are buttons when they drill down.
+- **DataTable**: TanStack table with sort glyphs, hairline rows, hover `brand-soft/40`, amber current page in `1 2 3 … N` pagination, «N на странице» selector and «Колонки» chooser when `tools` is on, `stickyFirstColumn`, `hiddenByDefault`, `embedded` for use inside a Card, `toolbar` / `search` slots.
+- **Tabs**: underline tabs, 2px amber rule under the active one, optional count pill.
+- **Badge**: tones `neutral | ok | warn | replace | none | brand`, optional leading dot. Domain wrappers: `ProductStatusBadge`, `RequestStatusBadge`.
+- **Chip**: removable filter, `brand-soft` ground, `brand-deep` text.
+- **Menu**: click-to-open dropdown, 12px radius, `shadow-pop`, optional header, separators, `danger` items; closes on outside click and Escape.
+- **PageHeader**: back link, title (may carry a badge), description, actions. **States**: `EmptyState`, `ErrorState` (with retry), `QueryState` wrapper; **Skeleton**, `TableSkeleton`, `KpiSkeleton` shaped like the real content.
+- **Sidebar**: brand mark (amber tile + wordmark + small caps line), nav with solid amber active fill, footer with «Помощь» and the data-source line.
+- **Header**: company › branch switcher (icon tile + two-line text + chevron), centred global search, amber «Связаться со специалистом», bell with red dot, avatar (amber, initials) + name + role + chevron menu.
+
+## Do's and Don'ts
+
+- Do put every block on a sheet and let the field show between sheets; don't outline a sheet or a section, and never nest sheets.
+- Do use amber for one thing per screen region (the active item, the primary action); don't use it for decoration, icons in bulk, or backgrounds behind text.
+- Do encode status with the same four colours everywhere (pill, dot, bar, slice); don't invent a fifth or use the base hue as text.
+- Do keep tables dense and scannable: uppercase muted headers, tabular numbers, hairlines; don't add zebra stripes, cell borders or card-per-row lists on desktop.
+- Do reach for `EmptyValue`, `EmptyState`, skeletons and the error state; don't write "Загрузка…" or a bare dash by hand.
+- Do build in `shared/ui` first — the architecture guard fails CI on raw `<button>`, `<input>`, `<table>` in features.
+- Don't introduce a second typeface, gradient text, glass, coloured left borders, or a kicker above a heading.

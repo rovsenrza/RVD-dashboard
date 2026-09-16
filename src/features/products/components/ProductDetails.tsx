@@ -1,41 +1,66 @@
 import type { ReactNode } from 'react'
 import type { Product } from '@/entities/types'
-import { Card } from '@/shared/ui'
+import { Badge, Card, valueOr } from '@/shared/ui'
 import { daysLeft, formatDate } from '@/shared/lib/utils'
 
 export function ProductDetails({ product: p }: { product: Product }) {
   const left = daysLeft(p.installedAt, p.serviceLifeDays)
-  const rows: [string, ReactNode][] = [
-    ['EHS №', p.serialNumber],
-    ['Внутренний №', p.clientNumber ?? '—'],
-    ['OEM №', p.oemNumber ?? '—'],
-    ['Тип', p.type],
-    ['Характеристики', p.specs],
-    ['Производитель', p.manufacturer],
-    ['Дата изготовления', formatDate(p.manufacturedAt)],
-    ['Дата отгрузки', formatDate(p.shippedAt)],
-    ['Дата установки', formatDate(p.installedAt)],
-    ['Гарантия', `${p.warrantyDays} дн.`],
-    ['Срок эксплуатации', `${p.serviceLifeDays} дн.`],
-    ['Остаток до замены', left === null ? '—' : `${left} дн.`],
-    ['Место установки', p.installPlace ?? '—'],
+  const groups: { title: string; rows: [string, ReactNode][] }[] = [
+    {
+      title: 'Идентификация',
+      rows: [
+        ['EHS №', p.serialNumber],
+        ['Внутренний №', p.clientNumber],
+        ['OEM №', p.oemNumber],
+      ],
+    },
+    {
+      title: 'Характеристики',
+      rows: [
+        ['Тип', p.type],
+        ['Параметры', p.specs],
+        ['Производитель', p.manufacturer],
+      ],
+    },
+    {
+      title: 'Сроки',
+      rows: [
+        ['Изготовлено', formatDate(p.manufacturedAt)],
+        ['Отгружено', formatDate(p.shippedAt)],
+        ['Установлено', formatDate(p.installedAt)],
+        ['Гарантия', `${p.warrantyDays} дн.`],
+        ['Срок эксплуатации', `${p.serviceLifeDays} дн.`],
+        [
+          'До плановой замены',
+          left === null ? null : (
+            <Badge tone={left < 0 ? 'replace' : left <= 30 ? 'warn' : 'ok'}>
+              {left < 0 ? `просрочено на ${-left} дн.` : `${left} дн.`}
+            </Badge>
+          ),
+        ],
+      ],
+    },
+    { title: 'Установка', rows: [['Место установки', p.installPlace]] },
   ]
   return (
     <Card title="Технические данные">
-      <DescriptionList rows={rows} />
+      <div className="divide-y divide-line">
+        {groups.map((g) => (
+          <div key={g.title} className="py-3 first:pt-0 last:pb-0">
+            <div className="mb-1.5 text-[11.5px] font-medium tracking-wide text-ink-muted uppercase">
+              {g.title}
+            </div>
+            <dl className="grid grid-cols-[minmax(140px,auto)_1fr] gap-x-6 gap-y-1 text-[13.5px]">
+              {g.rows.map(([k, v]) => (
+                <div key={k} className="contents">
+                  <dt className="text-ink-muted">{k}</dt>
+                  <dd className="tabular">{valueOr(v)}</dd>
+                </div>
+              ))}
+            </dl>
+          </div>
+        ))}
+      </div>
     </Card>
-  )
-}
-
-function DescriptionList({ rows }: { rows: [string, ReactNode][] }) {
-  return (
-    <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">
-      {rows.map(([k, v]) => (
-        <div key={k} className="contents">
-          <dt className="text-ink-muted">{k}</dt>
-          <dd>{v}</dd>
-        </div>
-      ))}
-    </dl>
   )
 }

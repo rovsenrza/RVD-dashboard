@@ -3,6 +3,7 @@ import {
   ClipboardList,
   History,
   LayoutDashboard,
+  LifeBuoy,
   Package,
   Truck,
   X,
@@ -31,22 +32,23 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
     <>
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-30 flex w-60 flex-col bg-ink text-white transition-transform lg:static lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-30 flex w-60 flex-col bg-rail text-rail-ink transition-transform duration-200 lg:static lg:translate-x-0',
           open ? 'translate-x-0' : '-translate-x-full',
         )}
       >
-        <div className="flex h-14 items-center justify-between px-4">
+        <div className="flex h-16 items-center justify-between px-5">
           <Brand />
           <Button
-            variant="ghost"
-            size="icon"
+            variant="rail"
+            size="icon-sm"
             icon={X}
-            className="text-white lg:hidden"
+            className="lg:hidden"
             onClick={onClose}
             aria-label="Закрыть меню"
           />
         </div>
-        <nav className="flex-1 space-y-0.5 px-2">
+
+        <nav className="flex-1 space-y-0.5 px-3 pt-2">
           {NAV.map(({ to, label, icon: Icon, end }) => (
             <NavLink
               key={to}
@@ -55,28 +57,56 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
               onClick={onClose}
               className={({ isActive }) =>
                 cn(
-                  'flex items-center gap-3 rounded-md px-3 py-2 text-sm text-white/70 hover:bg-white/10 hover:text-white',
-                  isActive && 'bg-white/10 text-brand',
+                  'flex h-10 items-center gap-3 rounded-lg px-3 text-[13.5px] transition-colors duration-150',
+                  isActive
+                    ? 'bg-brand font-medium text-ink'
+                    : 'text-rail-muted hover:bg-white/6 hover:text-rail-ink',
                 )
               }
             >
-              <Icon size={16} />
+              <Icon size={17} strokeWidth={1.75} />
               {label}
             </NavLink>
           ))}
         </nav>
-        <div className="px-4 py-3 text-xs text-white/40">v0.1 · mock data</div>
+
+        <div className="space-y-0.5 px-3 pb-4">
+          <a
+            href="#help"
+            className="flex h-10 items-center gap-3 rounded-lg px-3 text-[13.5px] text-rail-muted hover:bg-white/6 hover:text-rail-ink"
+          >
+            <LifeBuoy size={17} strokeWidth={1.75} />
+            Помощь
+          </a>
+          <div className="px-3 pt-3 text-[12px] leading-5 text-rail-muted/80">
+            <div className="flex items-center gap-2">
+              <span className="size-1.5 rounded-full bg-status-ok" />
+              Данные 1С · демо-режим
+            </div>
+            <div>v0.2</div>
+          </div>
+        </div>
       </aside>
-      {open && <div className="fixed inset-0 z-20 bg-black/40 lg:hidden" onClick={onClose} />}
+      {open && (
+        <div className="fixed inset-0 z-20 bg-black/40 lg:hidden" onClick={onClose} aria-hidden />
+      )}
     </>
   )
 }
 
+/** Placeholder mark until the customer supplies a logo: amber ring + wordmark. */
 function Brand() {
   return (
-    <span className="flex items-center gap-2 font-semibold tracking-wide">
-      <span className="size-2.5 rounded-full bg-brand" />
-      РВД Кабинет
+    <span className="flex items-center gap-2.5 font-semibold tracking-[-0.01em]">
+      <span className="grid size-7 place-items-center rounded-lg bg-brand">
+        <span className="size-3 rounded-full border-[3px] border-ink" />
+      </span>
+      <span className="leading-none">
+        РВД Кабинет
+        <span className="mt-0.5 block text-[11px] font-normal tracking-wide text-rail-muted uppercase">
+          личный кабинет
+        </span>
+      </span>
     </span>
   )
 }
