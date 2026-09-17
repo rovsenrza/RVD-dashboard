@@ -19,10 +19,10 @@ React 19 + TS + Vite + Tailwind v4 client cabinet for hydraulic-hose lifecycle. 
 | Structure overview                    | `get_architecture(aspects=["overview"])`                                                               | walking the tree          |
 | Impact before commit                  | `detect_changes()`                                                                                     | re-reading changed files  |
 
-Rules:
+Rules (mandatory in **every** prompt, no exceptions — this is how the token budget is kept low):
 
-- `Read` a file only when you are about to `Edit` it (and read only the needed range). Batch several graph calls in one turn.
-- Do **not** run `index_repository` for freshness — the watcher (`auto_watch=true`) re-indexes on save. Run it only after adding many new files, with `persistence=true`, then commit `.codebase-memory/`.
+- **All reading goes through the graph.** `search_graph` / `get_code_snippet` / `trace_path` / `search_code` are the default way to look at code. `Read` a file only when you are about to `Edit` it (and read only the needed range). Batch several graph calls in one turn.
+- **Re-index after every `Edit` / `Write` round.** Do not trust the watcher for freshness — it has been observed leaving the index a day stale, so new files were `not_tracked` and edited ones `metadata_changed`. When a turn's edits are done, run `index_repository(mode="moderate", persistence=true)` and confirm with `check_index_coverage(paths=[…])` that the touched paths report `metadata_match`. Commit `.codebase-memory/` with the change.
 - Do not `cat` directories, do not paste long files into the transcript, do not screenshot repeatedly (one batched capture round, fix, one confirm — max two).
 - Update the ADR when architecture, stack or conventions change: edit `docs/ADR.md`, then push the same text with `manage_adr(mode="update")`.
 - Broad, multi-file discovery ("where is X used across the app?", "audit all pages for Y") may be delegated to the tool's own subagents `codebase-memory-scout` (fast, provisional) / `codebase-memory` (verified) / `codebase-memory-auditor` (exhaustive) so the main context receives only the conclusion. Prefer a direct graph call when one or two calls suffice.
@@ -32,6 +32,7 @@ Rules:
 - Feature = type in `entities/types.ts` → hook in `shared/api/queries.ts` → MSW handler + generator → page composed from `shared/ui` primitives. No raw `<button|input|table>` outside `shared/ui` (CI fails).
 - UI/design work: load the `impeccable` skill, run `.claude/skills/impeccable/scripts/impeccable context`, follow `DESIGN.md` (it is loaded by that command — do not Read it separately). Sheets never outlined; one amber accent; status text uses `-ink` tier.
 - Before commit: `npm run lint:arch && npm run typecheck && npm test`; Prettier is enforced in CI. Commit style: imperative subject, body explains why. Attribution line per the current system reminder.
+- **Commit and push every finished piece of work** — a feature, a fix, a model change — without asking first, then continue. Re-index the graph first so `.codebase-memory/` ships in the same commit. Still ask before anything destructive (force-push, history rewrite, branch deletion).
 - End of a working day: tick `docs/PLAN-STATUS.md`, commit, push.
 
 ## Secrets & customer material

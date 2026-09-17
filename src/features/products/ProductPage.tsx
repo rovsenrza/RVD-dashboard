@@ -3,7 +3,9 @@ import { Pencil, RefreshCw } from 'lucide-react'
 import { ProductStatusBadge } from '@/entities/product'
 import { useProduct } from '@/shared/api/queries'
 import { Button, Card, EmptyState, PageHeader, QueryState, Skeleton } from '@/shared/ui'
+import { ProductComposition } from './components/ProductComposition'
 import { ProductDetails } from './components/ProductDetails'
+import { ProductLifecycle } from './components/ProductLifecycle'
 
 export function ProductPage() {
   const { id = '' } = useParams()
@@ -32,15 +34,19 @@ export function ProductPage() {
               </>
             }
           />
-          <div className="grid gap-5 lg:grid-cols-2">
+          <div className="grid items-start gap-5 lg:grid-cols-2">
             <ProductDetails product={p} />
-            <Card title="История замен и ремонтов">
-              <EmptyState
-                inset
-                title="Замен ещё не было"
-                description="Здесь появится журнал замен и ремонтов этого изделия из 1С."
-              />
-            </Card>
+            <div className="grid gap-5">
+              <ProductLifecycle productId={p.id} />
+              <ProductComposition lines={p.composition} />
+              <Card title="История замен и ремонтов">
+                <EmptyState
+                  inset
+                  title="Замен ещё не было"
+                  description="Здесь появится журнал замен и ремонтов этого изделия из 1С."
+                />
+              </Card>
+            </div>
           </div>
         </div>
       )}

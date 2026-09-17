@@ -1,6 +1,25 @@
-import type { ProductStatus } from '@/entities/types'
+import type { ProductLifecycle, ProductStatus } from '@/entities/types'
 
 export const STATUS_ORDER: ProductStatus[] = ['ok', 'warn', 'replace', 'no_warranty']
+
+/** Порядок этапов ЖЦ в 1С — по нему строится история на карточке изделия. */
+export const LIFECYCLE_ORDER: ProductLifecycle[] = [
+  'manufacturing',
+  'in_stock',
+  'shipped',
+  'in_operation',
+  'needs_replacement',
+  'written_off',
+]
+
+export const LIFECYCLE_LABEL: Record<ProductLifecycle, string> = {
+  manufacturing: 'Изготавливается',
+  in_stock: 'На складе',
+  shipped: 'Отгружен',
+  in_operation: 'В эксплуатации',
+  needs_replacement: 'Требует замены',
+  written_off: 'Списан',
+}
 
 export const STATUS_LABEL: Record<ProductStatus, string> = {
   ok: 'Норма',

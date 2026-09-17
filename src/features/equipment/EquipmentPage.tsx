@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import type { ColumnDef } from '@tanstack/react-table'
 import { Download } from 'lucide-react'
 import type { Equipment } from '@/entities/types'
@@ -8,6 +9,7 @@ import { equipmentColumns } from './columns'
 
 export function EquipmentPage() {
   const query = useEquipment()
+  const navigate = useNavigate()
   const [filter, setFilter] = useState('')
   return (
     <div>
@@ -26,6 +28,7 @@ export function EquipmentPage() {
             data={data}
             columns={equipmentColumns as ColumnDef<Equipment, unknown>[]}
             pageSize={10}
+            onRowClick={(e) => navigate(`/equipment/${e.id}`)}
             stickyFirstColumn
             tools
             globalFilter={filter}

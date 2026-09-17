@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import type { Product } from '@/entities/types'
+import { LIFECYCLE_LABEL } from '@/entities/product'
 import { Badge, Card, valueOr } from '@/shared/ui'
 import { daysLeft, formatDate } from '@/shared/lib/utils'
 
@@ -12,12 +13,16 @@ export function ProductDetails({ product: p }: { product: Product }) {
         ['EHS №', p.serialNumber],
         ['Внутренний №', p.clientNumber],
         ['OEM №', p.oemNumber],
+        ['Каталожный №', p.catalogNumber],
+        ['Номенклатурный №', p.nomenclatureNumber],
       ],
     },
     {
       title: 'Характеристики',
       rows: [
         ['Тип', p.type],
+        ['Диаметр', `${p.diameter} мм`],
+        ['Оплётки / навивки', p.braidCount],
         ['Параметры', p.specs],
         ['Производитель', p.manufacturer],
       ],
@@ -40,7 +45,13 @@ export function ProductDetails({ product: p }: { product: Product }) {
         ],
       ],
     },
-    { title: 'Установка', rows: [['Место установки', p.installPlace]] },
+    {
+      title: 'Установка',
+      rows: [
+        ['Место установки', p.installPlace],
+        ['Статус в 1С', LIFECYCLE_LABEL[p.lifecycle]],
+      ],
+    },
   ]
   return (
     <Card title="Технические данные">

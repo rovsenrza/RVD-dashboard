@@ -1,9 +1,14 @@
 import { addDays, formatISO, subDays } from 'date-fns'
 import type {
+  CatalogNumber,
+  ComponentItem,
+  ComponentType,
   DashboardSummary,
   Equipment,
   Product,
+  ProductLifecycle,
   ProductStatus,
+  ReleaseDocument,
   Replacement,
   ServiceRequest,
 } from '@/entities/types'
@@ -20,24 +25,89 @@ const iso = (d: Date) => formatISO(d, { representation: 'date' })
 const NOW = new Date()
 const BRANCHES = ['b-main', 'b-north']
 const BRANDS = [
-  ['Komatsu', 'PC400'],
-  ['Caterpillar', '374F'],
-  ['Hitachi', 'EX1200'],
-  ['Liebherr', 'R9350'],
-  ['БелАЗ', '75131'],
+  ['Komatsu', 'PC400', 'Экскаватор'],
+  ['Caterpillar', '374F', 'Экскаватор'],
+  ['Hitachi', 'EX1200', 'Экскаватор'],
+  ['Liebherr', 'R9350', 'Экскаватор'],
+  ['БелАЗ', '75131', 'Самосвал'],
 ] as const
-const HOSE_TYPES = ['2SN DN12', '4SP DN20', '4SH DN25', 'R13 DN32', '1SN DN10']
-const MANUFACTURERS = ['Manuli', 'Parker', 'Gates', 'Alfagomma']
 const PLACES = ['Стрела, левый контур', 'Рукоять', 'Ковш', 'Гидромотор хода', 'Насос, напор']
 
+let componentId = 0
+const comp = (
+  name: string,
+  type: ComponentType,
+  spec: string,
+  manufacturer: string | null,
+): ComponentItem => ({
+  id: `c-${++componentId}`,
+  code: String(10_000 + componentId),
+  name,
+  spec,
+  manufacturer,
+  type,
+})
+
+export const components: ComponentItem[] = [
+  comp('2SC ду06 рукав Rock Arctic p=400 BAR', 'hose', 'ду06', 'Rock'),
+  comp('2SN ду12 рукав Manuli p=275 BAR', 'hose', 'ду12', 'Manuli'),
+  comp('4SP ду20 рукав Gates p=380 BAR', 'hose', 'ду20', 'Gates'),
+  comp('4SH ду20 рукав Rock Arctic p=420 BAR', 'hose', 'ду20', 'Rock'),
+  comp('R13 ду32 рукав Alfagomma p=420 BAR', 'hose', 'ду32', 'Alfagomma'),
+  comp('2SN dn 06 Муфта', 'coupling', 'ду06', null),
+  comp('Муфта 2SN ду12', 'coupling', 'ду12', null),
+  comp('Муфта 4SH/4SP ду20', 'coupling', 'ду20', null),
+  comp('Муфта R13 ду32', 'coupling', 'ду32', null),
+  comp('Фитинг DKOL 14x1.5 (0) ду06', 'fitting', 'ду06', 'Parker'),
+  comp('ORFS 1 (90) ду12 фитинг', 'fitting', 'ду12', 'Parker'),
+  comp('ORFS 1-3/16 (0) ду20 фитинг', 'fitting', 'ду20', 'Parker'),
+  comp('SF 38.1 (90) ду20 фитинг', 'fitting', 'ду20', 'Parker'),
+  comp('SF 44.5 (45) ду32 фитинг', 'fitting', 'ду32', 'Parker'),
+  comp('Пружина защитная ду20', 'protection', 'ду20', null),
+]
+
+const byName = (name: string) => components.find((c) => c.name === name)!
+
+const CATALOG_SPECS = [
+  { name: '02753-00613', hose: '4SH ду20 рукав Rock Arctic p=420 BAR', life: 730, warranty: 365 },
+  { name: '07098-010A9', hose: '2SC ду06 рукав Rock Arctic p=400 BAR', life: 365, warranty: 180 },
+  { name: '03016-119913', hose: '2SN ду12 рукав Manuli p=275 BAR', life: 540, warranty: 180 },
+  { name: '198-71-32120', hose: '4SP ду20 рукав Gates p=380 BAR', life: 365, warranty: 365 },
+  { name: '198-61-43320', hose: 'R13 ду32 рукав Alfagomma p=420 BAR', life: 270, warranty: 90 },
+] as const
+
+/** Состав рукава в сборе: сам рукав + две муфты + два фитинга того же диаметра. */
+export const catalogNumbers: CatalogNumber[] = CATALOG_SPECS.map((s, i) => {
+  const hose = byName(s.hose)
+  const spec = hose.spec!
+  const coupling = components.find((c) => c.type === 'coupling' && c.spec === spec)!
+  const fitting = components.find((c) => c.type === 'fitting' && c.spec === spec)!
+  return {
+    id: `cat-${i + 1}`,
+    code: String(500 + i),
+    name: s.name,
+    serviceLifeDays: s.life,
+    warrantyDays: s.warranty,
+    diameter: Number(spec.replace('ду', '')),
+    braidCount: hose.name.startsWith('4') || hose.name.startsWith('R13') ? 4 : 2,
+    composition: [
+      { componentId: hose.id, name: hose.name, quantity: 1 },
+      { componentId: coupling.id, name: coupling.name, quantity: 2 },
+      { componentId: fitting.id, name: fitting.name, quantity: 2 },
+    ],
+  }
+})
+
 export const equipment: Equipment[] = Array.from({ length: 26 }, (_, i) => {
-  const [brand, model] = pick(BRANDS)
+  const [brand, model, type] = pick(BRANDS)
   return {
     id: `eq-${i + 1}`,
     branchId: BRANCHES[i % 2],
+    type,
     brand,
     model,
     garageNumber: `${pick(['EX', 'HT', 'BB'])}${String(i + 4).padStart(2, '0')}`,
+    inventoryNumber: rand() < 0.7 ? `ИНВ-${String(4200 + i)}` : null,
     hoseCount: 0,
     lastRepairDate: null,
     nextPlannedReplacement: null,
@@ -58,13 +128,18 @@ function statusFor(
   return 'ok'
 }
 
+function lifecycleFor(installed: Date | null, status: ProductStatus): ProductLifecycle {
+  if (!installed) return rand() < 0.5 ? 'in_stock' : 'shipped'
+  return status === 'replace' ? 'needs_replacement' : 'in_operation'
+}
+
 export const products: Product[] = Array.from({ length: 420 }, (_, i) => {
   const eq = rand() < 0.9 ? pick(equipment) : null
+  const cat = pick(catalogNumbers)
+  const hose = components.find((c) => c.id === cat.composition[0].componentId)!
   const shipped = subDays(NOW, Math.floor(rand() * 500))
   const installed = eq ? addDays(shipped, Math.floor(rand() * 20)) : null
-  const lifeDays = pick([180, 270, 365, 365, 540])
-  const warrantyDays = pick([90, 180, 365])
-  const status = statusFor(installed, lifeDays, warrantyDays)
+  const status = statusFor(installed, cat.serviceLifeDays, cat.warrantyDays)
   if (eq) {
     eq.hoseCount++
     eq.statusBreakdown[status]++
@@ -75,15 +150,23 @@ export const products: Product[] = Array.from({ length: 420 }, (_, i) => {
     clientNumber: rand() < 0.5 ? `K-${1000 + i}` : null,
     oemNumber:
       rand() < 0.7 ? `${7400 + Math.floor(rand() * 90)}-${Math.floor(rand() * 9000)}` : null,
-    type: pick(HOSE_TYPES),
-    manufacturer: pick(MANUFACTURERS),
+    catalogNumberId: cat.id,
+    catalogNumber: cat.name,
+    nomenclatureNumber: `РВД ${cat.name}`,
+    type: hose.name.split(' ').slice(0, 2).join(' '),
+    manufacturer: hose.manufacturer ?? '—',
     specs: `L=${800 + Math.floor(rand() * 20) * 50} мм, P=${pick([210, 280, 350, 420])} bar`,
+    diameter: cat.diameter,
+    braidCount: cat.braidCount,
+    composition: cat.composition,
     manufacturedAt: iso(subDays(shipped, 10)),
     shippedAt: iso(shipped),
     installedAt: installed ? iso(installed) : null,
-    warrantyDays,
-    serviceLifeDays: lifeDays,
+    warrantyDays: cat.warrantyDays,
+    serviceLifeDays: cat.serviceLifeDays,
     status,
+    lifecycle: lifecycleFor(installed, status),
+    replacedProductId: null,
     equipmentId: eq?.id ?? null,
     installPlace: eq ? pick(PLACES) : null,
     branchId: eq?.branchId ?? BRANCHES[0],
@@ -102,10 +185,12 @@ for (const eq of equipment) {
 
 export const replacements: Replacement[] = Array.from({ length: 94 }, (_, i) => {
   const old = pick(products.filter((p) => p.equipmentId))
+  const fresh = pick(products)
+  fresh.replacedProductId = old.id
   return {
     id: `r-${i + 1}`,
     oldProductId: old.id,
-    newProductId: pick(products).id,
+    newProductId: fresh.id,
     equipmentId: old.equipmentId!,
     date: iso(subDays(NOW, Math.floor(rand() * 365))),
     reason: pick(['Гарантийная замена', 'Плановая замена', 'Поломка', 'Износ']),
@@ -115,15 +200,55 @@ export const replacements: Replacement[] = Array.from({ length: 94 }, (_, i) => 
   }
 })
 
-export const requests: ServiceRequest[] = Array.from({ length: 12 }, (_, i) => ({
-  id: `req-${i + 1}`,
-  productId: pick(products).id,
-  kind: rand() < 0.5 ? 'replace' : 'manufacture',
-  quantity: 1 + Math.floor(rand() * 4),
-  comment: null,
-  status: pick(['new', 'in_progress', 'done', 'rejected']),
-  createdAt: iso(subDays(NOW, Math.floor(rand() * 60))),
-}))
+const AUTHORS = ['Иванов И. И.', 'Петров П. П.', 'Сидоров С. С.']
+const LIFECYCLE_CHAIN: ProductLifecycle[] = [
+  'manufacturing',
+  'in_stock',
+  'shipped',
+  'in_operation',
+  'needs_replacement',
+]
+
+let documentNumber = 0
+export const releaseDocuments: ReleaseDocument[] = products.flatMap((p) => {
+  const reached = LIFECYCLE_CHAIN.indexOf(p.lifecycle)
+  const start = new Date(p.manufacturedAt)
+  return LIFECYCLE_CHAIN.slice(0, reached + 1).map((lifecycle, step) => ({
+    id: `doc-${p.id}-${step}`,
+    number: `ВЫП-${String(++documentNumber).padStart(6, '0')}`,
+    date: iso(addDays(start, step * 5)),
+    productId: p.id,
+    lifecycle,
+    author: AUTHORS[step % AUTHORS.length],
+    requestId: null,
+  }))
+})
+
+export const requests: ServiceRequest[] = Array.from({ length: 12 }, (_, i) => {
+  const product = pick(products)
+  const cat = catalogNumbers.find((c) => c.id === product.catalogNumberId)!
+  const quantity = 1 + Math.floor(rand() * 4)
+  return {
+    id: `req-${i + 1}`,
+    number: `СВЦБ-${String(5100 + i).padStart(5, '0')}`,
+    branchId: product.branchId,
+    productId: product.id,
+    kind: rand() < 0.5 ? 'replace' : 'manufacture',
+    positions: [
+      {
+        catalogNumberId: cat.id,
+        catalogNumber: cat.name,
+        equipmentId: product.equipmentId,
+        quantity,
+      },
+    ],
+    quantity,
+    comment: null,
+    status: pick(['new', 'in_progress', 'done', 'rejected']),
+    shipmentStatus: rand() < 0.4 ? 'shipped' : 'not_shipped',
+    createdAt: iso(subDays(NOW, Math.floor(rand() * 60))),
+  }
+})
 
 export function dashboardSummary(): DashboardSummary {
   const breakdown: Record<ProductStatus, number> = { ok: 0, warn: 0, replace: 0, no_warranty: 0 }

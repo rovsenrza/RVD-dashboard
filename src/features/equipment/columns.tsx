@@ -11,6 +11,7 @@ export const equipmentColumns = [
     header: 'Гаражный №',
     cell: (c) => <span className="font-medium text-brand-deep">{c.getValue()}</span>,
   }),
+  col.accessor('type', { header: 'Тип' }),
   col.accessor((r) => `${r.brand} ${r.model}`, { id: 'model', header: 'Марка / модель' }),
   col.accessor('hoseCount', { header: 'Кол-во РВД' }),
   col.accessor('lastRepairDate', {

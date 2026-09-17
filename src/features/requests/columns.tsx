@@ -7,7 +7,10 @@ import { valueOr } from '@/shared/ui'
 const col = createColumnHelper<ServiceRequest>()
 
 export const requestColumns = [
-  col.accessor('id', { header: '№' }),
+  col.accessor('number', {
+    header: '№',
+    cell: (c) => <span className="font-medium text-brand-deep">{c.getValue()}</span>,
+  }),
   col.accessor('createdAt', { header: 'Создана', cell: (c) => valueOr(formatDate(c.getValue())) }),
   col.accessor('kind', { header: 'Тип', cell: (c) => REQUEST_KIND_LABEL[c.getValue()] }),
   col.accessor('productId', { header: 'Изделие', cell: (c) => valueOr(c.getValue()) }),
@@ -15,5 +18,9 @@ export const requestColumns = [
   col.accessor('status', {
     header: 'Статус',
     cell: (c) => <RequestStatusBadge status={c.getValue()} />,
+  }),
+  col.accessor('shipmentStatus', {
+    header: 'Отгрузка',
+    cell: (c) => (c.getValue() === 'shipped' ? 'Отгружен' : 'Не отгружен'),
   }),
 ]
