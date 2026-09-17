@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import {
   Building2,
   ChevronDown,
@@ -127,7 +128,8 @@ function GlobalSearch({ className, onOpen }: { className?: string; onOpen: () =>
 }
 
 function UserMenu() {
-  const { user } = useSession()
+  const { user, signOut } = useSession()
+  const navigate = useNavigate()
   return (
     <Menu
       trigger={(open) => (
@@ -157,7 +159,16 @@ function UserMenu() {
       items={[
         { label: 'Профиль', icon: UserRound, separator: true },
         { label: 'Настройки уведомлений', icon: Settings },
-        { label: 'Выйти', icon: LogOut, danger: true, separator: true },
+        {
+          label: 'Выйти',
+          icon: LogOut,
+          danger: true,
+          separator: true,
+          onSelect: () => {
+            signOut()
+            navigate('/login', { replace: true })
+          },
+        },
       ]}
     />
   )
