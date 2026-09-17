@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react'
 import {
-  Bell,
   Building2,
   ChevronDown,
   Headset,
@@ -14,6 +13,7 @@ import { initials, useSession, type Role } from '@/app/session'
 import { Button, Kbd, Menu, SearchInput } from '@/shared/ui'
 import { cn } from '@/shared/lib/utils'
 import { CommandPalette } from './CommandPalette'
+import { NotificationsPanel } from './NotificationsPanel'
 
 const ROLE_LABEL: Record<Role, string> = {
   mechanic: 'Механик',
@@ -63,15 +63,7 @@ export function Header({ onMenu }: { onMenu: () => void }) {
         <Button variant="primary" size="sm" icon={Headset} className="hidden xl:inline-flex">
           Связаться со специалистом
         </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          icon={Bell}
-          aria-label="Уведомления"
-          className="relative"
-        >
-          <span className="absolute top-2 right-2 size-2 rounded-full bg-status-replace ring-2 ring-sheet" />
-        </Button>
+        <NotificationsPanel />
         <UserMenu />
       </div>
     </header>
