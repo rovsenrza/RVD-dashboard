@@ -45,6 +45,7 @@ export function ProductsPage() {
       (p) =>
         (!active.status || p.status === active.status) &&
         (!active.lifecycle || p.lifecycle === active.lifecycle) &&
+        (!active.installed || (active.installed === '1') === (p.installedAt !== null)) &&
         (!active.equipment || p.equipmentId === active.equipment) &&
         (!active.catalog || p.catalogNumberId === active.catalog),
     )
@@ -53,6 +54,7 @@ export function ProductsPage() {
   const chipLabel = (key: FilterKey, value: string) => {
     if (key === 'status') return `Состояние: ${STATUS_LABEL[value as ProductStatus]}`
     if (key === 'lifecycle') return `В 1С: ${LIFECYCLE_LABEL[value as ProductLifecycle]}`
+    if (key === 'installed') return value === '1' ? 'На технике' : 'Не установлены'
     if (key === 'equipment') {
       const e = equipment.data?.find((x) => x.id === value)
       return `Техника: ${e ? e.garageNumber : value}`

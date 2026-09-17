@@ -48,7 +48,7 @@ export function KpiGrid({ data }: { data: DashboardSummary }) {
         value={data.replacementsInPeriod}
         delta={data.deltas.replacements}
         icon={RefreshCw}
-        onClick={() => go('/replacements')}
+        onClick={() => go('/replacements?period=30')}
       />
     </KpiStrip>
   )

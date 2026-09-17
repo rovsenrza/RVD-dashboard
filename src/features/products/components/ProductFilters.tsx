@@ -83,6 +83,21 @@ export function ProductFilters({
           )}
         </Field>
 
+        <Field label="Установка">
+          {(id) => (
+            <Select
+              id={id}
+              value={draft.installed ?? ''}
+              onChange={(e) => set('installed', e.target.value)}
+              placeholder="Любая"
+              options={[
+                { value: '1', label: 'Установлены на технику' },
+                { value: '0', label: 'Не установлены' },
+              ]}
+            />
+          )}
+        </Field>
+
         <Field label="Техника">
           {(id) => (
             <Select
