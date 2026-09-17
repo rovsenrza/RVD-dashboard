@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { useSession } from '@/app/session'
 import { REQUEST_KIND_LABEL } from '@/entities/request'
 import { useCatalogNumbers, useCreateRequest, useEquipment } from '@/shared/api/queries'
 import { Button, Dialog, Field, Input, Select, useToast } from '@/shared/ui'
@@ -10,6 +11,7 @@ export function RequestForm({ open, onClose }: { open: boolean; onClose: () => v
   const equipment = useEquipment()
   const create = useCreateRequest()
   const toast = useToast()
+  const { branch, branches } = useSession()
 
   const [kind, setKind] = useState<'replace' | 'manufacture'>('replace')
   const [catalogNumberId, setCatalogNumberId] = useState('')
@@ -23,7 +25,9 @@ export function RequestForm({ open, onClose }: { open: boolean; onClose: () => v
     const eq = equipment.data?.find((x) => x.id === equipmentId)
     create.mutate(
       {
-        branchId: eq?.branchId ?? 'b-main',
+        // The chosen equipment decides the branch; without one the request
+        // belongs to the branch currently in scope.
+        branchId: eq?.branchId ?? branch?.id ?? branches[0].id,
         productId: null,
         kind,
         quantity,

@@ -250,15 +250,23 @@ export const requests: ServiceRequest[] = Array.from({ length: 12 }, (_, i) => {
   }
 })
 
-export function dashboardSummary(): DashboardSummary {
+export function dashboardSummary(branch: string | null = null): DashboardSummary {
+  const scopedProducts = branch ? products.filter((p) => p.branchId === branch) : products
+  const branchEquipment = new Set(
+    equipment.filter((e) => !branch || e.branchId === branch).map((e) => e.id),
+  )
+  const scopedReplacements = branch
+    ? replacements.filter((r) => branchEquipment.has(r.equipmentId))
+    : replacements
+
   const breakdown: Record<ProductStatus, number> = { ok: 0, warn: 0, replace: 0, no_warranty: 0 }
-  for (const p of products) breakdown[p.status]++
+  for (const p of scopedProducts) breakdown[p.status]++
   const byMonth = new Map<string, number>()
-  for (const r of replacements) {
+  for (const r of scopedReplacements) {
     const m = r.date.slice(0, 7)
     byMonth.set(m, (byMonth.get(m) ?? 0) + 1)
   }
-  const upcoming = products
+  const upcoming = scopedProducts
     .filter((p) => p.installedAt && p.status !== 'replace')
     .map((p) => ({
       productId: p.id,
@@ -271,12 +279,12 @@ export function dashboardSummary(): DashboardSummary {
     .slice(0, 8)
 
   return {
-    shippedTotal: products.length,
-    inOperation: products.filter((p) => p.installedAt).length,
-    onWarranty: products.filter((p) => p.status === 'ok').length,
+    shippedTotal: scopedProducts.length,
+    inOperation: scopedProducts.filter((p) => p.installedAt).length,
+    onWarranty: scopedProducts.filter((p) => p.status === 'ok').length,
     expiringSoon: breakdown.warn,
     needsReplacement: breakdown.replace,
-    replacementsInPeriod: replacements.filter((r) => r.date >= iso(subDays(NOW, 30))).length,
+    replacementsInPeriod: scopedReplacements.filter((r) => r.date >= iso(subDays(NOW, 30))).length,
     deltas: { shippedTotal: 19, replacements: 6, onWarranty: -31, needsReplacement: 31 },
     statusBreakdown: breakdown,
     replacementsByMonth: [...byMonth.entries()]

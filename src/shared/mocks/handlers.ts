@@ -11,9 +11,19 @@ import {
 
 const api = (path: string) => `*/api${path}`
 
+/** Branch scope the BFF will take from the token; here it rides the query string. */
+const branchOf = (request: Request) => new URL(request.url).searchParams.get('branch')
+
+const inBranch = <T extends { branchId: string }>(rows: T[], branch: string | null) =>
+  branch ? rows.filter((r) => r.branchId === branch) : rows
+
 export const handlers = [
-  http.get(api('/dashboard/summary'), () => HttpResponse.json(dashboardSummary())),
-  http.get(api('/products'), () => HttpResponse.json(products)),
+  http.get(api('/dashboard/summary'), ({ request }) =>
+    HttpResponse.json(dashboardSummary(branchOf(request))),
+  ),
+  http.get(api('/products'), ({ request }) =>
+    HttpResponse.json(inBranch(products, branchOf(request))),
+  ),
   http.get(api('/products/:id'), ({ params }) => {
     const p = products.find((x) => x.id === params.id)
     return p ? HttpResponse.json(p) : new HttpResponse(null, { status: 404 })
@@ -21,7 +31,9 @@ export const handlers = [
   http.get(api('/products/:id/documents'), ({ params }) =>
     HttpResponse.json(releaseDocuments.filter((d) => d.productId === params.id)),
   ),
-  http.get(api('/equipment'), () => HttpResponse.json(equipment)),
+  http.get(api('/equipment'), ({ request }) =>
+    HttpResponse.json(inBranch(equipment, branchOf(request))),
+  ),
   http.get(api('/equipment/:id'), ({ params }) => {
     const e = equipment.find((x) => x.id === params.id)
     return e ? HttpResponse.json(e) : new HttpResponse(null, { status: 404 })
@@ -30,8 +42,17 @@ export const handlers = [
     HttpResponse.json(products.filter((p) => p.equipmentId === params.id)),
   ),
   http.get(api('/catalog-numbers'), () => HttpResponse.json(catalogNumbers)),
-  http.get(api('/replacements'), () => HttpResponse.json(replacements)),
-  http.get(api('/requests'), () => HttpResponse.json(requests)),
+  http.get(api('/replacements'), ({ request }) => {
+    const branch = branchOf(request)
+    if (!branch) return HttpResponse.json(replacements)
+    // A replacement carries no branch of its own — it belongs to the branch of
+    // the equipment it happened on.
+    const ours = new Set(equipment.filter((e) => e.branchId === branch).map((e) => e.id))
+    return HttpResponse.json(replacements.filter((r) => ours.has(r.equipmentId)))
+  }),
+  http.get(api('/requests'), ({ request }) =>
+    HttpResponse.json(inBranch(requests, branchOf(request))),
+  ),
   http.post(api('/requests'), async ({ request }) => {
     const body = (await request.json()) as Record<string, unknown>
     const created = {

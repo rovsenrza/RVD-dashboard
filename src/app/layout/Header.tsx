@@ -79,7 +79,7 @@ export function Header({ onMenu }: { onMenu: () => void }) {
 }
 
 function BranchSwitcher() {
-  const { company, branch } = useSession()
+  const { company, branch, branches, setBranchId } = useSession()
   return (
     <Menu
       align="start"
@@ -93,7 +93,7 @@ function BranchSwitcher() {
               {company.name}
             </span>
             <span className="block truncate text-[13.5px] leading-4 font-medium">
-              {branch.name}
+              {branch?.name ?? 'Все филиалы'}
             </span>
           </span>
           <ChevronDown size={14} className="text-ink-muted" />
@@ -103,9 +103,16 @@ function BranchSwitcher() {
         <div className="text-[12px] font-medium tracking-wide text-ink-muted uppercase">Филиал</div>
       }
       items={[
-        { label: 'Главный филиал', icon: Building2 },
-        { label: 'Северный филиал', icon: Building2 },
-        { label: 'Все филиалы компании', separator: true },
+        ...branches.map((b) => ({
+          label: b.name,
+          icon: Building2,
+          onSelect: () => setBranchId(b.id),
+        })),
+        {
+          label: 'Все филиалы компании',
+          separator: true,
+          onSelect: () => setBranchId(null),
+        },
       ]}
     />
   )
