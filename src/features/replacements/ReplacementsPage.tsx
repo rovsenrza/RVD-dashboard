@@ -14,7 +14,19 @@ import {
   SearchInput,
   TableSkeleton,
 } from '@/shared/ui'
+import { downloadCsv, type CsvColumn } from '@/shared/lib/csv'
 import { replacementColumns } from './columns'
+
+const CSV_COLUMNS: CsvColumn<Replacement>[] = [
+  { header: 'Дата', value: (r) => r.date },
+  { header: 'Снятое изделие (EHS)', value: (r) => r.oldSerialNumber },
+  { header: 'Установленное изделие (EHS)', value: (r) => r.newSerialNumber },
+  { header: 'Техника (гаражный №)', value: (r) => r.garageNumber },
+  { header: 'Причина', value: (r) => r.reason },
+  { header: 'Наработка, м/ч', value: (r) => r.operatingHours },
+  { header: 'Исполнитель', value: (r) => r.performedBy },
+  { header: 'Комментарий', value: (r) => r.comment },
+]
 
 export function ReplacementsPage() {
   const query = useReplacements()
@@ -35,7 +47,12 @@ export function ReplacementsPage() {
         title="История замен"
         description="Журнал всех замен РВД на технике компании"
         actions={
-          <Button variant="secondary" size="sm" icon={Download}>
+          <Button
+            variant="secondary"
+            size="sm"
+            icon={Download}
+            onClick={() => downloadCsv('замены.csv', CSV_COLUMNS, rows)}
+          >
             Экспорт
           </Button>
         }

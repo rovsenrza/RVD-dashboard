@@ -132,11 +132,15 @@ export interface ReleaseDocument {
   requestId: string | null
 }
 
+/** A journal row: ids for navigation plus the numbers a person reads them by. */
 export interface Replacement {
   id: string
   oldProductId: string
+  oldSerialNumber: string
   newProductId: string | null
+  newSerialNumber: string | null
   equipmentId: string
+  garageNumber: string
   date: string
   reason: string
   /** Наработка / моточасы */

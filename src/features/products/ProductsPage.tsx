@@ -15,11 +15,27 @@ import {
   Tabs,
   TableSkeleton,
 } from '@/shared/ui'
+import { downloadCsv, type CsvColumn } from '@/shared/lib/csv'
 import { productColumns } from './columns'
 import { ProductFilters } from './components/ProductFilters'
 import { FILTER_KEYS, type FilterKey, type FilterValues } from './filters'
 
 type Tab = 'active' | 'archive'
+
+const CSV_COLUMNS: CsvColumn<Product>[] = [
+  { header: 'EHS №', value: (p) => p.serialNumber },
+  { header: 'Внутренний №', value: (p) => p.clientNumber },
+  { header: 'OEM №', value: (p) => p.oemNumber },
+  { header: 'Каталожный №', value: (p) => p.catalogNumber },
+  { header: 'Тип', value: (p) => p.type },
+  { header: 'Производитель', value: (p) => p.manufacturer },
+  { header: 'Отгружено', value: (p) => p.shippedAt },
+  { header: 'Установлено', value: (p) => p.installedAt },
+  { header: 'Место установки', value: (p) => p.installPlace },
+  { header: 'Срок эксплуатации, дн.', value: (p) => p.serviceLifeDays },
+  { header: 'Состояние', value: (p) => STATUS_LABEL[p.status] },
+  { header: 'Статус в 1С', value: (p) => LIFECYCLE_LABEL[p.lifecycle] },
+]
 
 export function ProductsPage() {
   const query = useProducts()
@@ -87,7 +103,18 @@ export function ProductsPage() {
               Фильтры
               {Object.keys(active).length > 0 && ` · ${Object.keys(active).length}`}
             </Button>
-            <Button variant="secondary" size="sm" icon={Download}>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={Download}
+              onClick={() =>
+                downloadCsv(
+                  tab === 'archive' ? 'изделия-архив.csv' : 'изделия.csv',
+                  CSV_COLUMNS,
+                  tab === 'archive' ? archived : rows,
+                )
+              }
+            >
               Экспорт
             </Button>
           </>

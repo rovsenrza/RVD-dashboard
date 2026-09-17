@@ -13,7 +13,18 @@ export const requestColumns = [
   }),
   col.accessor('createdAt', { header: 'Создана', cell: (c) => valueOr(formatDate(c.getValue())) }),
   col.accessor('kind', { header: 'Тип', cell: (c) => REQUEST_KIND_LABEL[c.getValue()] }),
-  col.accessor('productId', { header: 'Изделие', cell: (c) => valueOr(c.getValue()) }),
+  col.accessor(
+    (r) =>
+      r.positions
+        .map((p) => p.catalogNumber)
+        .filter(Boolean)
+        .join(', '),
+    {
+      id: 'catalog',
+      header: 'Каталожный №',
+      cell: (c) => valueOr(c.getValue() || null),
+    },
+  ),
   col.accessor('quantity', { header: 'Кол-во' }),
   col.accessor('status', {
     header: 'Статус',

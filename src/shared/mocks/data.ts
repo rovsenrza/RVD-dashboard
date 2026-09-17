@@ -179,8 +179,11 @@ export const replacements: Replacement[] = Array.from({ length: 94 }, (_, i) => 
   return {
     id: `r-${i + 1}`,
     oldProductId: old.id,
+    oldSerialNumber: old.serialNumber,
     newProductId: fresh.id,
+    newSerialNumber: fresh.serialNumber,
     equipmentId: old.equipmentId!,
+    garageNumber: equipment.find((e) => e.id === old.equipmentId)!.garageNumber,
     date: iso(subDays(NOW, Math.floor(rand() * 365))),
     reason: pick(['Гарантийная замена', 'Плановая замена', 'Поломка', 'Износ']),
     operatingHours: rand() < 0.6 ? Math.floor(rand() * 12000) : null,

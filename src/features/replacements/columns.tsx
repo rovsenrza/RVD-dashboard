@@ -7,9 +7,12 @@ const col = createColumnHelper<Replacement>()
 
 export const replacementColumns = [
   col.accessor('date', { header: 'Дата', cell: (c) => valueOr(formatDate(c.getValue())) }),
-  col.accessor('oldProductId', { header: 'Заменено' }),
-  col.accessor('newProductId', { header: 'Установлено', cell: (c) => valueOr(c.getValue()) }),
-  col.accessor('equipmentId', { header: 'Техника' }),
+  col.accessor('oldSerialNumber', {
+    header: 'Заменено',
+    cell: (c) => <span className="font-medium text-brand-deep">{c.getValue()}</span>,
+  }),
+  col.accessor('newSerialNumber', { header: 'Установлено', cell: (c) => valueOr(c.getValue()) }),
+  col.accessor('garageNumber', { header: 'Техника' }),
   col.accessor('reason', { header: 'Причина' }),
   col.accessor('operatingHours', { header: 'Моточасы', cell: (c) => valueOr(c.getValue()) }),
   col.accessor('performedBy', { header: 'Кто выполнил' }),
