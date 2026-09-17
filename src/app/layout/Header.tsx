@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useEffect, useState } from 'react'
 import {
   Bell,
   Building2,
@@ -14,6 +13,7 @@ import {
 import { initials, useSession, type Role } from '@/app/session'
 import { Button, Kbd, Menu, SearchInput } from '@/shared/ui'
 import { cn } from '@/shared/lib/utils'
+import { CommandPalette } from './CommandPalette'
 
 const ROLE_LABEL: Record<Role, string> = {
   mechanic: 'Механик',
@@ -22,7 +22,19 @@ const ROLE_LABEL: Record<Role, string> = {
 }
 
 export function Header({ onMenu }: { onMenu: () => void }) {
-  const navigate = useNavigate()
+  const [searchOpen, setSearchOpen] = useState(false)
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault()
+        setSearchOpen(true)
+      }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [])
+
   return (
     <header className="flex h-16 shrink-0 items-center gap-3 bg-sheet px-4 shadow-[0_1px_0_var(--color-line)] lg:px-6">
       <Button
@@ -34,7 +46,11 @@ export function Header({ onMenu }: { onMenu: () => void }) {
         aria-label="Открыть меню"
       />
       <BranchSwitcher />
-      <GlobalSearch className="mx-auto hidden w-full max-w-md md:block" />
+      <GlobalSearch
+        className="mx-auto hidden w-full max-w-md md:block"
+        onOpen={() => setSearchOpen(true)}
+      />
+      <CommandPalette open={searchOpen} onClose={() => setSearchOpen(false)} />
       <div className="ml-auto flex items-center gap-1.5 md:ml-0">
         <Button
           variant="ghost"
@@ -42,7 +58,7 @@ export function Header({ onMenu }: { onMenu: () => void }) {
           icon={Search}
           className="md:hidden"
           aria-label="Поиск"
-          onClick={() => navigate('/products')}
+          onClick={() => setSearchOpen(true)}
         />
         <Button variant="primary" size="sm" icon={Headset} className="hidden xl:inline-flex">
           Связаться со специалистом
@@ -95,40 +111,19 @@ function BranchSwitcher() {
   )
 }
 
-function GlobalSearch({ className }: { className?: string }) {
-  const [q, setQ] = useState('')
-  const ref = useRef<HTMLInputElement>(null)
-  const navigate = useNavigate()
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
-        e.preventDefault()
-        ref.current?.focus()
-      }
-    }
-    document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
-  }, [])
-
+/** Looks like a field, acts as a button: focus and ⌘K both open the palette. */
+function GlobalSearch({ className, onOpen }: { className?: string; onOpen: () => void }) {
   return (
-    <form
-      className={className}
-      onSubmit={(e) => {
-        e.preventDefault()
-        if (q.trim()) navigate(`/products?q=${encodeURIComponent(q.trim())}`)
-      }}
-    >
+    <div className={className} onClick={onOpen}>
       <SearchInput
-        ref={ref}
         id="global-search"
-        value={q}
-        onChange={(e) => setQ(e.target.value)}
+        readOnly
+        value=""
         placeholder="Номер EHS, OEM, гаражный номер…"
         hint={<Kbd>⌘K</Kbd>}
-        className="bg-field! [&_input]:shadow-none [&_input]:hover:shadow-none [&_input]:focus:shadow-[inset_0_0_0_2px_var(--color-brand)]"
+        className="bg-field! [&_input]:cursor-pointer [&_input]:shadow-none [&_input]:hover:shadow-none [&_input]:focus:shadow-[inset_0_0_0_2px_var(--color-brand)]"
       />
-    </form>
+    </div>
   )
 }
 
