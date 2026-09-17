@@ -140,10 +140,6 @@ export const products: Product[] = Array.from({ length: 420 }, (_, i) => {
   const shipped = subDays(NOW, Math.floor(rand() * 500))
   const installed = eq ? addDays(shipped, Math.floor(rand() * 20)) : null
   const status = statusFor(installed, cat.serviceLifeDays, cat.warrantyDays)
-  if (eq) {
-    eq.hoseCount++
-    eq.statusBreakdown[status]++
-  }
   return {
     id: `p-${i + 1}`,
     serialNumber: String(48700 + i),
@@ -173,20 +169,13 @@ export const products: Product[] = Array.from({ length: 420 }, (_, i) => {
   }
 })
 
-for (const eq of equipment) {
-  const own = products.filter((p) => p.equipmentId === eq.id && p.installedAt)
-  const next = own
-    .map((p) => addDays(new Date(p.installedAt!), p.serviceLifeDays))
-    .filter((d) => d >= NOW)
-    .sort((a, b) => a.getTime() - b.getTime())[0]
-  eq.nextPlannedReplacement = next ? iso(next) : null
-  eq.lastRepairDate = own.length ? iso(subDays(NOW, Math.floor(rand() * 120))) : null
-}
-
 export const replacements: Replacement[] = Array.from({ length: 94 }, (_, i) => {
-  const old = pick(products.filter((p) => p.equipmentId))
-  const fresh = pick(products)
+  const old = pick(products.filter((p) => p.equipmentId && p.lifecycle !== 'written_off'))
+  const fresh = pick(products.filter((p) => p.id !== old.id))
   fresh.replacedProductId = old.id
+  // The hose that was taken off is retired; it stays linked to its equipment
+  // only as history and no longer counts toward what is on the machine.
+  old.lifecycle = 'written_off'
   return {
     id: `r-${i + 1}`,
     oldProductId: old.id,
@@ -200,6 +189,22 @@ export const replacements: Replacement[] = Array.from({ length: 94 }, (_, i) => 
   }
 })
 
+/** What is on the machine right now: installed and not retired. */
+const live = (p: Product) => p.installedAt !== null && p.lifecycle !== 'written_off'
+
+for (const eq of equipment) {
+  const own = products.filter((p) => p.equipmentId === eq.id && live(p))
+  eq.hoseCount = own.length
+  eq.statusBreakdown = { ok: 0, warn: 0, replace: 0, no_warranty: 0 }
+  for (const p of own) eq.statusBreakdown[p.status]++
+  const next = own
+    .map((p) => addDays(new Date(p.installedAt!), p.serviceLifeDays))
+    .filter((d) => d >= NOW)
+    .sort((a, b) => a.getTime() - b.getTime())[0]
+  eq.nextPlannedReplacement = next ? iso(next) : null
+  eq.lastRepairDate = own.length ? iso(subDays(NOW, Math.floor(rand() * 120))) : null
+}
+
 const AUTHORS = ['Иванов И. И.', 'Петров П. П.', 'Сидоров С. С.']
 const LIFECYCLE_CHAIN: ProductLifecycle[] = [
   'manufacturing',
@@ -207,13 +212,18 @@ const LIFECYCLE_CHAIN: ProductLifecycle[] = [
   'shipped',
   'in_operation',
   'needs_replacement',
+  'written_off',
 ]
 
 let documentNumber = 0
 export const releaseDocuments: ReleaseDocument[] = products.flatMap((p) => {
   const reached = LIFECYCLE_CHAIN.indexOf(p.lifecycle)
   const start = new Date(p.manufacturedAt)
-  return LIFECYCLE_CHAIN.slice(0, reached + 1).map((lifecycle, step) => ({
+  // A hose retired on a planned swap never passed through «требует замены».
+  const passed = LIFECYCLE_CHAIN.slice(0, reached + 1).filter(
+    (step) => step !== 'needs_replacement' || p.status === 'replace',
+  )
+  return passed.map((lifecycle, step) => ({
     id: `doc-${p.id}-${step}`,
     number: `ВЫП-${String(++documentNumber).padStart(6, '0')}`,
     date: iso(addDays(start, step * 5)),
@@ -251,7 +261,10 @@ export const requests: ServiceRequest[] = Array.from({ length: 12 }, (_, i) => {
 })
 
 export function dashboardSummary(branch: string | null = null): DashboardSummary {
-  const scopedProducts = branch ? products.filter((p) => p.branchId === branch) : products
+  // Retired hoses live in the archive; the dashboard is about what is in hand.
+  const scopedProducts = products.filter(
+    (p) => p.lifecycle !== 'written_off' && (!branch || p.branchId === branch),
+  )
   const branchEquipment = new Set(
     equipment.filter((e) => !branch || e.branchId === branch).map((e) => e.id),
   )

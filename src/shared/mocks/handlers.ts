@@ -39,7 +39,9 @@ export const handlers = [
     return e ? HttpResponse.json(e) : new HttpResponse(null, { status: 404 })
   }),
   http.get(api('/equipment/:id/products'), ({ params }) =>
-    HttpResponse.json(products.filter((p) => p.equipmentId === params.id)),
+    HttpResponse.json(
+      products.filter((p) => p.equipmentId === params.id && p.lifecycle !== 'written_off'),
+    ),
   ),
   http.get(api('/catalog-numbers'), () => HttpResponse.json(catalogNumbers)),
   http.get(api('/replacements'), ({ request }) => {

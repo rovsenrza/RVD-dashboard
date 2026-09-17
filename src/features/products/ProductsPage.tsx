@@ -40,7 +40,7 @@ export function ProductsPage() {
     return values
   }, [params])
 
-  const rows = useMemo(() => {
+  const filtered = useMemo(() => {
     return (query.data ?? []).filter(
       (p) =>
         (!active.status || p.status === active.status) &&
@@ -50,6 +50,9 @@ export function ProductsPage() {
         (!active.catalog || p.catalogNumberId === active.catalog),
     )
   }, [query.data, active])
+
+  const archived = useMemo(() => filtered.filter((p) => p.lifecycle === 'written_off'), [filtered])
+  const rows = useMemo(() => filtered.filter((p) => p.lifecycle !== 'written_off'), [filtered])
 
   const chipLabel = (key: FilterKey, value: string) => {
     if (key === 'status') return `Состояние: ${STATUS_LABEL[value as ProductStatus]}`
@@ -99,7 +102,7 @@ export function ProductsPage() {
       <QueryState query={query} skeleton={<TableSkeleton />}>
         {() => (
           <DataTable
-            data={tab === 'active' ? rows : []}
+            data={tab === 'active' ? rows : archived}
             columns={productColumns as ColumnDef<Product, unknown>[]}
             globalFilter={filter}
             onRowClick={(p) => navigate(`/products/${p.id}`)}
@@ -113,7 +116,7 @@ export function ProductsPage() {
                 <Tabs
                   items={[
                     { key: 'active', label: 'Активные', count: rows.length },
-                    { key: 'archive', label: 'Архив' },
+                    { key: 'archive', label: 'Архив', count: archived.length },
                   ]}
                   value={tab}
                   onChange={setTab}
