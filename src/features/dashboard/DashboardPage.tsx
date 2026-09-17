@@ -19,7 +19,7 @@ export function DashboardPage() {
     <div>
       <PageHeader
         title="Главная"
-        description={`${branch.name} · сводка по изделиям и технике`}
+        description={`${branch?.name ?? 'Все филиалы'} · сводка по изделиям и технике`}
         actions={
           <>
             <Menu

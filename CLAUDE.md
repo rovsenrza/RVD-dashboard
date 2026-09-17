@@ -31,7 +31,7 @@ Rules (mandatory in **every** prompt, no exceptions — this is how the token bu
 
 - Feature = type in `entities/types.ts` → hook in `shared/api/queries.ts` → MSW handler + generator → page composed from `shared/ui` primitives. No raw `<button|input|table>` outside `shared/ui` (CI fails).
 - UI/design work: load the `impeccable` skill, run `.claude/skills/impeccable/scripts/impeccable context`, follow `DESIGN.md` (it is loaded by that command — do not Read it separately). Sheets never outlined; one amber accent; status text uses `-ink` tier.
-- Before commit: `npm run lint:arch && npm run typecheck && npm test`; Prettier is enforced in CI. Commit style: imperative subject, body explains why. Attribution line per the current system reminder.
+- Before commit run the whole CI gate, via the npm scripts and in this order: `npm run lint && npm run lint:arch && npm run format:check && npm run typecheck && npm test && npm run build`. Use the scripts, never an ad-hoc `tsc` — `npm run typecheck` is `tsc -b --noEmit` (build mode, project references) and catches errors a plain `tsc --noEmit -p .` misses. `format:check` covers the whole repo, not just `src`. Commit style: imperative subject, body explains why. Attribution line per the current system reminder.
 - **Commit and push every finished piece of work** — a feature, a fix, a model change — without asking first, then continue. Re-index the graph first so `.codebase-memory/` ships in the same commit. Still ask before anything destructive (force-push, history rewrite, branch deletion).
 - End of a working day: tick `docs/PLAN-STATUS.md`, commit, push.
 
