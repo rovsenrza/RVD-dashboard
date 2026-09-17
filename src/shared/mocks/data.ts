@@ -195,7 +195,8 @@ export const replacements: Replacement[] = Array.from({ length: 94 }, (_, i) => 
 /** What is on the machine right now: installed and not retired. */
 const live = (p: Product) => p.installedAt !== null && p.lifecycle !== 'written_off'
 
-for (const eq of equipment) {
+/** Derive everything the equipment row says about its hoses from the hoses themselves. */
+export function recountEquipment(eq: Equipment) {
   const own = products.filter((p) => p.equipmentId === eq.id && live(p))
   eq.hoseCount = own.length
   eq.statusBreakdown = { ok: 0, warn: 0, replace: 0, no_warranty: 0 }
@@ -205,7 +206,38 @@ for (const eq of equipment) {
     .filter((d) => d >= NOW)
     .sort((a, b) => a.getTime() - b.getTime())[0]
   eq.nextPlannedReplacement = next ? iso(next) : null
-  eq.lastRepairDate = own.length ? iso(subDays(NOW, Math.floor(rand() * 120))) : null
+}
+
+/**
+ * Customer-owned facts about a hose. Everything derived from them — health,
+ * lifecycle, equipment counts — is recomputed here, the way the BFF will.
+ */
+export function applyInstallation(
+  p: Product,
+  patch: Partial<Pick<Product, 'equipmentId' | 'installPlace' | 'installedAt' | 'clientNumber'>>,
+) {
+  const before = p.equipmentId
+  Object.assign(p, patch)
+  const installed = p.installedAt ? new Date(p.installedAt) : null
+  p.status = statusFor(installed, p.serviceLifeDays, p.warrantyDays)
+  if (p.lifecycle !== 'written_off') {
+    p.lifecycle = installed
+      ? p.status === 'replace'
+        ? 'needs_replacement'
+        : 'in_operation'
+      : 'shipped'
+  }
+  p.branchId = equipment.find((e) => e.id === p.equipmentId)?.branchId ?? p.branchId
+  for (const id of new Set([before, p.equipmentId])) {
+    const eq = equipment.find((e) => e.id === id)
+    if (eq) recountEquipment(eq)
+  }
+  return p
+}
+
+for (const eq of equipment) {
+  recountEquipment(eq)
+  eq.lastRepairDate = eq.hoseCount ? iso(subDays(NOW, Math.floor(rand() * 120))) : null
 }
 
 const AUTHORS = ['Иванов И. И.', 'Петров П. П.', 'Сидоров С. С.']

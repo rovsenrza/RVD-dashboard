@@ -100,6 +100,25 @@ export const useRequests = () => {
   })
 }
 
+/** The installation facts a customer may record; everything derived is recomputed server-side. */
+export type InstallationPatch = Partial<
+  Pick<Product, 'equipmentId' | 'installPlace' | 'installedAt' | 'clientNumber'>
+>
+
+export const useUpdateProduct = (id: string) => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (patch: InstallationPatch) => api.patch<Product>(`/products/${id}`, patch),
+    onSuccess: (updated) => {
+      qc.setQueryData(keys.product(id), updated)
+      // Counts, status bars and the dashboard all derive from installation facts.
+      qc.invalidateQueries({ queryKey: ['products'] })
+      qc.invalidateQueries({ queryKey: ['equipment'] })
+      qc.invalidateQueries({ queryKey: ['dashboard'] })
+    },
+  })
+}
+
 /** Fields the client sends; 1С (and the mock) assigns number, statuses and date. */
 export type NewRequest = Omit<
   ServiceRequest,

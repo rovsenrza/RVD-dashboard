@@ -1,5 +1,6 @@
 import { http, HttpResponse } from 'msw'
 import {
+  applyInstallation,
   catalogNumbers,
   dashboardSummary,
   equipment,
@@ -27,6 +28,12 @@ export const handlers = [
   http.get(api('/products/:id'), ({ params }) => {
     const p = products.find((x) => x.id === params.id)
     return p ? HttpResponse.json(p) : new HttpResponse(null, { status: 404 })
+  }),
+  http.patch(api('/products/:id'), async ({ params, request }) => {
+    const p = products.find((x) => x.id === params.id)
+    if (!p) return new HttpResponse(null, { status: 404 })
+    const patch = (await request.json()) as Parameters<typeof applyInstallation>[1]
+    return HttpResponse.json(applyInstallation(p, patch))
   }),
   http.get(api('/products/:id/documents'), ({ params }) =>
     HttpResponse.json(releaseDocuments.filter((d) => d.productId === params.id)),
