@@ -304,7 +304,7 @@ function useOverflowX() {
       ro.disconnect()
       el.removeEventListener('scroll', update)
     }
-  })
+  }, [])
   return { ref, ...state }
 }
 
