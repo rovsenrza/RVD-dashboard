@@ -2,7 +2,7 @@
  * Thin fetch wrapper. When 1C integration lands, only this file and the
  * adapters in ./adapters change — feature hooks keep the same signatures.
  */
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? '/api'
+const BASE_URL = import.meta.env.VITE_API_BASE_URL?.trim() || '/api'
 
 export class ApiError extends Error {
   status: number

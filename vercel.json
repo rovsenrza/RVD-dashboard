@@ -1,8 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "env": {
-    "VITE_USE_MOCKS": "true"
-  },
+  "buildCommand": "VITE_USE_MOCKS=true npm run build",
   "rewrites": [
     {
       "source": "/(.*)",
