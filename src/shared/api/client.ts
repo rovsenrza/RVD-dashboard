@@ -17,7 +17,14 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
     headers: { 'Content-Type': 'application/json', ...init?.headers },
     ...init,
   })
-  if (!res.ok) throw new ApiError(res.status, `${init?.method ?? 'GET'} ${path} → ${res.status}`)
+  if (!res.ok) {
+    // A readable reason from the server (e.g. a 409 conflict) reaches the user as is.
+    const body = (await res.json().catch(() => null)) as { message?: string } | null
+    throw new ApiError(
+      res.status,
+      body?.message ?? `${init?.method ?? 'GET'} ${path} → ${res.status}`,
+    )
+  }
   return res.json() as Promise<T>
 }
 

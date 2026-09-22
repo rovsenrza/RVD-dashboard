@@ -204,3 +204,33 @@ export interface DashboardSummary {
   replacementsByMonth: { month: string; count: number }[]
   upcoming: { productId: string; serialNumber: string; equipment: string; dueDate: string }[]
 }
+
+/** Someone with access to the cabinet. Lives in the cabinet, not in 1С. */
+export interface CabinetUser {
+  id: string
+  name: string
+  email: string
+  role: UserRole
+  /** Branches the user works in; empty means the whole company. A mechanic has exactly one. */
+  branchIds: string[]
+  active: boolean
+  lastLoginAt: string | null
+}
+
+/** A branch as 1С knows it (read-only here), with what the cabinet holds for it. */
+export interface BranchSummary extends Branch {
+  code: string
+  address: string | null
+  equipmentCount: number
+  productCount: number
+  userCount: number
+}
+
+/** Company-wide settings the administrator owns (PLAN.md §5, questions 4 and 7). */
+export interface CabinetSettings {
+  /** A hose turns «Внимание» when less than this share of its service life is left, %. */
+  warnPercent: number
+  /** Days before a due date (warranty end, planned replacement, overrun) to notify. */
+  leadDays: number[]
+  channels: { inApp: boolean; email: boolean }
+}

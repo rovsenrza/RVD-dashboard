@@ -5,10 +5,12 @@ import {
   LayoutDashboard,
   LifeBuoy,
   Package,
+  ShieldCheck,
   Truck,
   X,
   type LucideIcon,
 } from 'lucide-react'
+import { useSession } from '@/app/session'
 import { cn } from '@/shared/lib/utils'
 import { Button } from '@/shared/ui'
 
@@ -27,7 +29,12 @@ export const NAV: NavItem[] = [
   { to: '/requests', label: 'Заявки', icon: ClipboardList },
 ]
 
+/** Users and settings belong to the administrator; the other roles never see the entry. */
+const ADMIN_NAV: NavItem = { to: '/admin', label: 'Администрирование', icon: ShieldCheck }
+
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const { user } = useSession()
+  const nav = user.role === 'admin' ? [...NAV, ADMIN_NAV] : NAV
   return (
     <>
       <aside
@@ -49,7 +56,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
         </div>
 
         <nav className="flex-1 space-y-0.5 px-3 pt-2">
-          {NAV.map(({ to, label, icon: Icon, end }) => (
+          {nav.map(({ to, label, icon: Icon, end }) => (
             <NavLink
               key={to}
               to={to}

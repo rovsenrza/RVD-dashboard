@@ -1,5 +1,8 @@
 import { addDays, formatISO, subDays } from 'date-fns'
 import type {
+  BranchSummary,
+  CabinetSettings,
+  CabinetUser,
   CatalogNumber,
   ComponentItem,
   ComponentType,
@@ -24,6 +27,13 @@ const iso = (d: Date) => formatISO(d, { representation: 'date' })
 
 const NOW = new Date()
 const BRANCHES = ['b-main', 'b-north']
+
+/** Company settings; `warnPercent` drives every hose status below, as it will on the BFF. */
+export const settings: CabinetSettings = {
+  warnPercent: 20,
+  leadDays: [30, 14, 7],
+  channels: { inApp: true, email: false },
+}
 const BRANDS = [
   ['Komatsu', 'PC400', 'Экскаватор'],
   ['Caterpillar', '374F', 'Экскаватор'],
@@ -123,7 +133,7 @@ function statusFor(
   if (!installedAt) return 'no_warranty'
   const age = (NOW.getTime() - installedAt.getTime()) / 86_400_000
   if (age > lifeDays) return 'replace'
-  if (age > lifeDays * 0.8) return 'warn'
+  if (age > lifeDays * (1 - settings.warnPercent / 100)) return 'warn'
   if (age > warrantyDays) return 'no_warranty'
   return 'ok'
 }
@@ -139,7 +149,12 @@ export const products: Product[] = Array.from({ length: 420 }, (_, i) => {
   const hose = components.find((c) => c.id === cat.composition[0].componentId)!
   const shipped = subDays(NOW, Math.floor(rand() * 500))
   const installed = eq ? addDays(shipped, Math.floor(rand() * 20)) : null
-  const status = statusFor(installed, cat.serviceLifeDays, cat.warrantyDays)
+  // Health from the stored date, as every later recount (and the BFF) derives it.
+  const status = statusFor(
+    installed ? new Date(iso(installed)) : null,
+    cat.serviceLifeDays,
+    cat.warrantyDays,
+  )
   return {
     id: `p-${i + 1}`,
     serialNumber: String(48700 + i),
@@ -341,4 +356,69 @@ export function dashboardSummary(branch: string | null = null): DashboardSummary
       .map(([month, count]) => ({ month, count })),
     upcoming,
   }
+}
+
+/** Re-derive every live hose's health after a threshold change, then the counts built on it. */
+export function applySettings(patch: Partial<CabinetSettings>) {
+  Object.assign(settings, patch)
+  for (const p of products) {
+    if (!live(p)) continue
+    p.status = statusFor(new Date(p.installedAt!), p.serviceLifeDays, p.warrantyDays)
+    p.lifecycle = p.status === 'replace' ? 'needs_replacement' : 'in_operation'
+  }
+  for (const eq of equipment) recountEquipment(eq)
+  return settings
+}
+
+const PEOPLE: [string, string][] = [
+  ['Иванов Иван', 'ivanov'],
+  ['Петрова Анна', 'petrova'],
+  ['Сидоров Алексей', 'sidorov'],
+  ['Кузнецова Мария', 'kuznetsova'],
+  ['Смирнов Дмитрий', 'smirnov'],
+  ['Волков Сергей', 'volkov'],
+  ['Морозова Елена', 'morozova'],
+  ['Новиков Андрей', 'novikov'],
+  ['Фёдоров Павел', 'fedorov'],
+  ['Лебедева Ольга', 'lebedeva'],
+  ['Козлов Николай', 'kozlov'],
+  ['Егорова Татьяна', 'egorova'],
+]
+// u-1 is the signed-in demo user, who reaches the user list only as administrator.
+const ROLE_MIX = ['admin', 'engineer', 'manager', 'mechanic', 'mechanic', 'engineer'] as const
+
+export const users: CabinetUser[] = PEOPLE.map(([name, login], i) => {
+  const role = ROLE_MIX[i % ROLE_MIX.length]
+  return {
+    id: `u-${i + 1}`,
+    name,
+    email: `${login}@roga-kopyta.ru`,
+    role,
+    branchIds: role === 'mechanic' ? [BRANCHES[i % 2]] : [],
+    active: i !== 9,
+    lastLoginAt: i === 7 ? null : iso(subDays(NOW, Math.floor(rand() * 40))),
+  }
+})
+
+const BRANCH_META: Record<string, Pick<BranchSummary, 'name' | 'code' | 'address'>> = {
+  'b-main': {
+    name: 'Главный филиал',
+    code: '000000001',
+    address: 'г. Кемерово, ул. Рудничная, 12',
+  },
+  'b-north': { name: 'Северный филиал', code: '000000002', address: null },
+}
+
+/** Branches come from 1С; the counts are what the cabinet holds for each. */
+export function branchSummaries(): BranchSummary[] {
+  return BRANCHES.map((id) => ({
+    id,
+    companyId: 'c-1',
+    ...BRANCH_META[id],
+    equipmentCount: equipment.filter((e) => e.branchId === id).length,
+    productCount: products.filter((p) => p.branchId === id && live(p)).length,
+    userCount: users.filter(
+      (u) => u.active && (u.branchIds.length === 0 || u.branchIds.includes(id)),
+    ).length,
+  }))
 }

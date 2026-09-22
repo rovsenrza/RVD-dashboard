@@ -1,6 +1,8 @@
 import { http, HttpResponse } from 'msw'
 import {
   applyInstallation,
+  applySettings,
+  branchSummaries,
   catalogNumbers,
   dashboardSummary,
   equipment,
@@ -8,6 +10,8 @@ import {
   releaseDocuments,
   replacements,
   requests,
+  settings,
+  users,
 } from './data'
 
 const api = (path: string) => `*/api${path}`
@@ -75,4 +79,40 @@ export const handlers = [
     requests.unshift(created as (typeof requests)[number])
     return HttpResponse.json(created, { status: 201 })
   }),
+
+  // Administration: company-wide, not narrowed by branch.
+  http.get(api('/admin/users'), () => HttpResponse.json(users)),
+  http.post(api('/admin/users'), async ({ request }) => {
+    const body = (await request.json()) as Omit<
+      (typeof users)[number],
+      'id' | 'active' | 'lastLoginAt'
+    >
+    if (users.some((u) => u.email.toLowerCase() === body.email.toLowerCase()))
+      return HttpResponse.json({ message: 'Пользователь с такой почтой уже есть' }, { status: 409 })
+    const created = { ...body, id: `u-${users.length + 1}`, active: true, lastLoginAt: null }
+    users.push(created)
+    return HttpResponse.json(created, { status: 201 })
+  }),
+  http.patch(api('/admin/users/:id'), async ({ params, request }) => {
+    const user = users.find((u) => u.id === params.id)
+    if (!user) return new HttpResponse(null, { status: 404 })
+    const patch = (await request.json()) as Partial<(typeof users)[number]>
+    if (
+      patch.email &&
+      users.some((u) => u.id !== user.id && u.email.toLowerCase() === patch.email!.toLowerCase())
+    )
+      return HttpResponse.json({ message: 'Пользователь с такой почтой уже есть' }, { status: 409 })
+    Object.assign(user, patch)
+    return HttpResponse.json(user)
+  }),
+  http.post(api('/admin/users/:id/reset-password'), ({ params }) => {
+    const user = users.find((u) => u.id === params.id)
+    if (!user) return new HttpResponse(null, { status: 404 })
+    return HttpResponse.json({ sentTo: user.email })
+  }),
+  http.get(api('/admin/branches'), () => HttpResponse.json(branchSummaries())),
+  http.get(api('/admin/settings'), () => HttpResponse.json(settings)),
+  http.patch(api('/admin/settings'), async ({ request }) =>
+    HttpResponse.json(applySettings((await request.json()) as Partial<typeof settings>)),
+  ),
 ]

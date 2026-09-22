@@ -1,5 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type {
+  BranchSummary,
+  CabinetSettings,
+  CabinetUser,
   CatalogNumber,
   DashboardSummary,
   Equipment,
@@ -31,6 +34,9 @@ export const keys = {
   catalogNumbers: ['catalog-numbers'] as const,
   replacements: (branch: string | null) => ['replacements', branch] as const,
   requests: (branch: string | null) => ['requests', branch] as const,
+  users: ['admin', 'users'] as const,
+  branches: ['admin', 'branches'] as const,
+  settings: ['admin', 'settings'] as const,
 }
 
 export const useDashboard = () => {
@@ -130,5 +136,56 @@ export const useCreateRequest = () => {
   return useMutation({
     mutationFn: (body: NewRequest) => api.post<ServiceRequest>('/requests', body),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['requests'] }),
+  })
+}
+
+// Administration — company-wide, so never narrowed by the branch scope.
+
+export const useUsers = () =>
+  useQuery({ queryKey: keys.users, queryFn: () => api.get<CabinetUser[]>('/admin/users') })
+
+/** What the administrator edits; id, activity and last login belong to the server. */
+export type UserDraft = Pick<CabinetUser, 'name' | 'email' | 'role' | 'branchIds'>
+
+export const useSaveUser = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({
+      id,
+      ...patch
+    }: Partial<UserDraft & Pick<CabinetUser, 'active'>> & { id?: string }) =>
+      id
+        ? api.patch<CabinetUser>(`/admin/users/${id}`, patch)
+        : api.post<CabinetUser>('/admin/users', patch),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.users })
+      qc.invalidateQueries({ queryKey: keys.branches })
+    },
+  })
+}
+
+export const useResetPassword = () =>
+  useMutation({
+    mutationFn: (id: string) =>
+      api.post<{ sentTo: string }>(`/admin/users/${id}/reset-password`, {}),
+  })
+
+export const useBranchSummaries = () =>
+  useQuery({ queryKey: keys.branches, queryFn: () => api.get<BranchSummary[]>('/admin/branches') })
+
+export const useSettings = () =>
+  useQuery({ queryKey: keys.settings, queryFn: () => api.get<CabinetSettings>('/admin/settings') })
+
+export const useSaveSettings = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (patch: Partial<CabinetSettings>) =>
+      api.patch<CabinetSettings>('/admin/settings', patch),
+    onSuccess: (saved) => {
+      qc.setQueryData(keys.settings, saved)
+      // The «Внимание» threshold re-derives every hose status and what is built on it.
+      for (const key of ['products', 'equipment', 'dashboard'])
+        qc.invalidateQueries({ queryKey: [key] })
+    },
   })
 }
