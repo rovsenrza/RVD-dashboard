@@ -17,6 +17,12 @@ export type ProductStatus = 'ok' | 'warn' | 'replace' | 'no_warranty'
 export type ProductLifecycle =
   'manufacturing' | 'in_stock' | 'shipped' | 'in_operation' | 'needs_replacement' | 'written_off'
 
+/**
+ * Cabinet roles from the ТЗ. Scope, not just permissions: a mechanic works
+ * inside one branch, everyone else across the company.
+ */
+export type UserRole = 'mechanic' | 'engineer' | 'manager' | 'admin'
+
 export interface Company {
   id: string
   name: string

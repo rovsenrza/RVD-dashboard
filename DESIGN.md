@@ -248,7 +248,7 @@ Inputs and secondary buttons express their edge with an inset ring (`inset 0 0 0
 - **Scan** (`features/scan`; a header button on touch devices, and the «Сканировать код» action in ⌘K everywhere — first when the query is empty or starts «скан», «код», «камер», «qr»): a bottom sheet with the rear-camera preview, an amber aim frame over a scrim, one status line and a «Или введите номер» field that always works. A code opens its hose or machine by exact match (EHS, internal, OEM, then garage/inventory number; a URL's `ehs`/`serial` parameter or last segment is accepted); an unknown code says so in `status-replace-ink` and never guesses. The zxing decoder loads only when the sheet opens, and the camera stops on a read or on close.
 - **PageHeader**: back link, title (may carry a badge), description, actions. **States**: `EmptyState`, `ErrorState` (with retry), `QueryState` wrapper; **Skeleton**, `TableSkeleton`, `KpiSkeleton` shaped like the real content.
 - **Sidebar**: brand mark (amber tile + wordmark + small caps line), nav with solid amber active fill, footer with «Помощь» and the data-source line.
-- **Header**: company › branch switcher (icon tile + two-line text + chevron), centred global search, amber «Связаться со специалистом», bell with red dot, avatar (amber, initials) + name + role + chevron menu.
+- **Header**: company › branch switcher (icon tile + two-line text + chevron), centred global search, amber «Связаться со специалистом», bell with red dot, avatar (amber, initials) + name + role + chevron menu; the menu holds «Тема» and, until real auth, «Роль · демо». For a branch-bound role (mechanic) the branch switcher becomes a static label with a lock and a tooltip instead of a menu.
 
 ## Do's and Don'ts
 
