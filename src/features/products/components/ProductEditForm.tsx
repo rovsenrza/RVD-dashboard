@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from 'react'
+import { format } from 'date-fns'
 import type { Product } from '@/entities/types'
 import { useEquipment, useUpdateProduct } from '@/shared/api/queries'
-import { Button, Dialog, Field, Input, Select, useToast } from '@/shared/ui'
+import { Button, DatePicker, Dialog, Field, Input, Select, useToast } from '@/shared/ui'
 
 const PLACES = ['Стрела, левый контур', 'Рукоять', 'Ковш', 'Гидромотор хода', 'Насос, напор']
 
@@ -90,13 +91,12 @@ export function ProductEditForm({
 
             <Field label="Дата установки" hint="От неё считается остаток ресурса">
               {(id) => (
-                <Input
+                <DatePicker
                   id={id}
-                  type="date"
                   required
                   value={installedAt}
-                  max={new Date().toISOString().slice(0, 10)}
-                  onChange={(e) => setInstalledAt(e.target.value)}
+                  max={format(new Date(), 'yyyy-MM-dd')}
+                  onChange={setInstalledAt}
                 />
               )}
             </Field>

@@ -27,6 +27,16 @@ export const router = createBrowserRouter([
       { path: 'equipment/:id', element: <EquipmentDetailPage /> },
       { path: 'replacements', element: <ReplacementsPage /> },
       { path: 'requests', element: <RequestsPage /> },
+      // Component catalogue; `import.meta.env.DEV` is false in production builds,
+      // so the route and its chunk are dropped there entirely.
+      ...(import.meta.env.DEV
+        ? [
+            {
+              path: 'dev/ui',
+              lazy: async () => ({ Component: (await import('@/features/dev/UiPage')).UiPage }),
+            },
+          ]
+        : []),
     ],
   },
 ])

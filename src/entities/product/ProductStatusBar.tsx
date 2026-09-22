@@ -1,4 +1,5 @@
 import type { ProductStatus } from '@/entities/types'
+import { Tooltip } from '@/shared/ui'
 import { STATUS_COLOR, STATUS_LABEL, STATUS_ORDER } from './status'
 
 /** Stacked horizontal bar of hose statuses for one piece of equipment, with counts inside each segment. */
@@ -14,14 +15,19 @@ export function ProductStatusBar({ breakdown }: { breakdown: Record<ProductStatu
     >
       {STATUS_ORDER.map((k) =>
         breakdown[k] ? (
-          <div
+          <Tooltip
             key={k}
-            title={`${STATUS_LABEL[k]}: ${breakdown[k]}`}
-            className="flex items-center justify-center text-micro text-on-status"
-            style={{ width: `${(breakdown[k] / total) * 100}%`, background: STATUS_COLOR[k] }}
+            content={`${STATUS_LABEL[k]}: ${breakdown[k]}`}
+            className="flex"
+            style={{ width: `${(breakdown[k] / total) * 100}%` }}
           >
-            {breakdown[k]}
-          </div>
+            <div
+              className="flex flex-1 items-center justify-center text-micro text-on-status"
+              style={{ background: STATUS_COLOR[k] }}
+            >
+              {breakdown[k]}
+            </div>
+          </Tooltip>
         ) : null,
       )}
     </div>

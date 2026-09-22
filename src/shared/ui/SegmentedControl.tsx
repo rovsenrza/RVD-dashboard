@@ -1,6 +1,7 @@
 import { useRef, type KeyboardEvent } from 'react'
 import type { LucideIcon } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
+import { Tooltip } from './Tooltip'
 
 export interface SegmentedOption<T extends string> {
   value: T
@@ -47,7 +48,7 @@ export function SegmentedControl<T extends string>({
     >
       {options.map((o, i) => {
         const checked = o.value === value
-        return (
+        const segment = (
           <button
             key={o.value}
             ref={(el) => {
@@ -57,7 +58,6 @@ export function SegmentedControl<T extends string>({
             role="radio"
             aria-checked={checked}
             tabIndex={checked ? 0 : -1}
-            title={o.icon ? o.label : undefined}
             onClick={() => onChange(o.value)}
             onKeyDown={(e) => onKeyDown(e, i)}
             className={cn(
@@ -74,6 +74,13 @@ export function SegmentedControl<T extends string>({
               o.label
             )}
           </button>
+        )
+        return o.icon ? (
+          <Tooltip key={o.value} content={o.label}>
+            {segment}
+          </Tooltip>
+        ) : (
+          segment
         )
       })}
     </div>
