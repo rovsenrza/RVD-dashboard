@@ -67,7 +67,7 @@ export function Menu({
                   it.onSelect?.()
                 }}
                 className={cn(
-                  'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm text-ink hover:bg-wash',
+                  'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left pointer-coarse:py-3 text-sm text-ink hover:bg-wash',
                   it.danger && 'text-status-replace-ink hover:bg-status-replace-soft',
                 )}
               >

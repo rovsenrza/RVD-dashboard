@@ -8,7 +8,7 @@ export function Input({ className, ...rest }: InputProps) {
   return (
     <input
       className={cn(
-        'h-9 w-full rounded-lg bg-sheet px-3 text-sm text-ink shadow-[inset_0_0_0_1px_var(--color-line-strong)] transition-shadow duration-150 outline-none placeholder:text-ink-faint hover:shadow-[inset_0_0_0_1px_var(--color-ink-faint)] focus:shadow-[inset_0_0_0_2px_var(--color-brand)] aria-invalid:not-focus:shadow-[inset_0_0_0_1px_var(--color-status-replace-ink)]',
+        'h-9 w-full pointer-coarse:h-11 pointer-coarse:text-base rounded-lg bg-sheet px-3 text-sm text-ink shadow-[inset_0_0_0_1px_var(--color-line-strong)] transition-shadow duration-150 outline-none placeholder:text-ink-faint hover:shadow-[inset_0_0_0_1px_var(--color-ink-faint)] focus:shadow-[inset_0_0_0_2px_var(--color-brand)] aria-invalid:not-focus:shadow-[inset_0_0_0_1px_var(--color-status-replace-ink)]',
         className,
       )}
       {...rest}

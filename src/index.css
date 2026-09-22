@@ -84,8 +84,17 @@
   --color-surface-muted: var(--color-field);
 
   --radius-sheet: 14px;
+  /* The one entrance in the product: dialogs and bottom sheets rise into place. */
+  --animate-sheet-in: sheet-in 220ms cubic-bezier(0.16, 1, 0.3, 1);
   --shadow-sheet: 0 1px 2px rgb(20 20 18 / 0.04), 0 2px 8px rgb(20 20 18 / 0.05);
   --shadow-pop: 0 4px 12px rgb(20 20 18 / 0.08), 0 12px 32px rgb(20 20 18 / 0.1);
+}
+
+@keyframes sheet-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
 }
 
 :root {

@@ -31,7 +31,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={value}>
       {children}
       {createPortal(
-        <div className="pointer-events-none fixed inset-x-4 bottom-4 z-[60] flex flex-col items-center gap-2 sm:inset-x-auto sm:right-5 sm:bottom-5 sm:items-end">
+        <div className="pointer-events-none fixed inset-x-4 bottom-4 z-[60] max-sm:[body:has([data-sticky-actions])_&]:bottom-24 flex flex-col items-center gap-2 sm:inset-x-auto sm:right-5 sm:bottom-5 sm:items-end">
           {toasts.map((t) => {
             const Icon = t.tone === 'ok' ? CheckCircle2 : AlertCircle
             return (

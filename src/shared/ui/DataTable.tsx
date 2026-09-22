@@ -242,18 +242,20 @@ export function DataTable<T>({
           </span>
           <div className="flex items-center gap-3">
             {tools && (
-              <Menu
-                trigger={() => (
-                  <Button variant="ghost" size="sm" className="text-ink-muted">
-                    {size} на странице
-                  </Button>
-                )}
-                items={PAGE_SIZES.map((n) => ({
-                  label: `${n} на странице`,
-                  icon: n === size ? Check : undefined,
-                  onSelect: () => table.setPageSize(n),
-                }))}
-              />
+              <div className="max-sm:hidden">
+                <Menu
+                  trigger={() => (
+                    <Button variant="ghost" size="sm" className="text-ink-muted">
+                      {size} на странице
+                    </Button>
+                  )}
+                  items={PAGE_SIZES.map((n) => ({
+                    label: `${n} на странице`,
+                    icon: n === size ? Check : undefined,
+                    onSelect: () => table.setPageSize(n),
+                  }))}
+                />
+              </div>
             )}
             <div className="flex items-center gap-1">
               <Button
@@ -264,11 +266,17 @@ export function DataTable<T>({
                 disabled={!table.getCanPreviousPage()}
                 aria-label="Предыдущая страница"
               />
-              <PageNumbers
-                current={pageIndex}
-                count={pageCount}
-                onPick={(i) => table.setPageIndex(i)}
-              />
+              <span className="max-sm:hidden">
+                <PageNumbers
+                  current={pageIndex}
+                  count={pageCount}
+                  onPick={(i) => table.setPageIndex(i)}
+                />
+              </span>
+              {/* Phones: position only; paging by number is a desktop habit, search is faster. */}
+              <span className="px-1 text-ink-secondary tabular sm:hidden">
+                {pageIndex + 1} / {pageCount}
+              </span>
               <Button
                 variant="ghost"
                 size="icon-sm"
@@ -278,7 +286,11 @@ export function DataTable<T>({
                 aria-label="Следующая страница"
               />
             </div>
-            {pageCount > 5 && <PageJump count={pageCount} onPick={(i) => table.setPageIndex(i)} />}
+            {pageCount > 5 && (
+              <span className="max-sm:hidden">
+                <PageJump count={pageCount} onPick={(i) => table.setPageIndex(i)} />
+              </span>
+            )}
           </div>
         </div>
       )}

@@ -114,7 +114,7 @@ export function DatePicker({
             input.focus()
           }
         }}
-        className="absolute top-1/2 right-1 grid size-7 -translate-y-1/2 place-items-center rounded-md text-ink-muted transition-colors duration-100 hover:bg-wash hover:text-ink disabled:pointer-events-none disabled:opacity-50"
+        className="absolute top-1/2 right-1 grid size-7 pointer-coarse:size-9 -translate-y-1/2 place-items-center rounded-md text-ink-muted transition-colors duration-100 hover:bg-wash hover:text-ink disabled:pointer-events-none disabled:opacity-50"
       >
         <CalendarDays size={15} strokeWidth={1.75} />
       </button>

@@ -5,8 +5,10 @@ import { cn } from '@/shared/lib/utils'
 import { Button } from './Button'
 
 /**
- * Centred modal sheet. Closes on Escape and on overlay click; locks body scroll
- * while open so long tables underneath do not drift.
+ * Modal sheet: centred on ≥sm, a full-width bottom sheet on phones with the
+ * footer actions sharing the width and clearing the home indicator. Closes on
+ * Escape and on overlay click; locks body scroll while open so long tables
+ * underneath do not drift.
  */
 export function Dialog({
   open,
@@ -40,14 +42,14 @@ export function Dialog({
   if (!open) return null
 
   return createPortal(
-    <div className="fixed inset-0 z-50 flex items-end justify-center p-4 sm:items-center">
+    <div className="fixed inset-0 z-50 flex items-end justify-center sm:items-center sm:p-4">
       <div className="absolute inset-0 bg-scrim" onClick={onClose} aria-hidden />
       <div
         role="dialog"
         aria-modal="true"
         aria-label={title}
         className={cn(
-          'relative flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-pop shadow-pop',
+          'relative flex max-h-[92dvh] w-full animate-sheet-in flex-col overflow-hidden rounded-t-2xl bg-pop shadow-pop sm:max-h-[calc(100dvh-2rem)] sm:max-w-lg sm:rounded-2xl',
           className,
         )}
       >
@@ -65,8 +67,19 @@ export function Dialog({
             className="-mt-1 -mr-1.5"
           />
         </div>
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">{children}</div>
-        {footer && <div className="flex justify-end gap-2 bg-field px-5 py-3.5">{footer}</div>}
+        <div
+          className={cn(
+            'min-h-0 flex-1 overflow-y-auto px-5 pt-4',
+            footer ? 'pb-4' : 'pb-[max(1rem,env(safe-area-inset-bottom))]',
+          )}
+        >
+          {children}
+        </div>
+        {footer && (
+          <div className="flex justify-end gap-2 bg-field px-5 pt-3.5 pb-[max(0.875rem,env(safe-area-inset-bottom))] max-sm:[&>*]:flex-1">
+            {footer}
+          </div>
+        )}
       </div>
     </div>,
     document.body,

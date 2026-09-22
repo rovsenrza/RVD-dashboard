@@ -27,6 +27,7 @@ export function EquipmentDetailPage() {
       {(e) => (
         <div>
           <PageHeader
+            stickyActions
             backTo="/equipment"
             backLabel="К списку техники"
             title={`${e.garageNumber} · ${e.brand} ${e.model}`}

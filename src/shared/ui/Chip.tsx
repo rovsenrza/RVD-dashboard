@@ -11,7 +11,7 @@ export function Chip({ children, onRemove }: { children: ReactNode; onRemove?: (
           type="button"
           onClick={onRemove}
           aria-label="Убрать фильтр"
-          className="grid size-6 place-items-center rounded-full hover:bg-brand/30"
+          className="grid size-6 place-items-center rounded-full pointer-coarse:size-8 hover:bg-brand/30"
         >
           <X size={12} strokeWidth={2} />
         </button>

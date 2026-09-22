@@ -207,6 +207,8 @@ One family: **Golos Text** (variable 400–700, self-hosted in `public/fonts/`, 
 - Sheets stack with 20px gaps. The dashboard grid is KPI strip (full width) → 2/3 + 1/3 charts → full-width table. KPI strip is one sheet with a 1px `line` gap-grid: 6 columns ≥xl, 3 on md, 2 on phones.
 - Tables: full-bleed inside their sheet (cells padded 20px horizontally, 12px vertically), hairline rows, header underline. Horizontal overflow scrolls inside the sheet with a right-edge fade + chevron cue; the key column pins once the table actually overflows. Toolbar row: tabs/chips left, search right (its own row on phones), column chooser at the end.
 - Breakpoints are structural (rail collapse, KPI column count, hide low-priority columns), never fluid type.
+- Touch (`pointer: coarse`, not a width breakpoint) raises targets without changing desktop density: buttons 40/44px (`sm`/`md`), icon buttons 40/44px, inputs and selects 44px at 16px type (iOS Safari zooms into anything smaller), menu rows 44px, chip remove 32px.
+- Phones (<640px): dialogs become full-width bottom sheets whose footer buttons share the width and clear the home indicator; detail pages pin their actions to a bottom bar (`PageHeader stickyActions`, main reserves room via `:has([data-sticky-actions])`, toasts lift above it); table pagination shrinks to «‹ 12 / 19 ›».
 
 ## Elevation & Depth
 
@@ -214,6 +216,8 @@ Two shadows only, both with offset and blur:
 
 - `--shadow-sheet`: `0 1px 2px rgb(20 20 18 / .04), 0 2px 8px rgb(20 20 18 / .05)` — every sheet.
 - `--shadow-pop`: `0 4px 12px rgb(20 20 18 / .08), 0 12px 32px rgb(20 20 18 / .1)` — menus, dialogs, toasts, tooltips.
+
+Motion: one entrance only — `animate-sheet-in` (220 ms, expo-out, 16px rise + fade) on dialogs and bottom sheets. Everything else changes state with ≤150 ms colour transitions. `prefers-reduced-motion` collapses all of it.
 
 In dark both shadows deepen to black at higher alpha, and `shadow-pop` gains a 1px inset white/6 hairline, because a shadow alone does not separate a pop surface from a dark sheet.
 

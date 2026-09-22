@@ -17,7 +17,7 @@ export function Select({
   return (
     <div className={cn('relative', className)}>
       <select
-        className="h-9 w-full appearance-none rounded-lg bg-sheet pr-9 pl-3 text-sm text-ink shadow-[inset_0_0_0_1px_var(--color-line-strong)] transition-shadow duration-150 outline-none hover:shadow-[inset_0_0_0_1px_var(--color-ink-faint)] focus:shadow-[inset_0_0_0_2px_var(--color-brand)] aria-invalid:not-focus:shadow-[inset_0_0_0_1px_var(--color-status-replace-ink)]"
+        className="h-9 w-full pointer-coarse:h-11 pointer-coarse:text-base appearance-none rounded-lg bg-sheet pr-9 pl-3 text-sm text-ink shadow-[inset_0_0_0_1px_var(--color-line-strong)] transition-shadow duration-150 outline-none hover:shadow-[inset_0_0_0_1px_var(--color-ink-faint)] focus:shadow-[inset_0_0_0_2px_var(--color-brand)] aria-invalid:not-focus:shadow-[inset_0_0_0_1px_var(--color-status-replace-ink)]"
         {...rest}
       >
         {placeholder && <option value="">{placeholder}</option>}

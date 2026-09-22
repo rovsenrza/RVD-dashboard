@@ -19,6 +19,7 @@ export function ProductPage() {
       {(p) => (
         <div>
           <PageHeader
+            stickyActions
             backTo="/products"
             backLabel="К списку изделий"
             title={
