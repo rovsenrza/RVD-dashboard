@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, within } from '@testing-library/react'
 import type { ColumnDef } from '@tanstack/react-table'
 import { DataTable } from './DataTable'
 import { DescriptionList } from './DescriptionList'
@@ -33,6 +33,40 @@ describe('DataTable page jump', () => {
   it('is not offered for a short table', () => {
     render(<DataTable data={rows.slice(0, 30)} columns={columns} pageSize={10} />)
     expect(screen.queryByLabelText(/Перейти на страницу/)).not.toBeInTheDocument()
+  })
+})
+
+describe('DataTable phone rows', () => {
+  interface Hose {
+    ehs: string
+    place: string
+    maker: string
+    status: string
+  }
+  const hoseColumns: ColumnDef<Hose, unknown>[] = [
+    { accessorKey: 'ehs', header: 'EHS №' },
+    { accessorKey: 'place', header: 'Место' },
+    { accessorKey: 'maker', header: 'Производитель', meta: { mobile: 'hide' } },
+    { accessorKey: 'status', header: 'Статус', meta: { mobile: 'aside' } },
+  ]
+
+  it('leads with the key, sets the status beside it and lists the rest', () => {
+    const onRowClick = vi.fn()
+    render(
+      <DataTable
+        data={[{ ehs: '48703', place: 'Ковш', maker: 'Rock', status: 'Норма' }]}
+        columns={hoseColumns}
+        onRowClick={onRowClick}
+      />,
+    )
+    const card = screen.getByRole('link')
+    expect(within(card).getByText('48703')).toBeInTheDocument()
+    expect(within(card).getByText('Норма')).toBeInTheDocument()
+    expect(within(card).getByText('Место').tagName).toBe('DT')
+    expect(within(card).queryByText('Статус')).toBeNull()
+    expect(within(card).queryByText('Rock')).toBeNull()
+    fireEvent.keyDown(card, { key: 'Enter' })
+    expect(onRowClick).toHaveBeenCalledWith(expect.objectContaining({ ehs: '48703' }))
   })
 })
 

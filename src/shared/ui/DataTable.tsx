@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
 import {
   flexRender,
   getCoreRowModel,
@@ -6,7 +6,9 @@ import {
   getPaginationRowModel,
   getSortedRowModel,
   useReactTable,
+  type Cell,
   type ColumnDef,
+  type RowData,
   type SortingState,
   type VisibilityState,
 } from '@tanstack/react-table'
@@ -24,6 +26,18 @@ import { Button } from './Button'
 import { Input } from './Input'
 import { Menu } from './Menu'
 import { EmptyState } from './States'
+
+declare module '@tanstack/react-table' {
+  interface ColumnMeta<TData extends RowData, TValue> {
+    /**
+     * Role of the column in the phone row card. Unset: a «label  value» line.
+     * `title` leads the card (default: the first visible column), `aside` sits
+     * right of it (a status, a date), `full` is a label-less full-width line
+     * (a status bar), `hide` is left off phones.
+     */
+    mobile?: 'title' | 'aside' | 'full' | 'hide'
+  }
+}
 
 export interface DataTableProps<T> {
   data: T[]
@@ -136,7 +150,8 @@ export function DataTable<T>({
         </div>
       )}
 
-      <div className="relative">
+      <RowCards rows={rows} onRowClick={onRowClick} className={embedded ? 'px-0' : 'px-5'} />
+      <div className="relative max-sm:hidden">
         <div ref={overflow.ref} className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
@@ -387,5 +402,85 @@ function PageJump({ count, onPick }: { count: number; onPick: (i: number) => voi
         className="h-8 w-14 px-2 text-center tabular"
       />
     </label>
+  )
+}
+
+type AnyCell = Cell<never, unknown>
+
+const renderCell = (c: AnyCell) => flexRender(c.column.columnDef.cell, c.getContext())
+const headerText = (c: AnyCell) =>
+  typeof c.column.columnDef.header === 'string' ? c.column.columnDef.header : c.column.id
+
+/**
+ * Phones: each row becomes a block inside the same sheet — the key value and
+ * its status on the first line, the other visible columns as «label  value»
+ * lines under it. Hairlines between rows, never a card per row.
+ */
+function RowCards<T>({
+  rows,
+  onRowClick,
+  className,
+}: {
+  rows: { id: string; original: T; getVisibleCells: () => Cell<T, unknown>[] }[]
+  onRowClick?: (row: T) => void
+  className: string
+}) {
+  if (!rows.length)
+    return (
+      <p className="py-10 text-center text-ink-muted sm:hidden">По запросу ничего не найдено</p>
+    )
+  return (
+    <ul className="divide-y divide-line border-t border-line sm:hidden">
+      {rows.map((row) => {
+        const cells = row.getVisibleCells() as unknown as AnyCell[]
+        const role = (c: AnyCell) => c.column.columnDef.meta?.mobile
+        const shown = cells.filter((c) => role(c) !== 'hide')
+        const title = shown.find((c) => role(c) === 'title') ?? shown[0]
+        const aside = shown.filter((c) => c !== title && role(c) === 'aside')
+        const full = shown.filter((c) => c !== title && role(c) === 'full')
+        const lines = shown.filter((c) => c !== title && !role(c))
+        const open = onRowClick && (() => onRowClick(row.original))
+        return (
+          <li
+            key={row.id}
+            role={open ? 'link' : undefined}
+            tabIndex={open ? 0 : undefined}
+            onClick={open}
+            onKeyDown={(e) => open && e.key === 'Enter' && open()}
+            className={cn(
+              'py-3.5',
+              className,
+              open && 'cursor-pointer transition-colors duration-100 active:bg-row-hover',
+            )}
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0 text-sm">{title && renderCell(title)}</div>
+              {aside.length > 0 && (
+                <div className="flex shrink-0 items-center gap-2 text-label">
+                  {aside.map((c) => (
+                    <Fragment key={c.id}>{renderCell(c)}</Fragment>
+                  ))}
+                </div>
+              )}
+            </div>
+            {lines.length > 0 && (
+              <dl className="mt-1.5 grid grid-cols-[auto_1fr] gap-x-4 gap-y-0.5 text-label">
+                {lines.map((c) => (
+                  <Fragment key={c.id}>
+                    <dt className="text-ink-muted">{headerText(c)}</dt>
+                    <dd className="min-w-0 truncate text-ink-secondary tabular">{renderCell(c)}</dd>
+                  </Fragment>
+                ))}
+              </dl>
+            )}
+            {full.map((c) => (
+              <div key={c.id} className="mt-2.5">
+                {renderCell(c)}
+              </div>
+            ))}
+          </li>
+        )
+      })}
+    </ul>
   )
 }

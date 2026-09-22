@@ -16,6 +16,7 @@ export const equipmentColumns = [
   col.accessor('hoseCount', { header: 'Кол-во РВД' }),
   col.accessor('lastRepairDate', {
     header: 'Крайний ремонт',
+    meta: { mobile: 'hide' },
     cell: (c) => valueOr(formatDate(c.getValue())),
   }),
   col.accessor('nextPlannedReplacement', {
@@ -24,6 +25,7 @@ export const equipmentColumns = [
   }),
   col.accessor('statusBreakdown', {
     header: 'Статус техники',
+    meta: { mobile: 'full' },
     enableSorting: false,
     cell: (c) => <ProductStatusBar breakdown={c.getValue()} />,
   }),

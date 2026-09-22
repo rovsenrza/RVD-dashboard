@@ -27,6 +27,7 @@ const columns = [
   col.accessor((r) => differenceInCalendarDays(parseISO(r.dueDate), new Date()), {
     id: 'left',
     header: 'Осталось',
+    meta: { mobile: 'aside' },
     cell: (c) => {
       const d = c.getValue()
       return <Badge tone={d <= 7 ? 'replace' : d <= 30 ? 'warn' : 'neutral'}>{d} дн.</Badge>

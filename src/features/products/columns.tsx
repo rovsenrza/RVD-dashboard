@@ -16,15 +16,21 @@ export const productColumns = [
   col.accessor('type', { header: 'Тип' }),
   col.accessor('manufacturer', {
     header: 'Производитель',
+    meta: { mobile: 'hide' },
     cell: (c) => <span className="text-ink-secondary">{c.getValue()}</span>,
   }),
-  col.accessor('shippedAt', { header: 'Отгрузка', cell: (c) => valueOr(formatDate(c.getValue())) }),
+  col.accessor('shippedAt', {
+    header: 'Отгрузка',
+    meta: { mobile: 'hide' },
+    cell: (c) => valueOr(formatDate(c.getValue())),
+  }),
   col.accessor('installedAt', {
     header: 'Установка',
     cell: (c) => valueOr(formatDate(c.getValue())),
   }),
   col.accessor('status', {
     header: 'Статус',
+    meta: { mobile: 'aside' },
     cell: (c) => <ProductStatusBadge status={c.getValue()} />,
   }),
   col.accessor('installPlace', { header: 'Место установки', cell: (c) => valueOr(c.getValue()) }),

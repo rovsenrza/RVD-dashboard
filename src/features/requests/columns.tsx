@@ -28,6 +28,7 @@ export const requestColumns = [
   col.accessor('quantity', { header: 'Кол-во' }),
   col.accessor('status', {
     header: 'Статус',
+    meta: { mobile: 'aside' },
     cell: (c) => <RequestStatusBadge status={c.getValue()} />,
   }),
   col.accessor('shipmentStatus', {
