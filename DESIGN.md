@@ -15,8 +15,13 @@ colors:
   ink-secondary: '#4c4c49'
   ink-muted: '#6b6b66'
   ink-faint: '#a3a39d'
+  on-brand: '#191919'
+  on-status: '#ffffff'
+  pop: '#ffffff'
+  row-hover: '#fffaf0'
   brand: '#f5a623'
   brand-dark: '#d98c0c'
+  brand-press: '#cf850b'
   brand-deep: '#9a6206'
   brand-soft: '#fff3dc'
   status-ok: '#2e9e5b'
@@ -176,13 +181,14 @@ Source of truth for tokens: `src/index.css` (`@theme`). Primitives: `src/shared/
 
 ## Colors
 
-- **Field** `#f3f3f1` is the page ground; **sheet** `#ffffff` sits on it. `sheet-muted` is the only hover tint for rows and cells inside a sheet.
-- **Rail** `#161616` with `rail-ink` / `rail-muted` text. Hover on rail items is `white/6`; the active item is a solid amber fill with dark ink text (never amber text on black).
+- **Field** `#f3f3f1` is the page ground; **sheet** `#ffffff` sits on it. `sheet-muted` is the hover tint for secondary controls; clickable table rows use the opaque `row-hover` (amber-warmed, so a pinned sticky cell matches the row under it). **Pop** is the surface of menus, dialogs, toasts and chart tooltips — equal to the sheet in light, lifted above it in dark. `wash` is the translucent hover/pressed tint for ghost controls and menu items; `scrim` darkens the page under dialogs and the off-canvas rail.
+- **Rail** `#161616` with `rail-ink` / `rail-muted` text. Hover on rail items is `rail-hover`; the active item is a solid amber fill with `on-brand` text (never amber text on black).
 - **Ink** ramp: `ink` for content, `ink-secondary` for secondary cells, `ink-muted` for labels and table headers (4.5:1 on the field), `ink-faint` only for placeholders and the empty-value dash.
-- **Brand** amber: `brand` for fills (buttons, active nav, current page, chart bars); `brand-deep` for text links and amber text on white (AA); `brand-soft` as the row-hover tint under a pointer and the filter-chip ground. `brand-dark` is hover for amber fills.
+- **Brand** amber: `brand` for fills (buttons, active nav, current page, chart bars); `brand-deep` for text links and amber text on white (AA); `brand-soft` as the row-hover tint under a pointer and the filter-chip ground. `brand-dark` is hover and `brand-press` is pressed for amber fills. Text on any amber fill is `on-brand` (dark in both themes), never `ink`.
 - **Status** has three tiers per state: the base hue for marks (dots, bars, chart slices), `-soft` for pill grounds, `-ink` for any text set in that status colour. Text on a `-soft` tint or on white is always the `-ink` tier; base hues are never used as text. Status colours are semantic and appear only on pills, bars, chart marks and the tinted KPI numbers — never as section colour or decoration.
 - Hairline `line` divides rows and KPI cells; `line-strong` is the resting outline of inputs and secondary buttons (rendered as an inset ring, not a border). Nothing else is outlined.
-- Dark theme: not built. Tokens are structured so a dark set can be redefined under `@media (prefers-color-scheme: dark)` later; do not hand-pick dark colours per component.
+- Tokens are named by role, so a theme only swaps values; components never pick colours per theme. Text on a status base fill (status bar segments) is `on-status`; the danger button fills with `status-replace-ink` and sets its label in `sheet`, which holds AA in both themes.
+- **Dark theme** (`src/index.css`): the same properties redefined under `@media (prefers-color-scheme: dark)` for «Как в системе» and under `:root[data-theme='dark']` for an explicit choice (the user menu's «Тема» control; stored in `localStorage` as `rvd.theme` and applied in `index.html` before first paint). Depth order in dark: rail `#0b0b0a` below field `#131312` below sheet `#1b1b1a` below pop `#242422`. Amber and the status base hues are unchanged; `-soft` grounds become dark tints and `-ink` text becomes light, `brand-deep` becomes a light amber `#f6b54d` for links. `src/shared/lib/tokens.test.ts` keeps the two dark blocks identical and asserts AA for every text/ground pair in both themes.
 
 ## Typography
 
@@ -206,7 +212,9 @@ One family: **Golos Text** (variable 400–700, self-hosted in `public/fonts/`, 
 Two shadows only, both with offset and blur:
 
 - `--shadow-sheet`: `0 1px 2px rgb(20 20 18 / .04), 0 2px 8px rgb(20 20 18 / .05)` — every sheet.
-- `--shadow-pop`: `0 4px 12px rgb(20 20 18 / .08), 0 12px 32px rgb(20 20 18 / .1)` — menus, tooltips.
+- `--shadow-pop`: `0 4px 12px rgb(20 20 18 / .08), 0 12px 32px rgb(20 20 18 / .1)` — menus, dialogs, toasts, tooltips.
+
+In dark both shadows deepen to black at higher alpha, and `shadow-pop` gains a 1px inset white/6 hairline, because a shadow alone does not separate a pop surface from a dark sheet.
 
 Inputs and secondary buttons express their edge with an inset ring (`inset 0 0 0 1px line-strong`), so they read as controls without adding a border vocabulary. No glass, no gradients, no coloured halos. Never nest a sheet inside a sheet; embedded tables and empty states use their `embedded` / `inset` variants.
 
@@ -222,11 +230,12 @@ Inputs and secondary buttons express their edge with an inset ring (`inset 0 0 0
 - **Input / SearchInput / Kbd**: 36px, inset-ring edge, amber 2px ring on focus. Search carries a leading magnifier and an optional trailing hint (`⌘K`). The global search in the header sits on the field tint until focused.
 - **Card** is the sheet: `title` + optional `action` header, 20px padding, `padded={false}` for full-bleed content.
 - **KpiStrip / KpiCard**: one sheet, cells divided by 1px `line`; each cell is icon (amber) + label (12.5 muted) + 28px number (tinted by tone) + delta pill (`ok`/`replace` soft tints) + period text. Cells are buttons when they drill down.
-- **DataTable**: TanStack table with sort glyphs, hairline rows, hover `brand-soft/40`, amber current page in `1 2 3 … N` pagination, «N на странице» selector and «Колонки» chooser when `tools` is on, `stickyFirstColumn`, `hiddenByDefault`, `embedded` for use inside a Card, `toolbar` / `search` slots.
+- **DataTable**: TanStack table with sort glyphs, hairline rows, hover `row-hover`, amber current page in `1 2 3 … N` pagination, «N на странице» selector and «Колонки» chooser when `tools` is on, `stickyFirstColumn`, `hiddenByDefault`, `embedded` for use inside a Card, `toolbar` / `search` slots.
 - **Tabs**: underline tabs, 2px amber rule under the active one, optional count pill.
 - **Badge**: tones `neutral | ok | warn | replace | none | brand`, optional leading dot. Domain wrappers: `ProductStatusBadge`, `RequestStatusBadge`.
 - **Chip**: removable filter, `brand-soft` ground, `brand-deep` text.
-- **Menu**: click-to-open dropdown, 12px radius, `shadow-pop`, optional header, separators, `danger` items; closes on outside click and Escape.
+- **Menu**: click-to-open dropdown on the `pop` surface, 12px radius, `shadow-pop`, sized to its content (`w-max`, min 224px), optional header, separators, `danger` items; closes on outside click and Escape.
+- **SegmentedControl**: a radio group drawn as a `field` track with one raised `pop` segment; icon-only segments keep their label for screen readers and the tooltip; arrow keys move the choice. Used for «Тема» (Как в системе / Светлая / Тёмная).
 - **PageHeader**: back link, title (may carry a badge), description, actions. **States**: `EmptyState`, `ErrorState` (with retry), `QueryState` wrapper; **Skeleton**, `TableSkeleton`, `KpiSkeleton` shaped like the real content.
 - **Sidebar**: brand mark (amber tile + wordmark + small caps line), nav with solid amber active fill, footer with «Помощь» and the data-source line.
 - **Header**: company › branch switcher (icon tile + two-line text + chevron), centred global search, amber «Связаться со специалистом», bell with red dot, avatar (amber, initials) + name + role + chevron menu.

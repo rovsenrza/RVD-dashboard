@@ -187,7 +187,7 @@ export function DataTable<T>({
                   className={cn(
                     'group border-b border-line last:border-b-0',
                     onRowClick &&
-                      'cursor-pointer transition-colors duration-100 hover:bg-brand-soft/40',
+                      'cursor-pointer transition-colors duration-100 hover:bg-row-hover',
                   )}
                 >
                   {row.getVisibleCells().map((cell, i) => (
@@ -196,7 +196,7 @@ export function DataTable<T>({
                       className={cn(
                         'py-3 whitespace-nowrap tabular',
                         cellX,
-                        sticky && i === 0 && 'sticky left-0 z-10 bg-sheet group-hover:bg-[#fffaf0]',
+                        sticky && i === 0 && 'sticky left-0 z-10 bg-sheet group-hover:bg-row-hover',
                       )}
                     >
                       {flexRender(cell.column.columnDef.cell, cell.getContext())}
@@ -340,7 +340,9 @@ function PageNumbers({
             aria-current={p === current ? 'page' : undefined}
             className={cn(
               'h-8 min-w-8 rounded-lg px-1.5 tabular transition-colors duration-100',
-              p === current ? 'bg-brand font-medium text-ink' : 'text-ink-secondary hover:bg-field',
+              p === current
+                ? 'bg-brand font-medium text-on-brand'
+                : 'text-ink-secondary hover:bg-wash',
             )}
           >
             {p + 1}

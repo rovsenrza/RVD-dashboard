@@ -51,7 +51,7 @@ export function Menu({
         <div
           role="menu"
           className={cn(
-            'absolute top-[calc(100%+6px)] z-40 min-w-56 overflow-hidden rounded-xl bg-sheet p-1.5 shadow-pop',
+            'absolute top-[calc(100%+6px)] z-40 w-max min-w-56 overflow-hidden rounded-xl bg-pop p-1.5 shadow-pop',
             align === 'end' ? 'right-0' : 'left-0',
           )}
         >
@@ -67,7 +67,7 @@ export function Menu({
                   it.onSelect?.()
                 }}
                 className={cn(
-                  'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm text-ink hover:bg-field',
+                  'flex w-full items-center gap-2.5 rounded-lg px-2.5 py-2 text-left text-sm text-ink hover:bg-wash',
                   it.danger && 'text-status-replace-ink hover:bg-status-replace-soft',
                 )}
               >

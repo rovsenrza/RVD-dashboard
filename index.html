@@ -4,6 +4,14 @@
     <meta charset="UTF-8" />
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <script>
+      // Pin a stored theme choice before first paint (see src/app/theme.ts).
+      try {
+        var theme = localStorage.getItem('rvd.theme')
+        if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme
+      } catch (e) {}
+    </script>
     <link
       rel="preload"
       href="/fonts/GolosText-cyrillic.woff2"

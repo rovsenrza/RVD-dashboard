@@ -109,7 +109,7 @@ export function NotificationsPanel() {
         icon={Bell}
         aria-label="Уведомления"
         aria-expanded={open}
-        className={cn('relative', open && 'bg-black/5')}
+        className={cn('relative', open && 'bg-wash')}
         onClick={() => setOpen((o) => !o)}
       >
         {urgent && (
@@ -118,7 +118,7 @@ export function NotificationsPanel() {
       </Button>
 
       {open && (
-        <div className="absolute top-[calc(100%+6px)] right-0 z-40 w-[22rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl bg-sheet shadow-pop">
+        <div className="absolute top-[calc(100%+6px)] right-0 z-40 w-[22rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl bg-pop shadow-pop">
           <div className="px-4 pt-3 pb-2 text-[12px] font-medium tracking-wide text-ink-muted uppercase">
             Уведомления
           </div>
@@ -136,7 +136,7 @@ export function NotificationsPanel() {
                       navigate(n.to)
                     }}
                     onKeyDown={(e) => e.key === 'Enter' && navigate(n.to)}
-                    className="flex cursor-pointer items-start gap-3 rounded-lg px-2.5 py-2 hover:bg-field"
+                    className="flex cursor-pointer items-start gap-3 rounded-lg px-2.5 py-2 hover:bg-wash"
                   >
                     <n.icon
                       size={16}

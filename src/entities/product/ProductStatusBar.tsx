@@ -17,7 +17,7 @@ export function ProductStatusBar({ breakdown }: { breakdown: Record<ProductStatu
           <div
             key={k}
             title={`${STATUS_LABEL[k]}: ${breakdown[k]}`}
-            className="flex items-center justify-center text-[10px] text-white"
+            className="flex items-center justify-center text-[10px] text-on-status"
             style={{ width: `${(breakdown[k] / total) * 100}%`, background: STATUS_COLOR[k] }}
           >
             {breakdown[k]}

@@ -9,12 +9,12 @@ const button = cva(
     variants: {
       variant: {
         primary:
-          'bg-brand text-ink shadow-[inset_0_-1px_0_rgb(0_0_0/0.08)] hover:bg-brand-dark active:bg-brand-deep active:text-white',
+          'bg-brand text-on-brand shadow-[inset_0_-1px_0_rgb(0_0_0/0.08)] hover:bg-brand-dark active:bg-brand-press',
         secondary:
           'bg-sheet text-ink shadow-[inset_0_0_0_1px_var(--color-line-strong)] hover:bg-sheet-muted',
-        ghost: 'text-ink-secondary hover:bg-black/5 hover:text-ink',
-        rail: 'text-rail-muted hover:bg-white/8 hover:text-rail-ink',
-        danger: 'bg-status-replace text-white hover:bg-status-replace/90',
+        ghost: 'text-ink-secondary hover:bg-wash hover:text-ink',
+        rail: 'text-rail-muted hover:bg-rail-hover hover:text-rail-ink',
+        danger: 'bg-status-replace-ink text-sheet hover:bg-status-replace-ink/90',
       },
       size: {
         sm: 'h-8 px-2.5 py-1.5 text-[13px]',

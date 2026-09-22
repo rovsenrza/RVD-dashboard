@@ -6,12 +6,16 @@ import {
   Headset,
   LogOut,
   Menu as MenuIcon,
+  Monitor,
+  Moon,
   Search,
   Settings,
+  Sun,
   UserRound,
 } from 'lucide-react'
 import { initials, useSession, type Role } from '@/app/session'
-import { Button, Kbd, Menu, SearchInput } from '@/shared/ui'
+import { useThemePreference, type ThemePreference } from '@/app/theme'
+import { Button, Kbd, Menu, SearchInput, SegmentedControl, type SegmentedOption } from '@/shared/ui'
 import { cn } from '@/shared/lib/utils'
 import { CommandPalette } from './CommandPalette'
 import { NotificationsPanel } from './NotificationsPanel'
@@ -21,6 +25,12 @@ const ROLE_LABEL: Record<Role, string> = {
   engineer: 'Инженер',
   manager: 'Руководитель',
 }
+
+const THEME_OPTIONS: SegmentedOption<ThemePreference>[] = [
+  { value: 'system', label: 'Как в системе', icon: Monitor },
+  { value: 'light', label: 'Светлая', icon: Sun },
+  { value: 'dark', label: 'Тёмная', icon: Moon },
+]
 
 export function Header({ onMenu }: { onMenu: () => void }) {
   const [searchOpen, setSearchOpen] = useState(false)
@@ -77,7 +87,7 @@ function BranchSwitcher() {
     <Menu
       align="start"
       trigger={(open) => (
-        <Button variant="ghost" size="auto" className={cn('gap-2.5', open && 'bg-black/5')}>
+        <Button variant="ghost" size="auto" className={cn('gap-2.5', open && 'bg-wash')}>
           <span className="grid size-8 place-items-center rounded-lg bg-field text-ink-muted">
             <Building2 size={16} strokeWidth={1.75} />
           </span>
@@ -130,15 +140,16 @@ function GlobalSearch({ className, onOpen }: { className?: string; onOpen: () =>
 function UserMenu() {
   const { user, signOut } = useSession()
   const navigate = useNavigate()
+  const [theme, setTheme] = useThemePreference()
   return (
     <Menu
       trigger={(open) => (
         <Button
           variant="ghost"
           size="auto"
-          className={cn('gap-2.5 pr-1.5 pl-1', open && 'bg-black/5')}
+          className={cn('gap-2.5 pr-1.5 pl-1', open && 'bg-wash')}
         >
-          <span className="grid size-8 place-items-center rounded-full bg-brand text-[12px] font-semibold text-ink">
+          <span className="grid size-8 place-items-center rounded-full bg-brand text-[12px] font-semibold text-on-brand">
             {initials(user.name)}
           </span>
           <span className="hidden text-left md:block">
@@ -154,6 +165,15 @@ function UserMenu() {
         <div>
           <div className="text-sm font-medium">{user.name}</div>
           <div className="text-[12px] text-ink-muted">{ROLE_LABEL[user.role]}</div>
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <span className="text-[12.5px] text-ink-muted">Тема</span>
+            <SegmentedControl
+              label="Тема оформления"
+              value={theme}
+              options={THEME_OPTIONS}
+              onChange={setTheme}
+            />
+          </div>
         </div>
       }
       items={[

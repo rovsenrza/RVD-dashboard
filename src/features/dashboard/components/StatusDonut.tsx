@@ -35,9 +35,12 @@ export function StatusDonut({ breakdown }: { breakdown: Record<ProductStatus, nu
                 contentStyle={{
                   borderRadius: 10,
                   border: 'none',
+                  background: 'var(--color-pop)',
+                  color: 'var(--color-ink)',
                   boxShadow: 'var(--shadow-pop)',
                   fontSize: 12.5,
                 }}
+                itemStyle={{ color: 'var(--color-ink)' }}
               />
             </PieChart>
           </ResponsiveContainer>

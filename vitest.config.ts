@@ -9,6 +9,7 @@ export default defineConfig({
     environment: 'jsdom',
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
-    css: false,
+    // Only the token sheet is let through, so tokens.test.ts can read it with ?raw.
+    css: { include: [/src\/index\.css/] },
   },
 })

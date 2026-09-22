@@ -2,8 +2,14 @@
 
 /*
  * Design tokens — see DESIGN.md.
- * World: dark navigation rail, warm-neutral working field, white unbordered
- * sheets, one amber accent. Semantic status colours are separate from the accent.
+ * World: dark navigation rail, warm-neutral working field, unbordered sheets,
+ * one amber accent. Semantic status colours are separate from the accent.
+ *
+ * Tokens are named by role, not by hue, so each theme only swaps values.
+ * Light values live in @theme. The dark set redefines the same properties
+ * twice below — once for the OS preference, once for an explicit
+ * data-theme="dark" — and the two blocks must stay identical
+ * (src/shared/lib/tokens.test.ts fails when they drift or lose AA contrast).
  */
 @theme {
   --font-sans:
@@ -13,12 +19,17 @@
   --color-field: #f3f3f1;
   --color-sheet: #ffffff;
   --color-sheet-muted: #f8f8f6;
+  --color-pop: #ffffff; /* menus, dialogs, toasts, tooltips — lifted above sheets */
+  --color-row-hover: #fffaf0; /* opaque, so sticky cells match the row under them */
   --color-line: #e6e6e2;
   --color-line-strong: #d6d6d0;
+  --color-wash: rgb(25 25 22 / 0.05); /* hover / pressed tint for ghost controls */
+  --color-scrim: rgb(20 20 18 / 0.4);
 
-  /* Rail */
+  /* Rail — dark in both themes */
   --color-rail: #161616;
   --color-rail-raised: #222222;
+  --color-rail-hover: rgb(255 255 255 / 0.07);
   --color-rail-ink: #f3f3f1;
   --color-rail-muted: #8a8a86;
 
@@ -28,13 +39,15 @@
   --color-ink-muted: #6b6b66;
   --color-ink-faint: #a3a39d;
 
-  /* Accent */
+  /* Accent: fill, hover, press, text-on-white, tint, text-on-fill */
   --color-brand: #f5a623;
   --color-brand-dark: #d98c0c;
+  --color-brand-press: #cf850b;
   --color-brand-deep: #9a6206;
   --color-brand-soft: #fff3dc;
+  --color-on-brand: #191919;
 
-  /* Status: ok / warn / replace / none */
+  /* Status: ok / warn / replace / none — base hue for marks, -soft for grounds */
   --color-status-ok: #2e9e5b;
   --color-status-ok-soft: #e5f5ea;
   --color-status-warn: #e8961b;
@@ -43,8 +56,9 @@
   --color-status-replace-soft: #fbe6e4;
   --color-status-none: #8b8f94;
   --color-status-none-soft: #eceef0;
+  --color-on-status: #ffffff;
 
-  /* Text-on-tint variants (AA on the *-soft backgrounds and on white) */
+  /* Text-on-tint variants (AA on the *-soft backgrounds and on sheets) */
   --color-status-ok-ink: #1b6f3d;
   --color-status-warn-ink: #8f5300;
   --color-status-replace-ink: #b02a22;
@@ -57,6 +71,108 @@
   --radius-sheet: 14px;
   --shadow-sheet: 0 1px 2px rgb(20 20 18 / 0.04), 0 2px 8px rgb(20 20 18 / 0.05);
   --shadow-pop: 0 4px 12px rgb(20 20 18 / 0.08), 0 12px 32px rgb(20 20 18 / 0.1);
+}
+
+:root {
+  color-scheme: light;
+}
+
+/*
+ * Dark: the rail sinks below the field, sheets rise above it, pop surfaces
+ * rise again and carry a hairline because shadows barely read on dark ground.
+ * Amber and the status base hues stay put; their -soft grounds and -ink text
+ * are re-derived for a dark sheet.
+ */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+    --color-field: #131312;
+    --color-sheet: #1b1b1a;
+    --color-sheet-muted: #232321;
+    --color-pop: #242422;
+    --color-row-hover: #2a251b;
+    --color-line: #2b2b29;
+    --color-line-strong: #3b3b38;
+    --color-wash: rgb(255 255 255 / 0.06);
+    --color-scrim: rgb(0 0 0 / 0.6);
+    --color-rail: #0b0b0a;
+    --color-rail-raised: #1a1a19;
+    --color-rail-hover: rgb(255 255 255 / 0.06);
+    --color-rail-ink: #f3f3f1;
+    --color-rail-muted: #8f8f8a;
+    --color-ink: #ececea;
+    --color-ink-secondary: #bebeb8;
+    --color-ink-muted: #92928c;
+    --color-ink-faint: #62625e;
+    --color-brand: #f5a623;
+    --color-brand-dark: #ffb743;
+    --color-brand-press: #dc9215;
+    --color-brand-deep: #f6b54d;
+    --color-brand-soft: #3a2c13;
+    --color-on-brand: #191919;
+    --color-status-ok: #2e9e5b;
+    --color-status-ok-soft: #16301f;
+    --color-status-warn: #e8961b;
+    --color-status-warn-soft: #372812;
+    --color-status-replace: #d9463b;
+    --color-status-replace-soft: #3a1b18;
+    --color-status-none: #8b8f94;
+    --color-status-none-soft: #282a2d;
+    --color-on-status: #ffffff;
+    --color-status-ok-ink: #6dd297;
+    --color-status-warn-ink: #f2bb63;
+    --color-status-replace-ink: #ff8e84;
+    --color-status-none-ink: #b1b6bc;
+    --shadow-sheet: 0 1px 2px rgb(0 0 0 / 0.4), 0 2px 8px rgb(0 0 0 / 0.3);
+    --shadow-pop:
+      inset 0 0 0 1px rgb(255 255 255 / 0.06), 0 4px 12px rgb(0 0 0 / 0.4),
+      0 12px 32px rgb(0 0 0 / 0.5);
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+  --color-field: #131312;
+  --color-sheet: #1b1b1a;
+  --color-sheet-muted: #232321;
+  --color-pop: #242422;
+  --color-row-hover: #2a251b;
+  --color-line: #2b2b29;
+  --color-line-strong: #3b3b38;
+  --color-wash: rgb(255 255 255 / 0.06);
+  --color-scrim: rgb(0 0 0 / 0.6);
+  --color-rail: #0b0b0a;
+  --color-rail-raised: #1a1a19;
+  --color-rail-hover: rgb(255 255 255 / 0.06);
+  --color-rail-ink: #f3f3f1;
+  --color-rail-muted: #8f8f8a;
+  --color-ink: #ececea;
+  --color-ink-secondary: #bebeb8;
+  --color-ink-muted: #92928c;
+  --color-ink-faint: #62625e;
+  --color-brand: #f5a623;
+  --color-brand-dark: #ffb743;
+  --color-brand-press: #dc9215;
+  --color-brand-deep: #f6b54d;
+  --color-brand-soft: #3a2c13;
+  --color-on-brand: #191919;
+  --color-status-ok: #2e9e5b;
+  --color-status-ok-soft: #16301f;
+  --color-status-warn: #e8961b;
+  --color-status-warn-soft: #372812;
+  --color-status-replace: #d9463b;
+  --color-status-replace-soft: #3a1b18;
+  --color-status-none: #8b8f94;
+  --color-status-none-soft: #282a2d;
+  --color-on-status: #ffffff;
+  --color-status-ok-ink: #6dd297;
+  --color-status-warn-ink: #f2bb63;
+  --color-status-replace-ink: #ff8e84;
+  --color-status-none-ink: #b1b6bc;
+  --shadow-sheet: 0 1px 2px rgb(0 0 0 / 0.4), 0 2px 8px rgb(0 0 0 / 0.3);
+  --shadow-pop:
+    inset 0 0 0 1px rgb(255 255 255 / 0.06), 0 4px 12px rgb(0 0 0 / 0.4),
+    0 12px 32px rgb(0 0 0 / 0.5);
 }
 
 html,

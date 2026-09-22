@@ -36,7 +36,7 @@ export function LoginPage() {
       <div className="w-full max-w-sm">
         <div className="mb-8 flex items-center gap-3">
           <span className="grid size-9 place-items-center rounded-lg bg-brand">
-            <span className="size-3.5 rounded-full border-[3px] border-ink" />
+            <span className="size-3.5 rounded-full border-[3px] border-on-brand" />
           </span>
           <span className="leading-none">
             <span className="block text-[17px] font-semibold tracking-[-0.01em]">РВД Кабинет</span>

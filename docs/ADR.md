@@ -10,12 +10,12 @@ Frontend only so far: React 19, TypeScript 6, Vite 8, Tailwind v4 (@theme tokens
 
 Layers (import direction enforced by scripts/check-arch.sh, `npm run lint:arch`, in CI): shared → entities → features → app.
 
-- src/shared/ui — the only place with raw <button|input|table>: Button, Input/SearchInput/Kbd, Badge, Chip, Card (= "sheet", the only container, never outlined), KpiStrip/KpiCard, DataTable (sort, pagination, column chooser, page size, sticky key column, toolbar/search slots, embedded mode), Tabs, Menu, PageHeader, States (EmptyState/ErrorState/QueryState), Skeleton, EmptyValue/valueOr.
+- src/shared/ui — the only place with raw <button|input|table>: Button, Input/SearchInput/Kbd, Badge, Chip, Card (= "sheet", the only container, never outlined), KpiStrip/KpiCard, DataTable (sort, pagination, column chooser, page size, sticky key column, toolbar/search slots, embedded mode), Tabs, Menu, PageHeader, SegmentedControl, States (EmptyState/ErrorState/QueryState), Skeleton, EmptyValue/valueOr.
 - src/shared/api — client.ts (fetch wrapper, VITE_API_BASE_URL) + queries.ts (TanStack hooks: useDashboard, useProducts, useProduct, useEquipment, useReplacements, useRequests, useCreateRequest). SINGLE swap point for real API.
 - src/shared/mocks — MSW handlers + deterministic data generator (seed 42).
 - src/entities — types.ts (domain from ТЗ, not 1С), product/ (STATUS_LABEL/TONE/COLOR/TEXT_CLASS/ORDER, ProductStatusBadge, ProductStatusBar), request/ (REQUEST_STATUS_*, RequestStatusBadge).
 - src/features — dashboard (KpiGrid, ReplacementsChart, StatusDonut, UpcomingTable), products (ProductsPage, ProductPage, columns, ProductDetails), equipment, replacements, requests. Pages are composition only: PageHeader + QueryState + DataTable/components.
-- src/app — layout/ (Layout, Sidebar rail, Header: branch switcher, ⌘K search, contact button, bell, user menu), session.tsx (SessionProvider/useSession mock until auth), router.tsx, providers.tsx.
+- src/app — layout/ (Layout, Sidebar rail, Header: branch switcher, ⌘K search, contact button, bell, user menu), session.tsx (SessionProvider/useSession mock until auth), theme.ts (theme preference), router.tsx, providers.tsx.
   Routes (mock): GET /dashboard/summary, /products, /products/:id, /equipment, /replacements, /requests; POST /requests.
 
 ## PATTERNS
@@ -30,7 +30,7 @@ Layers (import direction enforced by scripts/check-arch.sh, `npm run lint:arch`,
 
 - Mocks first, integration later: UI is stable against 1С schema churn because adapters map 1С → entities/types.ts; cost is a second data model to maintain.
 - Client-side pagination now; server-side mandatory from Д5 (reference has 170k hoses).
-- No dark theme yet (tokens allow it). No auth yet (session is mocked).
+- Dark theme via role tokens: light values in @theme, dark set redefined for prefers-color-scheme and data-theme (user menu «Тема», localStorage rvd.theme, applied pre-paint in index.html); tokens.test.ts guards block parity and AA. No real auth yet (session is mocked).
 - impeccable skill vendored in .claude/skills without its 12 MB binary (re-run `npx impeccable install`).
 - Customer docs, video frames, .env*, review screenshots are gitignored.
 - The ADR lives in the codebase-memory DB and is wiped on tool updates; docs/ADR.md is the committed copy — restore with `codebase-memory-mcp cli manage_adr --args-file` when `manage_adr get` returns no_adr.

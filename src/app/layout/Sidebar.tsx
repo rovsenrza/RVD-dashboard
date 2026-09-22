@@ -59,8 +59,8 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                 cn(
                   'flex h-10 items-center gap-3 rounded-lg px-3 text-[13.5px] transition-colors duration-150',
                   isActive
-                    ? 'bg-brand font-medium text-ink'
-                    : 'text-rail-muted hover:bg-white/6 hover:text-rail-ink',
+                    ? 'bg-brand font-medium text-on-brand'
+                    : 'text-rail-muted hover:bg-rail-hover hover:text-rail-ink',
                 )
               }
             >
@@ -73,7 +73,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
         <div className="space-y-0.5 px-3 pb-4">
           <a
             href="#help"
-            className="flex h-10 items-center gap-3 rounded-lg px-3 text-[13.5px] text-rail-muted hover:bg-white/6 hover:text-rail-ink"
+            className="flex h-10 items-center gap-3 rounded-lg px-3 text-[13.5px] text-rail-muted hover:bg-rail-hover hover:text-rail-ink"
           >
             <LifeBuoy size={17} strokeWidth={1.75} />
             Помощь
@@ -88,7 +88,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
         </div>
       </aside>
       {open && (
-        <div className="fixed inset-0 z-20 bg-black/40 lg:hidden" onClick={onClose} aria-hidden />
+        <div className="fixed inset-0 z-20 bg-scrim lg:hidden" onClick={onClose} aria-hidden />
       )}
     </>
   )
@@ -99,7 +99,7 @@ function Brand() {
   return (
     <span className="flex items-center gap-2.5 font-semibold tracking-[-0.01em]">
       <span className="grid size-7 place-items-center rounded-lg bg-brand">
-        <span className="size-3 rounded-full border-[3px] border-ink" />
+        <span className="size-3 rounded-full border-[3px] border-on-brand" />
       </span>
       <span className="leading-none">
         РВД Кабинет
