@@ -58,10 +58,10 @@ export function ProductDetails({ product: p }: { product: Product }) {
       <div className="divide-y divide-line">
         {groups.map((g) => (
           <div key={g.title} className="py-3 first:pt-0 last:pb-0">
-            <div className="mb-1.5 text-[11.5px] font-medium tracking-wide text-ink-muted uppercase">
+            <div className="mb-1.5 text-caption font-medium tracking-wide text-ink-muted uppercase">
               {g.title}
             </div>
-            <dl className="grid grid-cols-[minmax(140px,auto)_1fr] gap-x-6 gap-y-1 text-[13.5px]">
+            <dl className="grid grid-cols-[minmax(140px,auto)_1fr] gap-x-6 gap-y-1 text-ui">
               {g.rows.map(([k, v]) => (
                 <div key={k} className="contents">
                   <dt className="text-ink-muted">{k}</dt>

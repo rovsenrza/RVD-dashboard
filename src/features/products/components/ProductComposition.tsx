@@ -11,7 +11,7 @@ export function ProductComposition({ lines }: { lines: CompositionLine[] }) {
           description="Состав придёт из каталожного номера в 1С."
         />
       ) : (
-        <ul className="divide-y divide-line text-[13.5px]">
+        <ul className="divide-y divide-line text-ui">
           {lines.map((line) => (
             <li
               key={line.componentId}

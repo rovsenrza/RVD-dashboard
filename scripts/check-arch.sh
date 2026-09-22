@@ -20,5 +20,10 @@ if hits=$(grep -rnE "from '@/app/" src/shared src/entities src/features 2>/dev/n
   echo "$hits"
   fail=1
 fi
+if hits=$(grep -rnE 'text-\[[0-9.]+(px|rem)\]|(bg|text|border|ring|fill|stroke)-\[#|(bg|text|border|ring)-(black|white)\b' src 2>/dev/null); then
+  echo "✗ Hard-coded size or colour — use the type scale and role tokens in src/index.css:"
+  echo "$hits"
+  fail=1
+fi
 [ $fail -eq 0 ] && echo "✓ architecture ok"
 exit $fail

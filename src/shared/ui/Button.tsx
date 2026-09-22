@@ -17,7 +17,7 @@ const button = cva(
         danger: 'bg-status-replace-ink text-sheet hover:bg-status-replace-ink/90',
       },
       size: {
-        sm: 'h-8 px-2.5 py-1.5 text-[13px]',
+        sm: 'h-8 px-2.5 py-1.5 text-ui',
         md: 'h-9 px-3.5 py-2 text-sm',
         icon: 'size-9 p-0',
         'icon-sm': 'size-8 p-0',

@@ -39,7 +39,7 @@ export function UpcomingTable({ rows }: { rows: Row[] }) {
     <Card
       title="Ближайшие плановые замены"
       action={
-        <Link to="/products?sort=due" className="text-[13px] text-brand-deep hover:underline">
+        <Link to="/products?sort=due" className="text-ui text-brand-deep hover:underline">
           Все изделия
         </Link>
       }

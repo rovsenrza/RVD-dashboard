@@ -4,7 +4,7 @@ import { X } from 'lucide-react'
 /** Removable filter chip. */
 export function Chip({ children, onRemove }: { children: ReactNode; onRemove?: () => void }) {
   return (
-    <span className="inline-flex h-7 items-center gap-1 rounded-full bg-brand-soft py-1 pl-2.5 text-[12.5px] font-medium text-brand-deep">
+    <span className="inline-flex h-7 items-center gap-1 rounded-full bg-brand-soft py-1 pl-2.5 text-label font-medium text-brand-deep">
       {children}
       {onRemove ? (
         <button

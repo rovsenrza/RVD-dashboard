@@ -46,14 +46,14 @@ export function StatusDonut({ breakdown }: { breakdown: Record<ProductStatus, nu
           </ResponsiveContainer>
           <div className="absolute inset-0 z-10 grid place-items-center rounded-full text-center [clip-path:circle(46px)]">
             <div>
-              <div className="text-[22px] leading-none font-semibold tracking-[-0.02em] tabular">
+              <div className="text-title leading-none font-semibold tracking-[-0.02em] tabular">
                 {formatNumber(total)}
               </div>
-              <div className="mt-1 text-[11px] text-ink-muted">изделий</div>
+              <div className="mt-1 text-micro text-ink-muted">изделий</div>
             </div>
           </div>
         </div>
-        <ul className="w-full min-w-0 flex-1 divide-y divide-line text-[13px]">
+        <ul className="w-full min-w-0 flex-1 divide-y divide-line text-ui">
           {slices.map((s) => (
             <li key={s.key}>
               <Link

@@ -29,7 +29,7 @@ export function EmptyState({
         <Icon size={20} strokeWidth={1.75} />
       </span>
       <p className="mt-1 text-sm font-medium">{title}</p>
-      {description && <p className="max-w-sm text-[13px] text-ink-muted">{description}</p>}
+      {description && <p className="max-w-sm text-ui text-ink-muted">{description}</p>}
       {action && <div className="mt-2">{action}</div>}
     </div>
   )
@@ -42,7 +42,7 @@ export function ErrorState({ message, onRetry }: { message?: string; onRetry?: (
         <AlertCircle size={20} strokeWidth={1.75} />
       </span>
       <p className="mt-1 text-sm font-medium">Не удалось загрузить данные</p>
-      {message && <p className="max-w-md text-[13px] text-ink-muted">{message}</p>}
+      {message && <p className="max-w-md text-ui text-ink-muted">{message}</p>}
       {onRetry && (
         <Button variant="secondary" size="sm" onClick={onRetry} className="mt-2">
           Повторить

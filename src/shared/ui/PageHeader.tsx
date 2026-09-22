@@ -20,17 +20,17 @@ export function PageHeader({
       {backTo && (
         <Link
           to={backTo}
-          className="inline-flex items-center gap-1 text-[13px] text-ink-muted hover:text-ink"
+          className="inline-flex items-center gap-1 text-ui text-ink-muted hover:text-ink"
         >
           <ArrowLeft size={14} strokeWidth={1.75} /> {backLabel}
         </Link>
       )}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="flex items-center gap-3 text-[22px] leading-tight font-semibold tracking-[-0.02em] text-balance">
+          <h1 className="flex items-center gap-3 text-title leading-tight font-semibold tracking-[-0.02em] text-balance">
             {title}
           </h1>
-          {description && <p className="mt-1 text-[13.5px] text-ink-muted">{description}</p>}
+          {description && <p className="mt-1 text-ui text-ink-muted">{description}</p>}
         </div>
         {actions && <div className="flex items-center gap-2">{actions}</div>}
       </div>

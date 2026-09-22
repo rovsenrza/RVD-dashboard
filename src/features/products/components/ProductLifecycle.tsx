@@ -38,10 +38,10 @@ function Timeline({ docs }: { docs: ReleaseDocument[] }) {
                 current ? 'bg-brand' : 'bg-line-strong',
               )}
             />
-            <div className={cn('text-[13.5px]', current && 'font-medium')}>
+            <div className={cn('text-ui', current && 'font-medium')}>
               {LIFECYCLE_LABEL[doc.lifecycle]}
             </div>
-            <div className="tabular mt-0.5 text-[12.5px] text-ink-muted">
+            <div className="tabular mt-0.5 text-label text-ink-muted">
               {formatDate(doc.date)} · {doc.number} · {doc.author}
             </div>
           </li>

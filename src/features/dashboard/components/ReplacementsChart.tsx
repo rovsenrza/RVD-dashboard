@@ -16,7 +16,7 @@ export function ReplacementsChart({
   return (
     <Card
       title="Замены по месяцам"
-      action={<span className="text-[12.5px] text-ink-muted tabular">{total} за 12 мес.</span>}
+      action={<span className="text-label text-ink-muted tabular">{total} за 12 мес.</span>}
       className={className}
     >
       <div className="h-56">

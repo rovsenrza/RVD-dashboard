@@ -92,10 +92,10 @@ function BranchSwitcher() {
             <Building2 size={16} strokeWidth={1.75} />
           </span>
           <span className="hidden min-w-0 sm:block">
-            <span className="block truncate text-[12px] leading-4 text-ink-muted">
+            <span className="block truncate text-caption leading-4 text-ink-muted">
               {company.name}
             </span>
-            <span className="block truncate text-[13.5px] leading-4 font-medium">
+            <span className="block truncate text-ui leading-4 font-medium">
               {branch?.name ?? 'Все филиалы'}
             </span>
           </span>
@@ -103,7 +103,9 @@ function BranchSwitcher() {
         </Button>
       )}
       header={
-        <div className="text-[12px] font-medium tracking-wide text-ink-muted uppercase">Филиал</div>
+        <div className="text-caption font-medium tracking-wide text-ink-muted uppercase">
+          Филиал
+        </div>
       }
       items={[
         ...branches.map((b) => ({
@@ -149,12 +151,12 @@ function UserMenu() {
           size="auto"
           className={cn('gap-2.5 pr-1.5 pl-1', open && 'bg-wash')}
         >
-          <span className="grid size-8 place-items-center rounded-full bg-brand text-[12px] font-semibold text-on-brand">
+          <span className="grid size-8 place-items-center rounded-full bg-brand text-caption font-semibold text-on-brand">
             {initials(user.name)}
           </span>
           <span className="hidden text-left md:block">
-            <span className="block text-[13.5px] leading-4 font-medium">{user.name}</span>
-            <span className="block text-[12px] leading-4 text-ink-muted">
+            <span className="block text-ui leading-4 font-medium">{user.name}</span>
+            <span className="block text-caption leading-4 text-ink-muted">
               {ROLE_LABEL[user.role]}
             </span>
           </span>
@@ -164,9 +166,9 @@ function UserMenu() {
       header={
         <div>
           <div className="text-sm font-medium">{user.name}</div>
-          <div className="text-[12px] text-ink-muted">{ROLE_LABEL[user.role]}</div>
+          <div className="text-caption text-ink-muted">{ROLE_LABEL[user.role]}</div>
           <div className="mt-3 flex items-center justify-between gap-3">
-            <span className="text-[12.5px] text-ink-muted">Тема</span>
+            <span className="text-label text-ink-muted">Тема</span>
             <SegmentedControl
               label="Тема оформления"
               value={theme}

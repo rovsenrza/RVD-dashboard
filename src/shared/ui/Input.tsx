@@ -37,7 +37,7 @@ export function SearchInput({ className, hint, ...rest }: InputProps & { hint?: 
 
 export function Kbd({ children }: { children: ReactNode }) {
   return (
-    <kbd className="inline-flex h-5 items-center rounded-md bg-field px-1.5 py-0.5 font-sans text-[11px] font-medium text-ink-muted shadow-[inset_0_0_0_1px_var(--color-line)]">
+    <kbd className="inline-flex h-5 items-center rounded-md bg-field px-1.5 py-0.5 font-sans text-micro font-medium text-ink-muted shadow-[inset_0_0_0_1px_var(--color-line)]">
       {children}
     </kbd>
   )

@@ -38,7 +38,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
               <div
                 key={t.id}
                 role="status"
-                className="pointer-events-auto flex w-full max-w-sm items-center gap-2.5 rounded-xl bg-pop px-3.5 py-3 text-[13.5px] shadow-pop"
+                className="pointer-events-auto flex w-full max-w-sm items-center gap-2.5 rounded-xl bg-pop px-3.5 py-3 text-ui shadow-pop"
               >
                 <Icon
                   size={16}

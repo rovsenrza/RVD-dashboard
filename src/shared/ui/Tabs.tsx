@@ -41,7 +41,7 @@ export function Tabs<K extends string>({
             {t.count !== undefined && (
               <span
                 className={cn(
-                  'rounded-full px-1.5 text-[11px] tabular',
+                  'rounded-full px-1.5 text-micro tabular',
                   active ? 'bg-brand-soft text-brand-deep' : 'bg-field text-ink-muted',
                 )}
               >

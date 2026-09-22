@@ -39,19 +39,16 @@ export function KpiCard({
         onClick && 'transition-colors duration-150 hover:bg-sheet-muted!',
       )}
     >
-      <div className="flex items-center gap-2 text-[12.5px] text-ink-muted">
+      <div className="flex items-center gap-2 text-label text-ink-muted">
         <Icon size={15} strokeWidth={1.75} className="text-brand-dark" />
         <span className="truncate">{label}</span>
       </div>
       <div
-        className={cn(
-          'text-[28px] leading-none font-semibold tracking-[-0.02em] tabular',
-          toneClass,
-        )}
+        className={cn('text-kpi leading-none font-semibold tracking-[-0.02em] tabular', toneClass)}
       >
         {formatNumber(value)}
       </div>
-      <div className="flex h-5 items-center gap-1.5 text-[12px] text-ink-muted">
+      <div className="flex h-5 items-center gap-1.5 text-caption text-ink-muted">
         {delta !== undefined ? (
           <>
             <Delta value={delta} />

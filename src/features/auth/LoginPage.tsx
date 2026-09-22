@@ -39,16 +39,16 @@ export function LoginPage() {
             <span className="size-3.5 rounded-full border-[3px] border-on-brand" />
           </span>
           <span className="leading-none">
-            <span className="block text-[17px] font-semibold tracking-[-0.01em]">РВД Кабинет</span>
-            <span className="mt-1 block text-[11px] font-normal tracking-wide text-ink-muted uppercase">
+            <span className="block text-heading font-semibold tracking-[-0.01em]">РВД Кабинет</span>
+            <span className="mt-1 block text-micro font-normal tracking-wide text-ink-muted uppercase">
               личный кабинет
             </span>
           </span>
         </div>
 
         <div className="sheet p-6">
-          <h1 className="text-[17px] font-semibold tracking-[-0.01em]">Вход</h1>
-          <p className="mt-1 mb-5 text-[13px] text-ink-muted">Доступ выдаёт ваш поставщик РВД.</p>
+          <h1 className="text-heading font-semibold tracking-[-0.01em]">Вход</h1>
+          <p className="mt-1 mb-5 text-ui text-ink-muted">Доступ выдаёт ваш поставщик РВД.</p>
 
           <form onSubmit={submit} className="grid gap-4">
             <Field label="Электронная почта">
@@ -83,7 +83,7 @@ export function LoginPage() {
           </form>
         </div>
 
-        <p className="mt-6 text-center text-[12.5px] text-ink-muted">
+        <p className="mt-6 text-center text-label text-ink-muted">
           Нет доступа? Обратитесь к вашему специалисту поставщика.
         </p>
       </div>

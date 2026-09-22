@@ -119,7 +119,7 @@ export function NotificationsPanel() {
 
       {open && (
         <div className="absolute top-[calc(100%+6px)] right-0 z-40 w-[22rem] max-w-[calc(100vw-2rem)] overflow-hidden rounded-xl bg-pop shadow-pop">
-          <div className="px-4 pt-3 pb-2 text-[12px] font-medium tracking-wide text-ink-muted uppercase">
+          <div className="px-4 pt-3 pb-2 text-caption font-medium tracking-wide text-ink-muted uppercase">
             Уведомления
           </div>
           {items.length === 0 ? (
@@ -144,8 +144,8 @@ export function NotificationsPanel() {
                       className={cn('mt-0.5 shrink-0', TONE_CLASS[n.tone])}
                     />
                     <span className="min-w-0">
-                      <span className="block text-[13.5px] font-medium">{n.title}</span>
-                      <span className="block text-[12.5px] text-ink-muted">{n.subtitle}</span>
+                      <span className="block text-ui font-medium">{n.title}</span>
+                      <span className="block text-label text-ink-muted">{n.subtitle}</span>
                     </span>
                   </div>
                 </li>

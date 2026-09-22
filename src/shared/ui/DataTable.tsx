@@ -118,7 +118,7 @@ export function DataTable<T>({
                 </>
               )}
               header={
-                <div className="text-[12px] font-medium tracking-wide text-ink-muted uppercase">
+                <div className="text-caption font-medium tracking-wide text-ink-muted uppercase">
                   Показывать колонки
                 </div>
               }
@@ -156,7 +156,7 @@ export function DataTable<T>({
                               : undefined
                         }
                         className={cn(
-                          'py-2.5 text-left text-[12px] font-medium tracking-wide whitespace-nowrap text-ink-muted uppercase select-none',
+                          'py-2.5 text-left text-caption font-medium tracking-wide whitespace-nowrap text-ink-muted uppercase select-none',
                           cellX,
                           canSort && 'cursor-pointer hover:text-ink',
                           sticky && i === 0 && 'sticky left-0 z-10 bg-sheet',
@@ -231,7 +231,7 @@ export function DataTable<T>({
       {showPagination && (
         <div
           className={cn(
-            'flex flex-wrap items-center justify-between gap-3 text-[12.5px] text-ink-muted',
+            'flex flex-wrap items-center justify-between gap-3 text-label text-ink-muted',
             embedded ? 'pt-3' : 'px-5 py-3',
           )}
         >

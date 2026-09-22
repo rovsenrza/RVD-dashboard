@@ -15,6 +15,21 @@
   --font-sans:
     'Golos Text', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 
+  /*
+   * Type scale by role. Sizes only: line-height is inherited (body 1.45) or set
+   * with leading-* where a line must be tight. Body and table cells are text-sm
+   * (14px). New steps must also be registered with tailwind-merge in
+   * src/shared/lib/utils.ts, or cn() drops them next to a text colour.
+   */
+  --text-micro: 11px; /* kbd, tab counts, brand sub-line, status-bar digits */
+  --text-caption: 12px; /* uppercase column/group headers, badges, meta lines */
+  --text-label: 12.5px; /* field labels, legends, chips, footers */
+  --text-ui: 13.5px; /* nav, descriptions, small buttons, secondary lines */
+  --text-sheet-title: 15px;
+  --text-heading: 17px;
+  --text-title: 22px; /* page title */
+  --text-kpi: 28px;
+
   /* Field & sheets */
   --color-field: #f3f3f1;
   --color-sheet: #ffffff;

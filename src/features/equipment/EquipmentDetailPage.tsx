@@ -32,7 +32,7 @@ export function EquipmentDetailPage() {
 
           <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,320px)_1fr]">
             <Card title="Карточка техники">
-              <dl className="grid grid-cols-[minmax(120px,auto)_1fr] gap-x-6 gap-y-1.5 text-[13.5px]">
+              <dl className="grid grid-cols-[minmax(120px,auto)_1fr] gap-x-6 gap-y-1.5 text-ui">
                 {(
                   [
                     ['Гаражный №', e.garageNumber],
@@ -51,7 +51,7 @@ export function EquipmentDetailPage() {
                 ))}
               </dl>
               <div className="mt-4 border-t border-line pt-4">
-                <div className="mb-2 text-[11.5px] font-medium tracking-wide text-ink-muted uppercase">
+                <div className="mb-2 text-caption font-medium tracking-wide text-ink-muted uppercase">
                   Состояние РВД
                 </div>
                 <ProductStatusBar breakdown={e.statusBreakdown} />

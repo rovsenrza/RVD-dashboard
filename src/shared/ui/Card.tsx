@@ -24,7 +24,7 @@ export function Card({
         <header
           className={cn('mb-4 flex items-center justify-between gap-3', !padded && 'px-5 pt-5')}
         >
-          {title && <h2 className="text-[15px] font-semibold tracking-[-0.01em]">{title}</h2>}
+          {title && <h2 className="text-sheet-title font-semibold tracking-[-0.01em]">{title}</h2>}
           {action}
         </header>
       )}

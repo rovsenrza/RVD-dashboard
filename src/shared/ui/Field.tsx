@@ -15,16 +15,14 @@ export function Field({
   const id = useId()
   return (
     <div>
-      <label htmlFor={id} className="mb-1.5 block text-[13px] font-medium">
+      <label htmlFor={id} className="mb-1.5 block text-ui font-medium">
         {label}
       </label>
       {children(id)}
       {(error ?? hint) && (
         <p
           className={
-            error
-              ? 'mt-1.5 text-[12.5px] text-status-replace-ink'
-              : 'mt-1.5 text-[12.5px] text-ink-muted'
+            error ? 'mt-1.5 text-label text-status-replace-ink' : 'mt-1.5 text-label text-ink-muted'
           }
         >
           {error ?? hint}

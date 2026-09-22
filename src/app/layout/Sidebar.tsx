@@ -57,7 +57,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
               onClick={onClose}
               className={({ isActive }) =>
                 cn(
-                  'flex h-10 items-center gap-3 rounded-lg px-3 text-[13.5px] transition-colors duration-150',
+                  'flex h-10 items-center gap-3 rounded-lg px-3 text-ui transition-colors duration-150',
                   isActive
                     ? 'bg-brand font-medium text-on-brand'
                     : 'text-rail-muted hover:bg-rail-hover hover:text-rail-ink',
@@ -73,12 +73,12 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
         <div className="space-y-0.5 px-3 pb-4">
           <a
             href="#help"
-            className="flex h-10 items-center gap-3 rounded-lg px-3 text-[13.5px] text-rail-muted hover:bg-rail-hover hover:text-rail-ink"
+            className="flex h-10 items-center gap-3 rounded-lg px-3 text-ui text-rail-muted hover:bg-rail-hover hover:text-rail-ink"
           >
             <LifeBuoy size={17} strokeWidth={1.75} />
             Помощь
           </a>
-          <div className="px-3 pt-3 text-[12px] leading-5 text-rail-muted/80">
+          <div className="px-3 pt-3 text-caption leading-5 text-rail-muted/80">
             <div className="flex items-center gap-2">
               <span className="size-1.5 rounded-full bg-status-ok" />
               Данные 1С · демо-режим
@@ -103,7 +103,7 @@ function Brand() {
       </span>
       <span className="leading-none">
         РВД Кабинет
-        <span className="mt-0.5 block text-[11px] font-normal tracking-wide text-rail-muted uppercase">
+        <span className="mt-0.5 block text-micro font-normal tracking-wide text-rail-muted uppercase">
           личный кабинет
         </span>
       </span>

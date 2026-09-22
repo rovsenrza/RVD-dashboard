@@ -53,8 +53,8 @@ export function Dialog({
       >
         <div className="flex items-start gap-4 px-5 pt-5">
           <div className="min-w-0 flex-1">
-            <h2 className="text-[15px] font-semibold tracking-[-0.01em]">{title}</h2>
-            {description && <p className="mt-1 text-[13px] text-ink-muted">{description}</p>}
+            <h2 className="text-sheet-title font-semibold tracking-[-0.01em]">{title}</h2>
+            {description && <p className="mt-1 text-ui text-ink-muted">{description}</p>}
           </div>
           <Button
             variant="ghost"

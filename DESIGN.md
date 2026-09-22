@@ -195,7 +195,8 @@ Source of truth for tokens: `src/index.css` (`@theme`). Primitives: `src/shared/
 One family: **Golos Text** (variable 400–700, self-hosted in `public/fonts/`, Cyrillic + Latin subsets). Fallback stack `ui-sans-serif, system-ui`. No display face; hierarchy comes from size and weight steps on a ~1.125 scale.
 
 - Page title 22/600, tracking −0.02em, `text-wrap: balance`. One per screen, left, with a 13.5px muted description under it.
-- Sheet title 15/600. Table header 12/500 uppercase, tracking +0.025em, `ink-muted`. Body and table cells 14/400. Labels 12.5. Badges 12/500. Nothing below 11px.
+- Sheet title 15/600. Table, column-group and detail-section headers are all 12/500 uppercase, tracking +0.025em, `ink-muted`. Body and table cells 14/400. Labels 12.5. Badges 12/500. Nothing below 11px.
+- Sizes are tokens in `@theme` (`--text-*`), sizes only — line-height is inherited or set with `leading-*`: `text-micro` 11 (kbd, tab counts, brand sub-line, status-bar digits) · `text-caption` 12 (uppercase headers, badges, meta lines) · `text-label` 12.5 (labels, legends, chips) · `text-ui` 13.5 (nav, descriptions, small buttons) · `text-sm` 14 (body, cells) · `text-sheet-title` 15 · `text-heading` 17 · `text-title` 22 · `text-kpi` 28. Arbitrary `text-[Npx]` fails `npm run lint:arch`. A new step must also be registered with tailwind-merge in `shared/lib/utils.ts`, or `cn()` will drop it beside a text colour.
 - Numerals: `font-variant-numeric: tabular-nums` is set globally (`tnum`) and reinforced with the `tabular` utility wherever digits align (tables, KPI numbers, pagination, legends).
 - Dates are `dd.MM.yyyy`; numbers use `ru-RU` grouping. Empty values render through `EmptyValue` (a muted `—`), never a hard-coded dash.
 
