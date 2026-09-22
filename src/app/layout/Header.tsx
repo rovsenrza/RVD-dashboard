@@ -64,7 +64,11 @@ export function Header({ onMenu }: { onMenu: () => void }) {
         className="mx-auto hidden w-full max-w-md md:block"
         onOpen={() => setSearchOpen(true)}
       />
-      <CommandPalette open={searchOpen} onClose={() => setSearchOpen(false)} />
+      <CommandPalette
+        open={searchOpen}
+        onClose={() => setSearchOpen(false)}
+        onScan={() => setScanOpen(true)}
+      />
       <div className="ml-auto flex items-center gap-1.5 md:ml-0">
         <Button
           variant="ghost"

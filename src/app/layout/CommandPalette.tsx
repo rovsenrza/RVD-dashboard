@@ -1,18 +1,23 @@
 import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
-import { Package, Truck } from 'lucide-react'
+import { Package, ScanLine, Truck } from 'lucide-react'
 import { useEquipment, useProducts } from '@/shared/api/queries'
 import { SearchInput } from '@/shared/ui'
 import { cn } from '@/shared/lib/utils'
 
 interface Hit {
   id: string
-  to: string
+  /** Where the hit leads; actions run instead. */
+  to?: string
+  run?: () => void
   title: string
   subtitle: string
-  group: 'product' | 'equipment'
+  group: 'action' | 'product' | 'equipment'
 }
+
+/** Words that surface the scan action while typing. */
+const SCAN_WORDS = ['скан', 'код', 'камер', 'scan', 'qr']
 
 const MAX_PER_GROUP = 5
 
@@ -62,11 +67,35 @@ function useHits(q: string): Hit[] {
   }, [q, products.data, equipment.data])
 }
 
-export function CommandPalette({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function CommandPalette({
+  open,
+  onClose,
+  onScan,
+}: {
+  open: boolean
+  onClose: () => void
+  /** Offered as the first action, so a desktop with a webcam can scan too. */
+  onScan?: () => void
+}) {
   const [q, setQ] = useState('')
   const [active, setActive] = useState(0)
   const navigate = useNavigate()
-  const hits = useHits(q)
+  const found = useHits(q)
+  const needle = q.trim().toLowerCase()
+  const actions: Hit[] =
+    onScan &&
+    (needle.length < 2 || SCAN_WORDS.some((w) => w.startsWith(needle) || needle.startsWith(w)))
+      ? [
+          {
+            id: 'scan',
+            group: 'action',
+            title: 'Сканировать код',
+            subtitle: 'Камерой или вводом номера — откроет изделие или технику',
+            run: onScan,
+          },
+        ]
+      : []
+  const hits = [...actions, ...found]
 
   useEffect(() => setActive(0), [q])
 
@@ -83,8 +112,9 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   if (!open) return null
 
   const go = (hit: Hit) => {
-    navigate(hit.to)
     onClose()
+    if (hit.run) hit.run()
+    else if (hit.to) navigate(hit.to)
   }
 
   const onKey = (e: React.KeyboardEvent) => {
@@ -124,10 +154,13 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-2">
-          {q.trim().length < 2 ? (
-            <p className="px-2 py-6 text-center text-ui text-ink-muted">
-              Введите минимум два символа
-            </p>
+          {needle.length < 2 ? (
+            <>
+              <Results hits={hits} active={active} onPick={go} onHover={setActive} />
+              <p className="px-2 py-6 text-center text-ui text-ink-muted">
+                Введите минимум два символа для поиска
+              </p>
+            </>
           ) : hits.length === 0 ? (
             <p className="px-2 py-6 text-center text-ui text-ink-muted">
               Ничего не найдено по запросу «{q.trim()}»
@@ -142,8 +175,8 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   )
 }
 
-const GROUP_LABEL = { product: 'Изделия', equipment: 'Техника' } as const
-const GROUP_ICON = { product: Package, equipment: Truck }
+const GROUP_LABEL = { action: 'Действия', product: 'Изделия', equipment: 'Техника' } as const
+const GROUP_ICON = { action: ScanLine, product: Package, equipment: Truck }
 
 function Results({
   hits,
@@ -177,7 +210,7 @@ function Results({
               onMouseEnter={() => onHover(i)}
               className={cn(
                 'flex cursor-pointer items-center gap-3 rounded-lg px-2.5 py-2',
-                i === active && 'bg-field',
+                i === active && 'bg-wash',
               )}
             >
               <Icon size={15} strokeWidth={1.75} className="shrink-0 text-ink-muted" />
