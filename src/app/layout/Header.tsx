@@ -8,6 +8,7 @@ import {
   Menu as MenuIcon,
   Monitor,
   Moon,
+  ScanLine,
   Search,
   Settings,
   Sun,
@@ -17,6 +18,7 @@ import { initials, useSession, type Role } from '@/app/session'
 import { useThemePreference, type ThemePreference } from '@/app/theme'
 import { Button, Kbd, Menu, SearchInput, SegmentedControl, type SegmentedOption } from '@/shared/ui'
 import { cn } from '@/shared/lib/utils'
+import { ScanDialog } from '@/features/scan/ScanDialog'
 import { CommandPalette } from './CommandPalette'
 import { NotificationsPanel } from './NotificationsPanel'
 
@@ -34,6 +36,7 @@ const THEME_OPTIONS: SegmentedOption<ThemePreference>[] = [
 
 export function Header({ onMenu }: { onMenu: () => void }) {
   const [searchOpen, setSearchOpen] = useState(false)
+  const [scanOpen, setScanOpen] = useState(false)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -71,6 +74,16 @@ export function Header({ onMenu }: { onMenu: () => void }) {
           aria-label="Поиск"
           onClick={() => setSearchOpen(true)}
         />
+        {/* Camera scanning is a phone/tablet job; hidden where the pointer is a mouse. */}
+        <Button
+          variant="ghost"
+          size="icon"
+          icon={ScanLine}
+          className="pointer-fine:hidden"
+          aria-label="Сканировать код"
+          onClick={() => setScanOpen(true)}
+        />
+        {scanOpen && <ScanDialog onClose={() => setScanOpen(false)} />}
         <Button variant="primary" size="sm" icon={Headset} className="hidden xl:inline-flex">
           Связаться со специалистом
         </Button>

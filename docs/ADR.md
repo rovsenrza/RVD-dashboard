@@ -4,7 +4,7 @@
 
 ## STACK
 
-Frontend only so far: React 19, TypeScript 6, Vite 8, Tailwind v4 (@theme tokens in src/index.css: role colours for light + dark, type scale text-micro…text-kpi registered with tailwind-merge in cn; lint:arch rejects text-[Npx] and raw colours), React Router 7, TanStack Query + Table v8, Recharts, lucide-react, class-variance-authority, date-fns, MSW mocks (VITE_USE_MOCKS=true), Vitest, oxlint, Prettier. Font: Golos Text self-hosted (public/fonts). Planned (PLAN.md §1): monorepo apps/web + apps/api (Node 22, Fastify, Prisma, Postgres, BullMQ/Redis) + packages/contracts (Zod); BFF between SPA and 1С OData with Postgres cache, sync worker, outbox for requests/replacements → 1С.
+Frontend only so far: React 19, TypeScript 6, Vite 8, Tailwind v4 (@theme tokens in src/index.css: role colours for light + dark, type scale text-micro…text-kpi registered with tailwind-merge in cn; lint:arch rejects text-[Npx] and raw colours), React Router 7, TanStack Query + Table v8, Recharts, lucide-react, @zxing/browser (barcode/QR, loaded on demand), class-variance-authority, date-fns, MSW mocks (VITE_USE_MOCKS=true), Vitest, oxlint, Prettier. Font: Golos Text self-hosted (public/fonts). Planned (PLAN.md §1): monorepo apps/web + apps/api (Node 22, Fastify, Prisma, Postgres, BullMQ/Redis) + packages/contracts (Zod); BFF between SPA and 1С OData with Postgres cache, sync worker, outbox for requests/replacements → 1С.
 
 ## ARCHITECTURE
 
@@ -14,7 +14,7 @@ Layers (import direction enforced by scripts/check-arch.sh, `npm run lint:arch`,
 - src/shared/api — client.ts (fetch wrapper, VITE_API_BASE_URL) + queries.ts (TanStack hooks: useDashboard, useProducts, useProduct, useEquipment, useReplacements, useRequests, useCreateRequest). SINGLE swap point for real API.
 - src/shared/mocks — MSW handlers + deterministic data generator (seed 42).
 - src/entities — types.ts (domain from ТЗ, not 1С), product/ (STATUS_LABEL/TONE/COLOR/TEXT_CLASS/ORDER, ProductStatusBadge, ProductStatusBar), request/ (REQUEST_STATUS_*, RequestStatusBadge).
-- src/features — dashboard (KpiGrid, ReplacementsChart, StatusDonut, UpcomingTable), products (ProductsPage, ProductPage, columns, ProductDetails), equipment, replacements, requests, dev (UiPage — the /dev/ui catalogue, routed only when import.meta.env.DEV). Pages are composition only: PageHeader + QueryState + DataTable/components.
+- src/features — dashboard (KpiGrid, ReplacementsChart, StatusDonut, UpcomingTable), products (ProductsPage, ProductPage, columns, ProductDetails), equipment, replacements, requests, scan (ScanDialog + matchCode: camera or typed code → hose/machine by exact number), dev (UiPage — the /dev/ui catalogue, routed only when import.meta.env.DEV). Pages are composition only: PageHeader + QueryState + DataTable/components.
 - src/app — layout/ (Layout, Sidebar rail, Header: branch switcher, ⌘K search, contact button, bell, user menu), session.tsx (SessionProvider/useSession mock until auth), theme.ts (theme preference), router.tsx, providers.tsx.
   Routes (mock): GET /dashboard/summary, /products, /products/:id, /equipment, /replacements, /requests; POST /requests.
 
