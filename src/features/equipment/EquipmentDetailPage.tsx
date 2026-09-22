@@ -4,7 +4,15 @@ import { RefreshCw } from 'lucide-react'
 import type { Product } from '@/entities/types'
 import { ProductStatusBar } from '@/entities/product'
 import { useEquipmentItem, useEquipmentProducts } from '@/shared/api/queries'
-import { Button, Card, DataTable, PageHeader, QueryState, Skeleton, valueOr } from '@/shared/ui'
+import {
+  Button,
+  Card,
+  DataTable,
+  DescriptionList,
+  PageHeader,
+  QueryState,
+  Skeleton,
+} from '@/shared/ui'
 import { formatDate } from '@/shared/lib/utils'
 import { productColumns } from '@/features/products/columns'
 
@@ -32,24 +40,18 @@ export function EquipmentDetailPage() {
 
           <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,320px)_1fr]">
             <Card title="Карточка техники">
-              <dl className="grid grid-cols-[minmax(120px,auto)_1fr] gap-x-6 gap-y-1.5 text-ui">
-                {(
-                  [
-                    ['Гаражный №', e.garageNumber],
-                    ['Инвентарный №', e.inventoryNumber],
-                    ['Тип', e.type],
-                    ['Марка', e.brand],
-                    ['Модель', e.model],
-                    ['Крайний ремонт', formatDate(e.lastRepairDate)],
-                    ['Ближайшая замена', formatDate(e.nextPlannedReplacement)],
-                  ] as [string, string | null][]
-                ).map(([k, v]) => (
-                  <div key={k} className="contents">
-                    <dt className="text-ink-muted">{k}</dt>
-                    <dd className="tabular">{valueOr(v)}</dd>
-                  </div>
-                ))}
-              </dl>
+              <DescriptionList
+                termWidth={120}
+                items={[
+                  ['Гаражный №', e.garageNumber],
+                  ['Инвентарный №', e.inventoryNumber],
+                  ['Тип', e.type],
+                  ['Марка', e.brand],
+                  ['Модель', e.model],
+                  ['Крайний ремонт', formatDate(e.lastRepairDate)],
+                  ['Ближайшая замена', formatDate(e.nextPlannedReplacement)],
+                ]}
+              />
               <div className="mt-4 border-t border-line pt-4">
                 <div className="mb-2 text-caption font-medium tracking-wide text-ink-muted uppercase">
                   Состояние РВД

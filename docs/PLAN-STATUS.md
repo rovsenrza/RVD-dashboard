@@ -30,7 +30,7 @@
 - [~] Д6 Auth (JWT + refresh), users/roles/scopes, страница входа — **страница входа, guard и signIn/signOut сделаны на моке**; JWT/BFF ждут Д3
 - [~] Д7 Scope-фильтрация всех эндпоинтов, роли, тест изоляции — **выбор филиала работает, scope уходит query-параметром во все списки и дашборд** (тот же контракт, что примет BFF); роли и тест изоляции — после auth
 - [x] Д8 Токены дизайн-системы, light/dark — палитра по ролям для light + dark, переключатель «Тема» (как в системе / светлая / тёмная) без вспышки при загрузке, шкала типографики токенами (`text-micro` … `text-kpi`), тест AA для обеих тем; `lint:arch` запрещает `text-[Npx]` и цвета в обход токенов. Бренд заказчика — после ответа (вопрос 6), пока amber
-- [~] Д9 Компоненты: **Select, Dialog, Toast, Field, SegmentedControl, DatePicker (всегда дд.мм.гггг), Tooltip и витрина `/dev/ui` (только dev-сборка) сделаны**; Tabs, ColumnPicker, Pagination уже были в DataTable; Timeline — как история ЖЦ на карточке. Остались DescriptionList как примитив и прыжок на страницу в пагинации
+- [x] Д9 Компоненты: Select, Dialog, Toast, Field, SegmentedControl, DatePicker (всегда дд.мм.гггг), Tooltip, DescriptionList, прыжок на страницу в пагинации DataTable, витрина `/dev/ui` (только dev-сборка); Tabs, ColumnPicker, Pagination — в DataTable; Timeline — история ЖЦ на карточке изделия
 - [ ] Д10 Все страницы на API + auth + ДС — **Веха 2**
 
 ## Неделя 3 — Изделия, техника, дашборд

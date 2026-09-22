@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import type { Product } from '@/entities/types'
 import { LIFECYCLE_LABEL } from '@/entities/product'
-import { Badge, Card, valueOr } from '@/shared/ui'
+import { Badge, Card, DescriptionList } from '@/shared/ui'
 import { daysLeft, formatDate } from '@/shared/lib/utils'
 
 export function ProductDetails({ product: p }: { product: Product }) {
@@ -61,14 +61,7 @@ export function ProductDetails({ product: p }: { product: Product }) {
             <div className="mb-1.5 text-caption font-medium tracking-wide text-ink-muted uppercase">
               {g.title}
             </div>
-            <dl className="grid grid-cols-[minmax(140px,auto)_1fr] gap-x-6 gap-y-1 text-ui">
-              {g.rows.map(([k, v]) => (
-                <div key={k} className="contents">
-                  <dt className="text-ink-muted">{k}</dt>
-                  <dd className="tabular">{valueOr(v)}</dd>
-                </div>
-              ))}
-            </dl>
+            <DescriptionList items={g.rows} />
           </div>
         ))}
       </div>

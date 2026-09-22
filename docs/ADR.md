@@ -10,7 +10,7 @@ Frontend only so far: React 19, TypeScript 6, Vite 8, Tailwind v4 (@theme tokens
 
 Layers (import direction enforced by scripts/check-arch.sh, `npm run lint:arch`, in CI): shared → entities → features → app.
 
-- src/shared/ui — the only place with raw <button|input|table>: Button, Input/SearchInput/Kbd, Badge, Chip, Card (= "sheet", the only container, never outlined), KpiStrip/KpiCard, DataTable (sort, pagination, column chooser, page size, sticky key column, toolbar/search slots, embedded mode), Tabs, Menu, PageHeader, SegmentedControl, DatePicker (dd.MM.yyyy, ISO in/out), Tooltip, States (EmptyState/ErrorState/QueryState), Skeleton, EmptyValue/valueOr.
+- src/shared/ui — the only place with raw <button|input|table>: Button, Input/SearchInput/Kbd, Badge, Chip, Card (= "sheet", the only container, never outlined), KpiStrip/KpiCard, DataTable (sort, pagination with page jump, column chooser, page size, sticky key column, toolbar/search slots, embedded mode), DescriptionList, Tabs, Menu, PageHeader, SegmentedControl, DatePicker (dd.MM.yyyy, ISO in/out), Tooltip, States (EmptyState/ErrorState/QueryState), Skeleton, EmptyValue/valueOr.
 - src/shared/api — client.ts (fetch wrapper, VITE_API_BASE_URL) + queries.ts (TanStack hooks: useDashboard, useProducts, useProduct, useEquipment, useReplacements, useRequests, useCreateRequest). SINGLE swap point for real API.
 - src/shared/mocks — MSW handlers + deterministic data generator (seed 42).
 - src/entities — types.ts (domain from ТЗ, not 1С), product/ (STATUS_LABEL/TONE/COLOR/TEXT_CLASS/ORDER, ProductStatusBadge, ProductStatusBar), request/ (REQUEST_STATUS_*, RequestStatusBadge).

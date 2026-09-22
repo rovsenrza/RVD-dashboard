@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
 import { Button } from './Button'
+import { Input } from './Input'
 import { Menu } from './Menu'
 import { EmptyState } from './States'
 
@@ -277,6 +278,7 @@ export function DataTable<T>({
                 aria-label="Следующая страница"
               />
             </div>
+            {pageCount > 5 && <PageJump count={pageCount} onPick={(i) => table.setPageIndex(i)} />}
           </div>
         </div>
       )}
@@ -350,5 +352,28 @@ function PageNumbers({
         ),
       )}
     </span>
+  )
+}
+
+/** «Стр. [№]» + Enter jumps straight to a page; numbers past either end land on it. */
+function PageJump({ count, onPick }: { count: number; onPick: (i: number) => void }) {
+  const [text, setText] = useState('')
+  return (
+    <label className="flex items-center gap-1.5">
+      <span aria-hidden>Стр.</span>
+      <Input
+        inputMode="numeric"
+        aria-label={`Перейти на страницу, всего ${count}`}
+        placeholder="№"
+        value={text}
+        onChange={(e) => setText(e.target.value.replace(/\D/g, '').slice(0, 5))}
+        onKeyDown={(e) => {
+          if (e.key !== 'Enter' || !text) return
+          onPick(Math.min(Math.max(Number(text), 1), count) - 1)
+          setText('')
+        }}
+        className="h-8 w-14 px-2 text-center tabular"
+      />
+    </label>
   )
 }
