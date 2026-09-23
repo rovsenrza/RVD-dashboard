@@ -32,6 +32,9 @@ export function StatusDonut({ breakdown }: { breakdown: Record<ProductStatus, nu
                 ))}
               </Pie>
               <Tooltip
+                separator=": "
+                // Above the centre total, which is a later sibling at z-10.
+                wrapperStyle={{ zIndex: 20 }}
                 contentStyle={{
                   borderRadius: 10,
                   border: 'none',
@@ -44,7 +47,7 @@ export function StatusDonut({ breakdown }: { breakdown: Record<ProductStatus, nu
               />
             </PieChart>
           </ResponsiveContainer>
-          <div className="absolute inset-0 z-10 grid place-items-center rounded-full text-center [clip-path:circle(46px)]">
+          <div className="pointer-events-none absolute inset-0 z-10 grid place-items-center rounded-full text-center [clip-path:circle(46px)]">
             <div>
               <div className="text-title leading-none font-semibold tracking-[-0.02em] tabular">
                 {formatNumber(total)}

@@ -41,6 +41,7 @@ export function ReplacementsChart({
               allowDecimals={false}
             />
             <Tooltip
+              separator=": "
               cursor={{ fill: 'var(--color-brand-soft)', opacity: 0.6 }}
               contentStyle={{
                 borderRadius: 10,
