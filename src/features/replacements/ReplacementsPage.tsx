@@ -4,16 +4,16 @@ import type { ColumnDef } from '@tanstack/react-table'
 import { ArrowLeftRight, Download } from 'lucide-react'
 import { formatISO, subDays } from 'date-fns'
 import type { Replacement } from '@/entities/types'
-import { USAGE_UNIT_LABEL } from '@/entities/replacement'
+import { REPLACEMENT_REASONS, USAGE_UNIT_LABEL } from '@/entities/replacement'
 import { useReplacements } from '@/shared/api/queries'
 import { ReplacementDialog } from './components/ReplacementDialog'
 import {
   Button,
-  Chip,
   DataTable,
   PageHeader,
   QueryState,
   SearchInput,
+  Select,
   TableSkeleton,
 } from '@/shared/ui'
 import { downloadCsv, type CsvColumn } from '@/shared/lib/csv'
@@ -31,20 +31,47 @@ const CSV_COLUMNS: CsvColumn<Replacement>[] = [
   { header: 'Комментарий', value: (r) => r.comment },
 ]
 
+const PERIODS = [
+  { value: '30', label: 'За 30 дней' },
+  { value: '90', label: 'За 90 дней' },
+  { value: '365', label: 'За год' },
+]
+
 export function ReplacementsPage() {
   const query = useReplacements()
   const [filter, setFilter] = useState('')
   const [recording, setRecording] = useState(false)
   const navigate = useNavigate()
+  // Filters live in the URL, so a KPI link («Замен за 30 дней») and a shared link open the same slice.
   const [params, setParams] = useSearchParams()
-  const period = Number(params.get('period')) || null
+  const period = params.get('period') ?? ''
+  const machine = params.get('machine') ?? ''
+  const reason = params.get('reason') ?? ''
+  const setParam = (key: string, value: string) => {
+    if (value) params.set(key, value)
+    else params.delete(key)
+    setParams(params, { replace: true })
+  }
+
+  const machines = useMemo(
+    () =>
+      [...new Map((query.data ?? []).map((r) => [r.equipmentId, r.garageNumber]))].sort((a, b) =>
+        a[1].localeCompare(b[1], 'ru'),
+      ),
+    [query.data],
+  )
 
   const rows = useMemo(() => {
-    const all = query.data ?? []
-    if (!period) return all
-    const from = formatISO(subDays(new Date(), period), { representation: 'date' })
-    return all.filter((r) => r.date >= from)
-  }, [query.data, period])
+    const from = period
+      ? formatISO(subDays(new Date(), Number(period)), { representation: 'date' })
+      : ''
+    return (query.data ?? []).filter(
+      (r) =>
+        (!from || r.date >= from) &&
+        (!machine || r.equipmentId === machine) &&
+        (!reason || r.reason === reason),
+    )
+  }, [query.data, period, machine, reason])
 
   return (
     <div>
@@ -77,16 +104,32 @@ export function ReplacementsPage() {
             onRowClick={(r) => navigate(`/products/${r.oldProductId}`)}
             emptyTitle="Замен ещё не было"
             toolbar={
-              period ? (
-                <Chip
-                  onRemove={() => {
-                    params.delete('period')
-                    setParams(params)
-                  }}
-                >
-                  За последние {period} дней
-                </Chip>
-              ) : undefined
+              <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:flex-wrap">
+                <Select
+                  aria-label="Период"
+                  value={period}
+                  onChange={(e) => setParam('period', e.target.value)}
+                  placeholder="За всё время"
+                  options={PERIODS}
+                  className="sm:w-40"
+                />
+                <Select
+                  aria-label="Техника"
+                  value={machine}
+                  onChange={(e) => setParam('machine', e.target.value)}
+                  placeholder="Вся техника"
+                  options={machines.map(([id, garage]) => ({ value: id, label: garage }))}
+                  className="sm:w-36"
+                />
+                <Select
+                  aria-label="Причина"
+                  value={reason}
+                  onChange={(e) => setParam('reason', e.target.value)}
+                  placeholder="Все причины"
+                  options={REPLACEMENT_REASONS.map((r) => ({ value: r, label: r }))}
+                  className="col-span-2 sm:w-52"
+                />
+              </div>
             }
             search={
               <SearchInput

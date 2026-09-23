@@ -26,6 +26,10 @@ const api = (path: string) => `*/api${path}`
 /** Branch scope the BFF will take from the token; here it rides the query string. */
 const branchOf = (request: Request) => new URL(request.url).searchParams.get('branch')
 
+/** Journals come newest first, as the BFF will return them. */
+const newestFirst = <T extends { date: string }>(rows: T[]) =>
+  [...rows].sort((a, b) => b.date.localeCompare(a.date))
+
 const inBranch = <T extends { branchId: string }>(rows: T[], branch: string | null) =>
   branch ? rows.filter((r) => r.branchId === branch) : rows
 
@@ -73,11 +77,11 @@ export const handlers = [
   http.get(api('/catalog-numbers'), () => HttpResponse.json(catalogNumbers)),
   http.get(api('/replacements'), ({ request }) => {
     const branch = branchOf(request)
-    if (!branch) return HttpResponse.json(replacements)
+    if (!branch) return HttpResponse.json(newestFirst(replacements))
     // A replacement carries no branch of its own — it belongs to the branch of
     // the equipment it happened on.
     const ours = new Set(equipment.filter((e) => e.branchId === branch).map((e) => e.id))
-    return HttpResponse.json(replacements.filter((r) => ours.has(r.equipmentId)))
+    return HttpResponse.json(newestFirst(replacements.filter((r) => ours.has(r.equipmentId))))
   }),
   http.post(api('/replacements'), async ({ request }) => {
     const result = recordReplacement(
@@ -89,11 +93,13 @@ export const handlers = [
   }),
   http.get(api('/products/:id/replacements'), ({ params }) =>
     HttpResponse.json(
-      replacements.filter((r) => r.oldProductId === params.id || r.newProductId === params.id),
+      newestFirst(
+        replacements.filter((r) => r.oldProductId === params.id || r.newProductId === params.id),
+      ),
     ),
   ),
   http.get(api('/equipment/:id/replacements'), ({ params }) =>
-    HttpResponse.json(replacements.filter((r) => r.equipmentId === params.id)),
+    HttpResponse.json(newestFirst(replacements.filter((r) => r.equipmentId === params.id))),
   ),
   http.get(api('/requests'), ({ request }) =>
     HttpResponse.json(inBranch(requests, branchOf(request))),
