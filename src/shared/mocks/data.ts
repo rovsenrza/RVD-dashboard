@@ -1,5 +1,7 @@
-import { addDays, formatISO, subDays } from 'date-fns'
+import { addDays, format, formatISO, parseISO, setHours, setMinutes, subDays } from 'date-fns'
 import type {
+  AuditChange,
+  AuditEntry,
   BranchSummary,
   CabinetSettings,
   CabinetUser,
@@ -421,4 +423,152 @@ export function branchSummaries(): BranchSummary[] {
       (u) => u.active && (u.branchIds.length === 0 || u.branchIds.includes(id)),
     ).length,
   }))
+}
+
+// ── Action log ───────────────────────────────────────────────────────────────
+// The BFF records every mutation in middleware; the mock does it in the handlers.
+// Values are stored as the customer reads them, so the log never needs the
+// objects it describes (a deleted user or a renamed branch still reads right).
+
+/** The server's own wording for roles; the UI's labels live in entities/user. */
+const ROLE_WORD: Record<CabinetUser['role'], string> = {
+  mechanic: 'Механик',
+  engineer: 'Инженер',
+  manager: 'Руководитель',
+  admin: 'Администратор',
+}
+const day = (isoDate: string | null) => (isoDate ? format(parseISO(isoDate), 'dd.MM.yyyy') : null)
+const branchNames = (ids: string[]) =>
+  ids.length ? ids.map((id) => BRANCH_META[id]?.name ?? id).join(', ') : 'Все филиалы'
+
+type View = Record<string, string | null>
+
+export const installationView = (p: Product): View => ({
+  Техника: equipment.find((e) => e.id === p.equipmentId)?.garageNumber ?? null,
+  'Место установки': p.installPlace,
+  'Дата установки': day(p.installedAt),
+  'Внутренний №': p.clientNumber,
+})
+
+export const userView = (u: CabinetUser): View => ({
+  ФИО: u.name,
+  Почта: u.email,
+  Роль: ROLE_WORD[u.role],
+  Филиалы: branchNames(u.branchIds),
+  Доступ: u.active ? 'Активен' : 'Отключён',
+})
+
+export const settingsView = (s: CabinetSettings): View => ({
+  '«Внимание» при остатке ресурса': `${s.warnPercent} %`,
+  'Предупреждать за, дней': s.leadDays.join(', ') || 'не предупреждать',
+  'Письма на почту': s.channels.email ? 'Включены' : 'Выключены',
+})
+
+/** The fields that differ between two views; unchanged ones stay out of the log. */
+export function diff(before: View, after: View): AuditChange[] {
+  return [...new Set([...Object.keys(before), ...Object.keys(after)])]
+    .filter((k) => (before[k] ?? null) !== (after[k] ?? null))
+    .map((k) => ({ field: k, before: before[k] ?? null, after: after[k] ?? null }))
+}
+
+export const audit: AuditEntry[] = []
+let auditSeq = 0
+
+/** Log one action. The actor is the signed-in demo user; the BFF takes it from the token. */
+export function record(
+  entry: Pick<AuditEntry, 'action' | 'target' | 'changes'>,
+  at: Date = new Date(),
+  actor: CabinetUser = users[0],
+) {
+  audit.push({
+    id: `a-${++auditSeq}`,
+    at: at.toISOString(),
+    actor: { id: actor.id, name: actor.name },
+    ...entry,
+  })
+  audit.sort((a, b) => b.at.localeCompare(a.at))
+}
+
+// A deterministic past, so the log reads like a working month rather than an empty page.
+const workTime = (daysAgo: number) =>
+  setMinutes(setHours(subDays(NOW, daysAgo), 8 + Math.floor(rand() * 10)), Math.floor(rand() * 60))
+const fieldWorkers = users.filter(
+  (u) => u.active && (u.role === 'mechanic' || u.role === 'engineer'),
+)
+
+for (const p of products.filter((x) => live(x) && x.equipmentId).slice(0, 26)) {
+  const now = installationView(p)
+  const kind = Math.floor(rand() * 3)
+  const before: View =
+    kind === 0
+      ? { ...now, 'Место установки': pick(PLACES.filter((x) => x !== p.installPlace)) }
+      : kind === 1
+        ? { ...now, 'Дата установки': day(iso(addDays(new Date(p.installedAt!), 2))) }
+        : { ...now, Техника: null, 'Место установки': null, 'Дата установки': null }
+  record(
+    {
+      action: 'installation.update',
+      target: { kind: 'product', id: p.id, label: `EHS ${p.serialNumber}` },
+      changes: diff(before, now),
+    },
+    workTime(Math.floor(rand() * 40)),
+    pick(fieldWorkers),
+  )
+}
+
+for (const r of requests) {
+  record(
+    {
+      action: 'request.create',
+      target: { kind: 'request', id: r.id, label: r.number },
+      changes: [
+        { field: 'Тип', before: null, after: r.kind === 'replace' ? 'Замена' : 'Изготовление' },
+        { field: 'Количество', before: null, after: String(r.quantity) },
+      ],
+    },
+    setHours(parseISO(r.createdAt), 9 + Math.floor(rand() * 8)),
+    pick(fieldWorkers),
+  )
+}
+
+{
+  const admin = users[0]
+  const created = users[users.length - 1]
+  record(
+    {
+      action: 'user.create',
+      target: { kind: 'user', id: created.id, label: created.name },
+      changes: diff({}, userView(created)),
+    },
+    workTime(33),
+    admin,
+  )
+  for (const u of users.filter((x) => !x.active))
+    record(
+      {
+        action: 'user.deactivate',
+        target: { kind: 'user', id: u.id, label: u.name },
+        changes: [{ field: 'Доступ', before: 'Активен', after: 'Отключён' }],
+      },
+      workTime(12),
+      admin,
+    )
+  record(
+    {
+      action: 'user.password',
+      target: { kind: 'user', id: users[4].id, label: users[4].name },
+      changes: [],
+    },
+    workTime(6),
+    admin,
+  )
+  record(
+    {
+      action: 'settings.update',
+      target: { kind: 'settings', id: null, label: 'Настройки компании' },
+      changes: [{ field: 'Предупреждать за, дней', before: '30, 14', after: '30, 14, 7' }],
+    },
+    workTime(25),
+    admin,
+  )
 }

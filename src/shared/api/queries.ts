@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type {
+  AuditEntry,
   BranchSummary,
   CabinetSettings,
   CabinetUser,
@@ -37,6 +38,7 @@ export const keys = {
   users: ['admin', 'users'] as const,
   branches: ['admin', 'branches'] as const,
   settings: ['admin', 'settings'] as const,
+  audit: ['admin', 'audit'] as const,
 }
 
 export const useDashboard = () => {
@@ -121,6 +123,7 @@ export const useUpdateProduct = (id: string) => {
       qc.invalidateQueries({ queryKey: ['products'] })
       qc.invalidateQueries({ queryKey: ['equipment'] })
       qc.invalidateQueries({ queryKey: ['dashboard'] })
+      qc.invalidateQueries({ queryKey: keys.audit })
     },
   })
 }
@@ -135,7 +138,10 @@ export const useCreateRequest = () => {
   const qc = useQueryClient()
   return useMutation({
     mutationFn: (body: NewRequest) => api.post<ServiceRequest>('/requests', body),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['requests'] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['requests'] })
+      qc.invalidateQueries({ queryKey: keys.audit })
+    },
   })
 }
 
@@ -160,15 +166,19 @@ export const useSaveUser = () => {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: keys.users })
       qc.invalidateQueries({ queryKey: keys.branches })
+      qc.invalidateQueries({ queryKey: keys.audit })
     },
   })
 }
 
-export const useResetPassword = () =>
-  useMutation({
+export const useResetPassword = () => {
+  const qc = useQueryClient()
+  return useMutation({
     mutationFn: (id: string) =>
       api.post<{ sentTo: string }>(`/admin/users/${id}/reset-password`, {}),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.audit }),
   })
+}
 
 export const useBranchSummaries = () =>
   useQuery({ queryKey: keys.branches, queryFn: () => api.get<BranchSummary[]>('/admin/branches') })
@@ -186,6 +196,11 @@ export const useSaveSettings = () => {
       // The «Внимание» threshold re-derives every hose status and what is built on it.
       for (const key of ['products', 'equipment', 'dashboard'])
         qc.invalidateQueries({ queryKey: [key] })
+      qc.invalidateQueries({ queryKey: keys.audit })
     },
   })
 }
+
+/** The action log, newest first. Filtering is client-side on mocks; the BFF will page it. */
+export const useAudit = () =>
+  useQuery({ queryKey: keys.audit, queryFn: () => api.get<AuditEntry[]>('/admin/audit') })

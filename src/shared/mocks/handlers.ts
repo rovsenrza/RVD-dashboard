@@ -2,16 +2,22 @@ import { http, HttpResponse } from 'msw'
 import {
   applyInstallation,
   applySettings,
+  audit,
   branchSummaries,
   catalogNumbers,
   dashboardSummary,
+  diff,
   equipment,
+  installationView,
   products,
+  record,
   releaseDocuments,
   replacements,
   requests,
   settings,
+  settingsView,
   users,
+  userView,
 } from './data'
 
 const api = (path: string) => `*/api${path}`
@@ -37,7 +43,16 @@ export const handlers = [
     const p = products.find((x) => x.id === params.id)
     if (!p) return new HttpResponse(null, { status: 404 })
     const patch = (await request.json()) as Parameters<typeof applyInstallation>[1]
-    return HttpResponse.json(applyInstallation(p, patch))
+    const before = installationView(p)
+    applyInstallation(p, patch)
+    const changes = diff(before, installationView(p))
+    if (changes.length)
+      record({
+        action: 'installation.update',
+        target: { kind: 'product', id: p.id, label: `EHS ${p.serialNumber}` },
+        changes,
+      })
+    return HttpResponse.json(p)
   }),
   http.get(api('/products/:id/documents'), ({ params }) =>
     HttpResponse.json(releaseDocuments.filter((d) => d.productId === params.id)),
@@ -77,6 +92,18 @@ export const handlers = [
       ...body,
     }
     requests.unshift(created as (typeof requests)[number])
+    record({
+      action: 'request.create',
+      target: { kind: 'request', id: created.id, label: created.number },
+      changes: [
+        {
+          field: 'Тип',
+          before: null,
+          after: body.kind === 'manufacture' ? 'Изготовление' : 'Замена',
+        },
+        { field: 'Количество', before: null, after: String(body.quantity ?? '') || null },
+      ],
+    })
     return HttpResponse.json(created, { status: 201 })
   }),
 
@@ -91,6 +118,11 @@ export const handlers = [
       return HttpResponse.json({ message: 'Пользователь с такой почтой уже есть' }, { status: 409 })
     const created = { ...body, id: `u-${users.length + 1}`, active: true, lastLoginAt: null }
     users.push(created)
+    record({
+      action: 'user.create',
+      target: { kind: 'user', id: created.id, label: created.name },
+      changes: diff({}, userView(created)),
+    })
     return HttpResponse.json(created, { status: 201 })
   }),
   http.patch(api('/admin/users/:id'), async ({ params, request }) => {
@@ -102,17 +134,41 @@ export const handlers = [
       users.some((u) => u.id !== user.id && u.email.toLowerCase() === patch.email!.toLowerCase())
     )
       return HttpResponse.json({ message: 'Пользователь с такой почтой уже есть' }, { status: 409 })
+    const before = userView(user)
     Object.assign(user, patch)
+    const changes = diff(before, userView(user))
+    const onlyAccess = changes.length === 1 && changes[0].field === 'Доступ'
+    if (changes.length)
+      record({
+        action: onlyAccess ? (user.active ? 'user.activate' : 'user.deactivate') : 'user.update',
+        target: { kind: 'user', id: user.id, label: user.name },
+        changes,
+      })
     return HttpResponse.json(user)
   }),
   http.post(api('/admin/users/:id/reset-password'), ({ params }) => {
     const user = users.find((u) => u.id === params.id)
     if (!user) return new HttpResponse(null, { status: 404 })
+    record({
+      action: 'user.password',
+      target: { kind: 'user', id: user.id, label: user.name },
+      changes: [],
+    })
     return HttpResponse.json({ sentTo: user.email })
   }),
   http.get(api('/admin/branches'), () => HttpResponse.json(branchSummaries())),
   http.get(api('/admin/settings'), () => HttpResponse.json(settings)),
-  http.patch(api('/admin/settings'), async ({ request }) =>
-    HttpResponse.json(applySettings((await request.json()) as Partial<typeof settings>)),
-  ),
+  http.patch(api('/admin/settings'), async ({ request }) => {
+    const before = settingsView(settings)
+    applySettings((await request.json()) as Partial<typeof settings>)
+    const changes = diff(before, settingsView(settings))
+    if (changes.length)
+      record({
+        action: 'settings.update',
+        target: { kind: 'settings', id: null, label: 'Настройки компании' },
+        changes,
+      })
+    return HttpResponse.json(settings)
+  }),
+  http.get(api('/admin/audit'), () => HttpResponse.json(audit)),
 ]

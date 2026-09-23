@@ -234,3 +234,33 @@ export interface CabinetSettings {
   leadDays: number[]
   channels: { inApp: boolean; email: boolean }
 }
+
+export type AuditAction =
+  | 'installation.update'
+  | 'request.create'
+  | 'user.create'
+  | 'user.update'
+  | 'user.deactivate'
+  | 'user.activate'
+  | 'user.password'
+  | 'settings.update'
+
+export type AuditTargetKind = 'product' | 'request' | 'user' | 'settings'
+
+/** One changed field, already in the customer's words: the log is read by people, not processed. */
+export interface AuditChange {
+  field: string
+  before: string | null
+  after: string | null
+}
+
+/** Who did what to which object and when, with the fields as they were before and after. */
+export interface AuditEntry {
+  id: string
+  /** ISO date-time */
+  at: string
+  actor: { id: string; name: string }
+  action: AuditAction
+  target: { kind: AuditTargetKind; id: string | null; label: string }
+  changes: AuditChange[]
+}

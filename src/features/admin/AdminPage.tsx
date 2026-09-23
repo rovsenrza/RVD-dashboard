@@ -2,15 +2,17 @@ import { useSearchParams } from 'react-router-dom'
 import { ShieldCheck } from 'lucide-react'
 import { useSession } from '@/app/session'
 import { Card, EmptyState, PageHeader, Tabs } from '@/shared/ui'
+import { AuditTab } from './AuditTab'
 import { BranchesTab } from './BranchesTab'
 import { SettingsTab } from './SettingsTab'
 import { UsersTab } from './UsersTab'
 
-type Tab = 'users' | 'branches' | 'settings'
+type Tab = 'users' | 'branches' | 'settings' | 'audit'
 const TABS: { key: Tab; label: string }[] = [
   { key: 'users', label: 'Пользователи' },
   { key: 'branches', label: 'Филиалы' },
   { key: 'settings', label: 'Настройки' },
+  { key: 'audit', label: 'Журнал' },
 ]
 
 export function AdminPage() {
@@ -22,7 +24,7 @@ export function AdminPage() {
     <>
       <PageHeader
         title="Администрирование"
-        description="Кто работает в кабинете, филиалы компании и общие настройки"
+        description="Кто работает в кабинете, филиалы компании, общие настройки и журнал действий"
       />
       {user.role !== 'admin' ? (
         <Card>
@@ -44,6 +46,7 @@ export function AdminPage() {
           {tab === 'users' && <UsersTab />}
           {tab === 'branches' && <BranchesTab />}
           {tab === 'settings' && <SettingsTab />}
+          {tab === 'audit' && <AuditTab />}
         </>
       )}
     </>

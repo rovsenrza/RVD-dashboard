@@ -21,6 +21,11 @@ export function formatDate(iso: string | null | undefined): string | null {
   return format(parseISO(iso), 'dd.MM.yyyy')
 }
 
+/** dd.MM.yyyy HH:mm in local time, for moments rather than days (the action log). */
+export function formatDateTime(iso: string): string {
+  return format(parseISO(iso), 'dd.MM.yyyy HH:mm')
+}
+
 export function formatNumber(n: number) {
   return n.toLocaleString('ru-RU')
 }

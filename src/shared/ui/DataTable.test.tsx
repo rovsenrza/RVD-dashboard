@@ -70,6 +70,15 @@ describe('DataTable phone rows', () => {
   })
 })
 
+describe('DataTable with filters', () => {
+  it('keeps the toolbar when the filtered data is empty, so the filter can be undone', () => {
+    render(<DataTable data={[]} columns={columns} toolbar={<span>Фильтр</span>} />)
+    expect(screen.getByText('Фильтр')).toBeInTheDocument()
+    expect(screen.getAllByText('По запросу ничего не найдено').length).toBeGreaterThan(0)
+    expect(screen.queryByText(/Показано/)).toBeNull()
+  })
+})
+
 describe('DescriptionList', () => {
   it('pairs terms with values and renders missing values as the empty dash', () => {
     render(

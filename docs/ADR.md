@@ -13,10 +13,10 @@ Layers (import direction enforced by scripts/check-arch.sh, `npm run lint:arch`,
 - src/shared/ui — the only place with raw <button|input|table>: Button, Input/SearchInput/Kbd, Badge, Chip, Card (= "sheet", the only container, never outlined), KpiStrip/KpiCard, DataTable (sort, pagination with page jump, column chooser, page size, sticky key column, toolbar/search slots, embedded mode), DescriptionList, Checkbox, Tabs, Menu, PageHeader, SegmentedControl, DatePicker (dd.MM.yyyy, ISO in/out), Tooltip, States (EmptyState/ErrorState/QueryState), Skeleton, EmptyValue/valueOr.
 - src/shared/api — client.ts (fetch wrapper, VITE_API_BASE_URL) + queries.ts (TanStack hooks: useDashboard, useProducts, useProduct, useEquipment, useReplacements, useRequests, useCreateRequest). SINGLE swap point for real API.
 - src/shared/mocks — MSW handlers + deterministic data generator (seed 42).
-- src/entities — types.ts (domain from ТЗ, not 1С), product/ (STATUS_LABEL/TONE/COLOR/TEXT_CLASS/ORDER, ProductStatusBadge, ProductStatusBar), request/ (REQUEST_STATUS_*, RequestStatusBadge), user/ (UserRole labels and scopes, isBranchBound).
-- src/features — dashboard (KpiGrid, ReplacementsChart, StatusDonut, UpcomingTable), products (ProductsPage, ProductPage, columns, ProductDetails), equipment, replacements, requests, admin (AdminPage: users / branches / settings tabs, admin role only), scan (ScanDialog + matchCode: camera or typed code → hose/machine by exact number), dev (UiPage — the /dev/ui catalogue, routed only when import.meta.env.DEV). Pages are composition only: PageHeader + QueryState + DataTable/components.
+- src/entities — types.ts (domain from ТЗ, not 1С), product/ (STATUS_LABEL/TONE/COLOR/TEXT_CLASS/ORDER, ProductStatusBadge, ProductStatusBar), request/ (REQUEST_STATUS_*, RequestStatusBadge), user/ (UserRole labels and scopes, isBranchBound), audit/ (action and object labels).
+- src/features — dashboard (KpiGrid, ReplacementsChart, StatusDonut, UpcomingTable), products (ProductsPage, ProductPage, columns, ProductDetails), equipment, replacements, requests, admin (AdminPage: users / branches / settings / audit-log tabs, admin role only), scan (ScanDialog + matchCode: camera or typed code → hose/machine by exact number), dev (UiPage — the /dev/ui catalogue, routed only when import.meta.env.DEV). Pages are composition only: PageHeader + QueryState + DataTable/components.
 - src/app — layout/ (Layout, Sidebar rail, Header: branch switcher, ⌘K search, contact button, bell, user menu), session.tsx (SessionProvider/useSession mock until auth; demo role switch in the user menu, stored as rvd.role; branch-bound roles lock the branch), theme.ts (theme preference), router.tsx, providers.tsx.
-  Routes (mock): GET /dashboard/summary, /products, /products/:id, /equipment, /replacements, /requests; POST /requests; admin (company-wide, never branch-scoped): GET/POST /admin/users, PATCH /admin/users/:id, POST /admin/users/:id/reset-password, GET /admin/branches, GET/PATCH /admin/settings — settings.warnPercent re-derives every hose status.
+  Routes (mock): GET /dashboard/summary, /products, /products/:id, /equipment, /replacements, /requests; POST /requests; admin (company-wide, never branch-scoped): GET/POST /admin/users, PATCH /admin/users/:id, POST /admin/users/:id/reset-password, GET /admin/branches, GET/PATCH /admin/settings — settings.warnPercent re-derives every hose status; GET /admin/audit.
 
 ## PATTERNS
 
@@ -25,6 +25,7 @@ Layers (import direction enforced by scripts/check-arch.sh, `npm run lint:arch`,
 - Adding a feature: type in entities → hook in shared/api/queries → MSW handler + generator → page from shared/ui primitives → lint:arch green.
 - UI work: load the impeccable skill, run `.claude/skills/impeccable/scripts/impeccable context`, follow DESIGN.md; never reintroduce bordered cards; detector must be clean; finish review before shipping a redesign.
 - Empty values via EmptyValue; loading via shaped skeletons; errors via ErrorState with retry.
+- Every mutation writes an action-log line (who, when, object, changed fields before → after) as display strings, so the log reads right even after the object changes; unchanged saves write nothing. On mocks the handlers record it; on the BFF it is middleware (Д23).
 
 ## TRADEOFFS
 

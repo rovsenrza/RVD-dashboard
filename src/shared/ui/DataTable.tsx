@@ -96,10 +96,11 @@ export function DataTable<T>({
   const total = table.getFilteredRowModel().rows.length
   const rows = table.getRowModel().rows
   const pageCount = table.getPageCount() || 1
-  const showPagination = !embedded || total > size
+  const showPagination = total > 0 && (!embedded || total > size)
   const overflow = useOverflowX()
 
-  if (!data.length) return <EmptyState title={emptyTitle} inset={embedded} />
+  // With filters on screen an empty result keeps the table, so the filters stay reachable.
+  if (!data.length && !toolbar && !search) return <EmptyState title={emptyTitle} inset={embedded} />
 
   const cellX = embedded ? 'px-0 first:pl-0 last:pr-0' : 'px-5'
   // Pin the key column only once the table actually overflows; at rest it is an ordinary cell.
