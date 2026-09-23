@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { ColumnDef } from '@tanstack/react-table'
-import { Download } from 'lucide-react'
+import { ArrowLeftRight, Download } from 'lucide-react'
 import { formatISO, subDays } from 'date-fns'
 import type { Replacement } from '@/entities/types'
+import { USAGE_UNIT_LABEL } from '@/entities/replacement'
 import { useReplacements } from '@/shared/api/queries'
+import { ReplacementDialog } from './components/ReplacementDialog'
 import {
   Button,
   Chip,
@@ -23,7 +25,8 @@ const CSV_COLUMNS: CsvColumn<Replacement>[] = [
   { header: 'Установленное изделие (EHS)', value: (r) => r.newSerialNumber },
   { header: 'Техника (гаражный №)', value: (r) => r.garageNumber },
   { header: 'Причина', value: (r) => r.reason },
-  { header: 'Наработка, м/ч', value: (r) => r.operatingHours },
+  { header: 'Наработка', value: (r) => r.operatingHours },
+  { header: 'Единица', value: (r) => USAGE_UNIT_LABEL[r.usageUnit] },
   { header: 'Исполнитель', value: (r) => r.performedBy },
   { header: 'Комментарий', value: (r) => r.comment },
 ]
@@ -31,6 +34,8 @@ const CSV_COLUMNS: CsvColumn<Replacement>[] = [
 export function ReplacementsPage() {
   const query = useReplacements()
   const [filter, setFilter] = useState('')
+  const [recording, setRecording] = useState(false)
+  const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
   const period = Number(params.get('period')) || null
 
@@ -47,22 +52,29 @@ export function ReplacementsPage() {
         title="История замен"
         description="Журнал всех замен РВД на технике компании"
         actions={
-          <Button
-            variant="secondary"
-            size="sm"
-            icon={Download}
-            onClick={() => downloadCsv('замены.csv', CSV_COLUMNS, rows)}
-          >
-            Экспорт
-          </Button>
+          <>
+            <Button
+              variant="secondary"
+              size="sm"
+              icon={Download}
+              onClick={() => downloadCsv('замены.csv', CSV_COLUMNS, rows)}
+            >
+              Экспорт
+            </Button>
+            <Button size="sm" icon={ArrowLeftRight} onClick={() => setRecording(true)}>
+              Зафиксировать замену
+            </Button>
+          </>
         }
       />
+      {recording && <ReplacementDialog onClose={() => setRecording(false)} />}
       <QueryState query={query} skeleton={<TableSkeleton />}>
         {() => (
           <DataTable
             data={rows}
             columns={replacementColumns as ColumnDef<Replacement, unknown>[]}
             globalFilter={filter}
+            onRowClick={(r) => navigate(`/products/${r.oldProductId}`)}
             emptyTitle="Замен ещё не было"
             toolbar={
               period ? (

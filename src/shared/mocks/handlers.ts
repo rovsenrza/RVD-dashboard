@@ -11,6 +11,7 @@ import {
   installationView,
   products,
   record,
+  recordReplacement,
   releaseDocuments,
   replacements,
   requests,
@@ -78,6 +79,22 @@ export const handlers = [
     const ours = new Set(equipment.filter((e) => e.branchId === branch).map((e) => e.id))
     return HttpResponse.json(replacements.filter((r) => ours.has(r.equipmentId)))
   }),
+  http.post(api('/replacements'), async ({ request }) => {
+    const result = recordReplacement(
+      (await request.json()) as Parameters<typeof recordReplacement>[0],
+    )
+    return 'error' in result
+      ? HttpResponse.json({ message: result.error }, { status: 409 })
+      : HttpResponse.json(result, { status: 201 })
+  }),
+  http.get(api('/products/:id/replacements'), ({ params }) =>
+    HttpResponse.json(
+      replacements.filter((r) => r.oldProductId === params.id || r.newProductId === params.id),
+    ),
+  ),
+  http.get(api('/equipment/:id/replacements'), ({ params }) =>
+    HttpResponse.json(replacements.filter((r) => r.equipmentId === params.id)),
+  ),
   http.get(api('/requests'), ({ request }) =>
     HttpResponse.json(inBranch(requests, branchOf(request))),
   ),

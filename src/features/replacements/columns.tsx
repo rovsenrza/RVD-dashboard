@@ -1,5 +1,6 @@
 import { createColumnHelper } from '@tanstack/react-table'
 import type { Replacement } from '@/entities/types'
+import { formatUsage } from '@/entities/replacement'
 import { formatDate } from '@/shared/lib/utils'
 import { valueOr } from '@/shared/ui'
 
@@ -19,6 +20,10 @@ export const replacementColumns = [
   col.accessor('newSerialNumber', { header: 'Установлено', cell: (c) => valueOr(c.getValue()) }),
   col.accessor('garageNumber', { header: 'Техника' }),
   col.accessor('reason', { header: 'Причина' }),
-  col.accessor('operatingHours', { header: 'Моточасы', cell: (c) => valueOr(c.getValue()) }),
+  col.accessor((r) => r.operatingHours, {
+    id: 'usage',
+    header: 'Наработка',
+    cell: (c) => valueOr(formatUsage(c.row.original)),
+  }),
   col.accessor('performedBy', { header: 'Кто выполнил', meta: { mobile: 'hide' } }),
 ]

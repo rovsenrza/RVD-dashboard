@@ -193,6 +193,7 @@ export const replacements: Replacement[] = Array.from({ length: 94 }, (_, i) => 
   // The hose that was taken off is retired; it stays linked to its equipment
   // only as history and no longer counts toward what is on the machine.
   old.lifecycle = 'written_off'
+  const machine = equipment.find((e) => e.id === old.equipmentId)!
   return {
     id: `r-${i + 1}`,
     oldProductId: old.id,
@@ -200,10 +201,12 @@ export const replacements: Replacement[] = Array.from({ length: 94 }, (_, i) => 
     newProductId: fresh.id,
     newSerialNumber: fresh.serialNumber,
     equipmentId: old.equipmentId!,
-    garageNumber: equipment.find((e) => e.id === old.equipmentId)!.garageNumber,
+    garageNumber: machine.garageNumber,
     date: iso(subDays(NOW, Math.floor(rand() * 365))),
     reason: pick(['Гарантийная замена', 'Плановая замена', 'Поломка', 'Износ']),
     operatingHours: rand() < 0.6 ? Math.floor(rand() * 12000) : null,
+    // Trucks count kilometres, everything else engine hours.
+    usageUnit: machine.type === 'Самосвал' ? 'km' : 'hours',
     performedBy: pick(['Иванов И.', 'Петров П.', 'Сидоров С.']),
     comment: null,
   }
@@ -571,4 +574,103 @@ for (const r of requests) {
     workTime(25),
     admin,
   )
+}
+
+// ── Recording a replacement ─────────────────────────────────────────────────
+
+export interface NewReplacement {
+  oldProductId: string
+  newProductId: string | null
+  date: string
+  reason: string
+  operatingHours: number | null
+  usageUnit: Replacement['usageUnit']
+  comment: string | null
+}
+
+/** «Иванов Иван» → «Иванов И.», the way the journal names who did the work. */
+const shortName = (name: string) => {
+  const [last, first] = name.split(/\s+/)
+  return first ? `${last} ${first[0]}.` : last
+}
+
+/**
+ * What 1С will do when the replacement arrives through the outbox (Д17):
+ * the old hose is written off where it stood, the new one takes its machine
+ * and place from the replacement date, and every count built on them follows.
+ */
+export function recordReplacement(body: NewReplacement): Replacement | { error: string } {
+  const old = products.find((p) => p.id === body.oldProductId)
+  if (!old || !live(old)) return { error: 'Это изделие уже снято или не установлено' }
+  const fresh = body.newProductId ? products.find((p) => p.id === body.newProductId) : null
+  if (body.newProductId && (!fresh || fresh.installedAt || fresh.lifecycle === 'written_off'))
+    return { error: 'Новое изделие уже установлено или списано' }
+  const machine = equipment.find((e) => e.id === old.equipmentId)!
+  const author = shortName(users[0].name)
+
+  const replacement: Replacement = {
+    id: `r-${replacements.length + 1}`,
+    oldProductId: old.id,
+    oldSerialNumber: old.serialNumber,
+    newProductId: fresh?.id ?? null,
+    newSerialNumber: fresh?.serialNumber ?? null,
+    equipmentId: machine.id,
+    garageNumber: machine.garageNumber,
+    date: body.date,
+    reason: body.reason,
+    operatingHours: body.operatingHours,
+    usageUnit: body.usageUnit,
+    performedBy: author,
+    comment: body.comment,
+  }
+  replacements.unshift(replacement)
+
+  const doc = (productId: string, lifecycle: ProductLifecycle) =>
+    releaseDocuments.push({
+      id: `doc-${productId}-r${replacement.id}`,
+      number: `ЗМН-${String(++documentNumber).padStart(6, '0')}`,
+      date: body.date,
+      productId,
+      lifecycle,
+      author,
+      requestId: null,
+    })
+
+  old.lifecycle = 'written_off'
+  doc(old.id, 'written_off')
+  if (fresh) {
+    fresh.replacedProductId = old.id
+    applyInstallation(fresh, {
+      equipmentId: machine.id,
+      installPlace: old.installPlace,
+      installedAt: body.date,
+    })
+    doc(fresh.id, 'in_operation')
+  }
+  recountEquipment(machine)
+
+  record({
+    action: 'replacement.create',
+    target: { kind: 'product', id: old.id, label: `EHS ${old.serialNumber}` },
+    changes: [
+      { field: 'Статус', before: 'В эксплуатации', after: 'Списан' },
+      {
+        field: 'Заменено на',
+        before: null,
+        after: fresh ? `EHS ${fresh.serialNumber}` : 'не указано',
+      },
+      { field: 'Техника', before: null, after: machine.garageNumber },
+      { field: 'Причина', before: null, after: body.reason },
+      ...(body.operatingHours === null
+        ? []
+        : [
+            {
+              field: 'Наработка',
+              before: null,
+              after: `${body.operatingHours.toLocaleString('ru-RU')} ${body.usageUnit === 'km' ? 'км' : 'м/ч'}`,
+            },
+          ]),
+    ],
+  })
+  return replacement
 }

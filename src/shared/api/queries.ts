@@ -34,6 +34,8 @@ export const keys = {
   equipmentProducts: (id: string) => ['equipment', id, 'products'] as const,
   catalogNumbers: ['catalog-numbers'] as const,
   replacements: (branch: string | null) => ['replacements', branch] as const,
+  productReplacements: (id: string) => ['replacements', 'product', id] as const,
+  equipmentReplacements: (id: string) => ['replacements', 'equipment', id] as const,
   requests: (branch: string | null) => ['requests', branch] as const,
   users: ['admin', 'users'] as const,
   branches: ['admin', 'branches'] as const,
@@ -84,6 +86,7 @@ export const useEquipmentProducts = (id: string) =>
   useQuery({
     queryKey: keys.equipmentProducts(id),
     queryFn: () => api.get<Product[]>(`/equipment/${id}/products`),
+    enabled: !!id,
   })
 
 export const useCatalogNumbers = () =>
@@ -204,3 +207,40 @@ export const useSaveSettings = () => {
 /** The action log, newest first. Filtering is client-side on mocks; the BFF will page it. */
 export const useAudit = () =>
   useQuery({ queryKey: keys.audit, queryFn: () => api.get<AuditEntry[]>('/admin/audit') })
+
+/** Swaps this hose took part in — as the one taken off or the one put on. */
+export const useProductReplacements = (id: string) =>
+  useQuery({
+    queryKey: keys.productReplacements(id),
+    queryFn: () => api.get<Replacement[]>(`/products/${id}/replacements`),
+  })
+
+export const useEquipmentReplacements = (id: string) =>
+  useQuery({
+    queryKey: keys.equipmentReplacements(id),
+    queryFn: () => api.get<Replacement[]>(`/equipment/${id}/replacements`),
+  })
+
+/** What the mechanic records; the server fills numbers, machine, author and the 1С side. */
+export interface NewReplacement {
+  oldProductId: string
+  newProductId: string | null
+  date: string
+  reason: string
+  operatingHours: number | null
+  usageUnit: Replacement['usageUnit']
+  comment: string | null
+}
+
+export const useCreateReplacement = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: NewReplacement) => api.post<Replacement>('/replacements', body),
+    onSuccess: () => {
+      // The old hose is written off, the new one installed: everything built on them moves.
+      for (const key of ['replacements', 'products', 'equipment', 'dashboard'])
+        qc.invalidateQueries({ queryKey: [key] })
+      qc.invalidateQueries({ queryKey: keys.audit })
+    },
+  })
+}

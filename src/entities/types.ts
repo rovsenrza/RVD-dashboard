@@ -149,8 +149,10 @@ export interface Replacement {
   garageNumber: string
   date: string
   reason: string
-  /** Наработка / моточасы */
+  /** Наработка at the moment of the swap, in `usageUnit` */
   operatingHours: number | null
+  /** Моточасы for most machines, kilometres for trucks */
+  usageUnit: 'hours' | 'km'
   performedBy: string
   comment: string | null
 }
@@ -244,6 +246,7 @@ export type AuditAction =
   | 'user.activate'
   | 'user.password'
   | 'settings.update'
+  | 'replacement.create'
 
 export type AuditTargetKind = 'product' | 'request' | 'user' | 'settings'
 
