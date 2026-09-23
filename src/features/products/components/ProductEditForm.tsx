@@ -1,10 +1,9 @@
 import { useState, type FormEvent } from 'react'
 import { format } from 'date-fns'
 import type { Product } from '@/entities/types'
+import { INSTALL_PLACES } from '@/entities/product'
 import { useEquipment, useUpdateProduct } from '@/shared/api/queries'
 import { Button, DatePicker, Dialog, Field, Input, Select, useToast } from '@/shared/ui'
-
-const PLACES = ['Стрела, левый контур', 'Рукоять', 'Ковш', 'Гидромотор хода', 'Насос, напор']
 
 /** Mounted only while open, so every opening reads the product afresh. */
 export function ProductEditForm({
@@ -84,7 +83,7 @@ export function ProductEditForm({
                   value={installPlace}
                   onChange={(e) => setInstallPlace(e.target.value)}
                   placeholder="Не указано"
-                  options={PLACES.map((place) => ({ value: place, label: place }))}
+                  options={INSTALL_PLACES.map((place) => ({ value: place, label: place }))}
                 />
               )}
             </Field>

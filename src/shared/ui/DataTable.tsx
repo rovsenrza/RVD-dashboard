@@ -102,7 +102,8 @@ export function DataTable<T>({
   // With filters on screen an empty result keeps the table, so the filters stay reachable.
   if (!data.length && !toolbar && !search) return <EmptyState title={emptyTitle} inset={embedded} />
 
-  const cellX = embedded ? 'px-0 first:pl-0 last:pr-0' : 'px-5'
+  // Embedded: flush with the host sheet at both ends, a gutter between columns.
+  const cellX = embedded ? 'px-3 first:pl-0 last:pr-0' : 'px-5'
   // Pin the key column only once the table actually overflows; at rest it is an ordinary cell.
   const sticky = stickyFirstColumn && !embedded && overflow.scrollable
 

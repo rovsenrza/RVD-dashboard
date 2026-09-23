@@ -4,14 +4,16 @@ import { useSession } from '@/app/session'
 import { Card, EmptyState, PageHeader, Tabs } from '@/shared/ui'
 import { AuditTab } from './AuditTab'
 import { BranchesTab } from './BranchesTab'
+import { ImportTab } from './import/ImportTab'
 import { SettingsTab } from './SettingsTab'
 import { UsersTab } from './UsersTab'
 
-type Tab = 'users' | 'branches' | 'settings' | 'audit'
+type Tab = 'users' | 'branches' | 'settings' | 'import' | 'audit'
 const TABS: { key: Tab; label: string }[] = [
   { key: 'users', label: 'Пользователи' },
   { key: 'branches', label: 'Филиалы' },
   { key: 'settings', label: 'Настройки' },
+  { key: 'import', label: 'Импорт' },
   { key: 'audit', label: 'Журнал' },
 ]
 
@@ -46,6 +48,7 @@ export function AdminPage() {
           {tab === 'users' && <UsersTab />}
           {tab === 'branches' && <BranchesTab />}
           {tab === 'settings' && <SettingsTab />}
+          {tab === 'import' && <ImportTab />}
           {tab === 'audit' && <AuditTab />}
         </>
       )}
