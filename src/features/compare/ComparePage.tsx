@@ -7,6 +7,7 @@ import type { ModelStats } from '@/entities/types'
 import { ProductStatusBar, STATUS_COLOR, STATUS_LABEL, STATUS_ORDER } from '@/entities/product'
 import { useSession } from '@/app/session'
 import { useModelStats } from '@/shared/api/queries'
+import { useReducedMotion } from '@/shared/lib/motion'
 import { formatNumber } from '@/shared/lib/utils'
 import {
   Badge,
@@ -127,6 +128,7 @@ function StatusByModel({ models }: { models: ModelStats[] }) {
 
 /** One series, one colour: models are named on the axis, the value sits at the bar's end. */
 function ReplacementsPerMachine({ models }: { models: ModelStats[] }) {
+  const still = useReducedMotion()
   const data = models.map((m) => ({ model: m.model, value: m.replacementsPerMachine }))
   return (
     <Card title="Замен на единицу техники за 12 месяцев">
@@ -161,7 +163,13 @@ function ReplacementsPerMachine({ models }: { models: ModelStats[] }) {
               }}
               itemStyle={{ color: 'var(--color-ink)' }}
             />
-            <Bar dataKey="value" fill="var(--color-brand)" radius={[0, 4, 4, 0]} barSize={18}>
+            <Bar
+              isAnimationActive={!still}
+              dataKey="value"
+              fill="var(--color-brand)"
+              radius={[0, 4, 4, 0]}
+              barSize={18}
+            >
               <LabelList
                 dataKey="value"
                 position="right"

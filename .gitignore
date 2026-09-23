@@ -49,3 +49,7 @@ public/mockServiceWorker.js
 
 # impeccable engine binary (re-created by `npx impeccable install`)
 .claude/skills/impeccable/scripts/bin/
+
+# Playwright (visual regression) run output
+test-results/
+playwright-report/

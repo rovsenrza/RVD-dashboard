@@ -1,6 +1,7 @@
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { DashboardSummary } from '@/entities/types'
 import { Card } from '@/shared/ui'
+import { useReducedMotion } from '@/shared/lib/motion'
 
 const MONTHS = ['янв', 'фев', 'мар', 'апр', 'май', 'июн', 'июл', 'авг', 'сен', 'окт', 'ноя', 'дек']
 const monthLabel = (m: string) => MONTHS[Number(m.slice(5)) - 1] ?? m
@@ -12,6 +13,7 @@ export function ReplacementsChart({
   data: DashboardSummary['replacementsByMonth']
   className?: string
 }) {
+  const still = useReducedMotion()
   const total = data.reduce((s, d) => s + d.count, 0)
   return (
     <Card
@@ -55,7 +57,13 @@ export function ReplacementsChart({
               labelFormatter={(m) => monthLabel(String(m))}
               formatter={(v) => [v, 'Замен']}
             />
-            <Bar dataKey="count" fill="var(--color-brand)" radius={[6, 6, 0, 0]} maxBarSize={36} />
+            <Bar
+              isAnimationActive={!still}
+              dataKey="count"
+              fill="var(--color-brand)"
+              radius={[6, 6, 0, 0]}
+              maxBarSize={36}
+            />
           </BarChart>
         </ResponsiveContainer>
       </div>

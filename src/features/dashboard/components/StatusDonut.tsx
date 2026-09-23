@@ -3,9 +3,11 @@ import { Link } from 'react-router-dom'
 import type { ProductStatus } from '@/entities/types'
 import { STATUS_COLOR, STATUS_LABEL, STATUS_ORDER } from '@/entities/product'
 import { Card } from '@/shared/ui'
+import { useReducedMotion } from '@/shared/lib/motion'
 import { formatNumber } from '@/shared/lib/utils'
 
 export function StatusDonut({ breakdown }: { breakdown: Record<ProductStatus, number> }) {
+  const still = useReducedMotion()
   const slices = STATUS_ORDER.map((k) => ({
     key: k,
     name: STATUS_LABEL[k],
@@ -20,6 +22,7 @@ export function StatusDonut({ breakdown }: { breakdown: Record<ProductStatus, nu
           <ResponsiveContainer>
             <PieChart>
               <Pie
+                isAnimationActive={!still}
                 data={slices}
                 dataKey="value"
                 innerRadius={48}
