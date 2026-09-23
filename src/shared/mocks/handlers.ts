@@ -9,6 +9,7 @@ import {
   diff,
   equipment,
   installationView,
+  modelStats,
   products,
   record,
   recordReplacement,
@@ -75,6 +76,9 @@ export const handlers = [
     ),
   ),
   http.get(api('/catalog-numbers'), () => HttpResponse.json(catalogNumbers)),
+  http.get(api('/analytics/models'), ({ request }) =>
+    HttpResponse.json(modelStats(branchOf(request))),
+  ),
   http.get(api('/replacements'), ({ request }) => {
     const branch = branchOf(request)
     if (!branch) return HttpResponse.json(newestFirst(replacements))

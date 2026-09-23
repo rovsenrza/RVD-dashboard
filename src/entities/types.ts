@@ -267,3 +267,24 @@ export interface AuditEntry {
   target: { kind: AuditTargetKind; id: string | null; label: string }
   changes: AuditChange[]
 }
+
+/** Hoses on one machine model, for comparing models side by side (Д15). Computed server-side. */
+export interface ModelStats {
+  /** «Komatsu PC400» — brand and model, the way people name the machine */
+  model: string
+  type: string
+  machines: number
+  /** Hoses on those machines now */
+  hoses: number
+  breakdown: Record<ProductStatus, number>
+  replacements12m: number
+  /** Replacements per machine over the last 12 months */
+  replacementsPerMachine: number
+  /** Share of those replacements caused by a failure, 0..1 */
+  failureShare: number
+  /** Average days a hose served before it was replaced */
+  avgServiceDays: number | null
+  avgUsage: { value: number; unit: 'hours' | 'km' } | null
+  /** The installation place replaced most often */
+  topPlace: string | null
+}

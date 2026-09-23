@@ -5,6 +5,7 @@ import {
   LayoutDashboard,
   LifeBuoy,
   Package,
+  Scale,
   ShieldCheck,
   Truck,
   X,
@@ -29,12 +30,18 @@ export const NAV: NavItem[] = [
   { to: '/requests', label: 'Заявки', icon: ClipboardList },
 ]
 
+/** Model comparison is the manager's (ТЗ roles); the administrator sees everything. */
+const COMPARE_NAV: NavItem = { to: '/compare', label: 'Сравнение техники', icon: Scale }
 /** Users and settings belong to the administrator; the other roles never see the entry. */
 const ADMIN_NAV: NavItem = { to: '/admin', label: 'Администрирование', icon: ShieldCheck }
 
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user } = useSession()
-  const nav = user.role === 'admin' ? [...NAV, ADMIN_NAV] : NAV
+  const nav = [
+    ...NAV,
+    ...(user.role === 'manager' || user.role === 'admin' ? [COMPARE_NAV] : []),
+    ...(user.role === 'admin' ? [ADMIN_NAV] : []),
+  ]
   return (
     <>
       <aside

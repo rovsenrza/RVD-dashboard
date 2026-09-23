@@ -10,6 +10,7 @@ import { EquipmentDetailPage } from '@/features/equipment/EquipmentDetailPage'
 import { ReplacementsPage } from '@/features/replacements/ReplacementsPage'
 import { RequestsPage } from '@/features/requests/RequestsPage'
 import { AdminPage } from '@/features/admin/AdminPage'
+import { ComparePage } from '@/features/compare/ComparePage'
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
@@ -28,6 +29,7 @@ export const router = createBrowserRouter([
       { path: 'equipment/:id', element: <EquipmentDetailPage /> },
       { path: 'replacements', element: <ReplacementsPage /> },
       { path: 'requests', element: <RequestsPage /> },
+      { path: 'compare', element: <ComparePage /> },
       { path: 'admin', element: <AdminPage /> },
       // Component catalogue; `import.meta.env.DEV` is false in production builds,
       // so the route and its chunk are dropped there entirely.

@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type {
   AuditEntry,
+  ModelStats,
   BranchSummary,
   CabinetSettings,
   CabinetUser,
@@ -41,6 +42,7 @@ export const keys = {
   branches: ['admin', 'branches'] as const,
   settings: ['admin', 'settings'] as const,
   audit: ['admin', 'audit'] as const,
+  modelStats: (branch: string | null) => ['analytics', 'models', branch] as const,
 }
 
 export const useDashboard = () => {
@@ -126,6 +128,7 @@ export const useUpdateProduct = (id: string) => {
       qc.invalidateQueries({ queryKey: ['products'] })
       qc.invalidateQueries({ queryKey: ['equipment'] })
       qc.invalidateQueries({ queryKey: ['dashboard'] })
+      qc.invalidateQueries({ queryKey: ['analytics'] })
       qc.invalidateQueries({ queryKey: keys.audit })
     },
   })
@@ -197,7 +200,7 @@ export const useSaveSettings = () => {
     onSuccess: (saved) => {
       qc.setQueryData(keys.settings, saved)
       // The «Внимание» threshold re-derives every hose status and what is built on it.
-      for (const key of ['products', 'equipment', 'dashboard'])
+      for (const key of ['products', 'equipment', 'dashboard', 'analytics'])
         qc.invalidateQueries({ queryKey: [key] })
       qc.invalidateQueries({ queryKey: keys.audit })
     },
@@ -238,9 +241,18 @@ export const useCreateReplacement = () => {
     mutationFn: (body: NewReplacement) => api.post<Replacement>('/replacements', body),
     onSuccess: () => {
       // The old hose is written off, the new one installed: everything built on them moves.
-      for (const key of ['replacements', 'products', 'equipment', 'dashboard'])
+      for (const key of ['replacements', 'products', 'equipment', 'dashboard', 'analytics'])
         qc.invalidateQueries({ queryKey: [key] })
       qc.invalidateQueries({ queryKey: keys.audit })
     },
+  })
+}
+
+/** Machine models compared (Д15): computed by the server over the whole fleet, never in the browser. */
+export const useModelStats = () => {
+  const branch = useScope()
+  return useQuery({
+    queryKey: keys.modelStats(branch),
+    queryFn: () => api.get<ModelStats[]>(scoped('/analytics/models', branch)),
   })
 }
