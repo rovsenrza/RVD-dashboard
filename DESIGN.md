@@ -204,7 +204,7 @@ One family: **Golos Text** (variable 400–700, self-hosted in `public/fonts/`, 
 
 - Rail 240px fixed on ≥lg; off-canvas with a scrim below. Header 64px, white, with a 1px `line` underline; content area scrolls independently.
 - Content column: max-width 1440px, padding 32px×28px on desktop, 16px×20px on phones. Every screen is `PageHeader` (title left, actions right) then sheets.
-- Sheets stack with 20px gaps. The dashboard grid is KPI strip (full width) → 2/3 + 1/3 charts → full-width table. KPI strip is one sheet with a 1px `line` gap-grid: 6 columns ≥xl, 3 on md, 2 on phones.
+- Sheets stack with 20px gaps. The dashboard grid is KPI strip (full width) → 2/3 + 1/3 charts → full-width table. KPI strip is one sheet with a 1px `line` gap-grid: 6 columns ≥xl, 3 on md, 2 on phones. KPI labels wrap to two lines rather than truncate; where cells are narrow (phones, and 6 columns below 1536px) each label reserves two lines so the numbers stay aligned.
 - Tables: full-bleed inside their sheet (cells padded 20px horizontally, 12px vertically), hairline rows, header underline. Horizontal overflow scrolls inside the sheet with a right-edge fade + chevron cue; the key column pins once the table actually overflows. Toolbar row: tabs/chips left, search right (its own row on phones), column chooser at the end.
 - Breakpoints are structural (rail collapse, KPI column count, hide low-priority columns), never fluid type.
 - Touch (`pointer: coarse`, not a width breakpoint) raises targets without changing desktop density: buttons 40/44px (`sm`/`md`), icon buttons 40/44px, inputs and selects 44px at 16px type (iOS Safari zooms into anything smaller), menu rows 44px, chip remove 32px.

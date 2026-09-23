@@ -39,9 +39,13 @@ export function KpiCard({
         onClick && 'transition-colors duration-150 hover:bg-sheet-muted!',
       )}
     >
-      <div className="flex items-center gap-2 text-label text-ink-muted">
-        <Icon size={15} strokeWidth={1.75} className="text-brand-dark" />
-        <span className="truncate">{label}</span>
+      {/*
+        Labels wrap instead of truncating. Where cells are narrow (two columns on a phone,
+        six up to 1536px) every label reserves two lines, so the numbers stay on one row.
+      */}
+      <div className="flex min-h-[2lh] items-start gap-2 text-label leading-snug text-ink-muted md:min-h-0 xl:min-h-[2lh] 2xl:min-h-0">
+        <Icon size={15} strokeWidth={1.75} className="mt-px shrink-0 text-brand-dark" />
+        <span className="line-clamp-2">{label}</span>
       </div>
       <div
         className={cn('text-kpi leading-none font-semibold tracking-[-0.02em] tabular', toneClass)}

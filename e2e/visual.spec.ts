@@ -49,6 +49,8 @@ test.describe('desktop', () => {
   test('login · light', async ({ page }) => {
     await page.clock.setFixedTime(NOW)
     await page.goto('/login')
+    // The mock worker may reload the page once while it takes control; wait that out too.
+    await page.waitForLoadState('networkidle')
     await page.evaluate(() => document.fonts.ready)
     await expect(page).toHaveScreenshot('login-light.png')
   })
