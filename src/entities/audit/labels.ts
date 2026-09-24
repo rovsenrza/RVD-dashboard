@@ -10,6 +10,8 @@ export const AUDIT_ACTION_LABEL: Record<AuditAction, string> = {
   'user.password': 'Сброшен пароль',
   'settings.update': 'Изменены настройки',
   'replacement.create': 'Зафиксирована замена',
+  'attachment.create': 'Добавлен файл',
+  'attachment.delete': 'Удалён файл',
 }
 
 export const AUDIT_TARGET_LABEL: Record<AuditTargetKind, string> = {

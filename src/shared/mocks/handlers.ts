@@ -1,13 +1,23 @@
 import { http, HttpResponse } from 'msw'
 import {
+  attachmentsOf,
+  claimAttachments,
+  deleteAttachment,
+  storedFile,
+  storeUpload,
+  type AttachmentOwner,
+} from './attachments'
+import {
   applyInstallation,
   applySettings,
   audit,
   branchSummaries,
   catalogNumbers,
+  currentAuthor,
   dashboardSummary,
   diff,
   equipment,
+  filesChange,
   installationView,
   modelStats,
   products,
@@ -87,6 +97,63 @@ export const handlers = [
     const ours = new Set(equipment.filter((e) => e.branchId === branch).map((e) => e.id))
     return HttpResponse.json(newestFirst(replacements.filter((r) => ours.has(r.equipmentId))))
   }),
+  http.get(api('/products/:id/attachments'), ({ params }) =>
+    HttpResponse.json(attachmentsOf({ kind: 'product', id: params.id as string })),
+  ),
+
+  // Files (Д25). A hose takes files directly; a request or a replacement claims
+  // drafts uploaded while its form was open, by id, when it is created.
+  http.post(api('/attachments'), async ({ request }) => {
+    const form = await request.formData()
+    const file = form.get('file')
+    // A form entry is text or a file; `instanceof File` breaks across realms (jsdom in tests).
+    if (!file || typeof file === 'string')
+      return HttpResponse.json({ message: 'Файл не передан' }, { status: 400 })
+    const productId = form.get('productId')
+    const product = productId ? products.find((p) => p.id === productId) : null
+    if (productId && !product) return new HttpResponse(null, { status: 404 })
+    const owner: AttachmentOwner | null = product ? { kind: 'product', id: product.id } : null
+    const result = await storeUpload(file, owner, currentAuthor())
+    if ('message' in result) return HttpResponse.json(result, { status: 422 })
+    if (product)
+      record({
+        action: 'attachment.create',
+        target: { kind: 'product', id: product.id, label: `EHS ${product.serialNumber}` },
+        changes: filesChange([result]),
+      })
+    return HttpResponse.json(result, { status: 201 })
+  }),
+  http.get(api('/attachments/:id/file'), ({ params }) => {
+    const stored = storedFile(params.id as string)
+    return stored
+      ? new HttpResponse(stored.blob, {
+          headers: {
+            'Content-Type': stored.meta.mimeType,
+            'Content-Disposition': `inline; filename*=UTF-8''${encodeURIComponent(stored.meta.fileName)}`,
+          },
+        })
+      : new HttpResponse(null, { status: 404 })
+  }),
+  http.delete(api('/attachments/:id'), ({ params }) => {
+    const stored = storedFile(params.id as string)
+    if (!stored) return new HttpResponse(null, { status: 404 })
+    const product =
+      stored.owner?.kind === 'product' ? products.find((p) => p.id === stored.owner!.id) : null
+    // Files of a request or a replacement went to 1С with it; they stay as evidence.
+    if (!product)
+      return HttpResponse.json(
+        { message: 'Файлы заявок и замен уходят в 1С вместе с ними и не удаляются' },
+        { status: 409 },
+      )
+    deleteAttachment(stored.meta.id)
+    record({
+      action: 'attachment.delete',
+      target: { kind: 'product', id: product.id, label: `EHS ${product.serialNumber}` },
+      changes: [{ field: 'Файлы', before: stored.meta.fileName, after: null }],
+    })
+    return new HttpResponse(null, { status: 204 })
+  }),
+
   http.post(api('/replacements'), async ({ request }) => {
     const result = recordReplacement(
       (await request.json()) as Parameters<typeof recordReplacement>[0],
@@ -109,14 +176,18 @@ export const handlers = [
     HttpResponse.json(inBranch(requests, branchOf(request))),
   ),
   http.post(api('/requests'), async ({ request }) => {
-    const body = (await request.json()) as Record<string, unknown>
+    const { attachmentIds, ...body } = (await request.json()) as Record<string, unknown> & {
+      attachmentIds?: string[]
+    }
+    const id = `req-${requests.length + 1}`
     const created = {
-      id: `req-${requests.length + 1}`,
+      id,
       number: `СВЦБ-${String(5200 + requests.length).padStart(5, '0')}`,
       status: 'new',
       shipmentStatus: 'not_shipped',
       createdAt: new Date().toISOString().slice(0, 10),
       ...body,
+      attachments: claimAttachments(attachmentIds, { kind: 'request', id }),
     }
     requests.unshift(created as (typeof requests)[number])
     record({
@@ -129,6 +200,7 @@ export const handlers = [
           after: body.kind === 'manufacture' ? 'Изготовление' : 'Замена',
         },
         { field: 'Количество', before: null, after: String(body.quantity ?? '') || null },
+        ...filesChange(created.attachments),
       ],
     })
     return HttpResponse.json(created, { status: 201 })

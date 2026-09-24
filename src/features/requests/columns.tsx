@@ -3,13 +3,19 @@ import type { ServiceRequest } from '@/entities/types'
 import { REQUEST_KIND_LABEL, RequestStatusBadge } from '@/entities/request'
 import { formatDate } from '@/shared/lib/utils'
 import { valueOr } from '@/shared/ui'
+import { AttachmentsButton } from '@/features/attachments/AttachmentStrip'
 
 const col = createColumnHelper<ServiceRequest>()
 
 export const requestColumns = [
   col.accessor('number', {
     header: '№',
-    cell: (c) => <span className="font-medium text-brand-deep">{c.getValue()}</span>,
+    cell: (c) => (
+      <span className="inline-flex items-center gap-1">
+        <span className="font-medium text-brand-deep">{c.getValue()}</span>
+        <AttachmentsButton files={c.row.original.attachments} />
+      </span>
+    ),
   }),
   col.accessor('createdAt', { header: 'Создана', cell: (c) => valueOr(formatDate(c.getValue())) }),
   col.accessor('kind', { header: 'Тип', cell: (c) => REQUEST_KIND_LABEL[c.getValue()] }),

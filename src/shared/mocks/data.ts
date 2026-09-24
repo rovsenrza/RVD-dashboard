@@ -1,5 +1,7 @@
 import { addDays, format, formatISO, parseISO, setHours, setMinutes, subDays } from 'date-fns'
+import { claimAttachments } from './attachments'
 import type {
+  Attachment,
   AuditChange,
   ModelStats,
   AuditEntry,
@@ -210,6 +212,7 @@ export const replacements: Replacement[] = Array.from({ length: 94 }, (_, i) => 
     usageUnit: machine.type === 'Самосвал' ? 'km' : 'hours',
     performedBy: pick(['Иванов И.', 'Петров П.', 'Сидоров С.']),
     comment: null,
+    attachments: [],
   }
 })
 
@@ -313,6 +316,7 @@ export const requests: ServiceRequest[] = Array.from({ length: 12 }, (_, i) => {
     status: pick(['new', 'in_progress', 'done', 'rejected']),
     shipmentStatus: rand() < 0.4 ? 'shipped' : 'not_shipped',
     createdAt: iso(subDays(NOW, Math.floor(rand() * 60))),
+    attachments: [],
   }
 })
 
@@ -475,6 +479,12 @@ export function diff(before: View, after: View): AuditChange[] {
     .map((k) => ({ field: k, before: before[k] ?? null, after: after[k] ?? null }))
 }
 
+/** «Файлы: a.jpg, b.pdf» as one log line, or nothing when none were attached. */
+export const filesChange = (files: Attachment[]): AuditChange[] =>
+  files.length
+    ? [{ field: 'Файлы', before: null, after: files.map((f) => f.fileName).join(', ') }]
+    : []
+
 export const audit: AuditEntry[] = []
 let auditSeq = 0
 
@@ -484,7 +494,8 @@ export function record(
   at: Date = new Date(),
   actor: CabinetUser = users[0],
 ) {
-  audit.push({
+  // In front, so the stable sort keeps the newest first even within one millisecond.
+  audit.unshift({
     id: `a-${++auditSeq}`,
     at: at.toISOString(),
     actor: { id: actor.id, name: actor.name },
@@ -587,6 +598,8 @@ export interface NewReplacement {
   operatingHours: number | null
   usageUnit: Replacement['usageUnit']
   comment: string | null
+  /** Drafts uploaded while the form was open */
+  attachmentIds?: string[]
 }
 
 /** «Иванов Иван» → «Иванов И.», the way the journal names who did the work. */
@@ -594,6 +607,9 @@ const shortName = (name: string) => {
   const [last, first] = name.split(/\s+/)
   return first ? `${last} ${first[0]}.` : last
 }
+
+/** The signed-in demo user as journals name them; the BFF takes it from the token. */
+export const currentAuthor = () => shortName(users[0].name)
 
 /**
  * What 1С will do when the replacement arrives through the outbox (Д17):
@@ -607,7 +623,7 @@ export function recordReplacement(body: NewReplacement): Replacement | { error: 
   if (body.newProductId && (!fresh || fresh.installedAt || fresh.lifecycle === 'written_off'))
     return { error: 'Новое изделие уже установлено или списано' }
   const machine = equipment.find((e) => e.id === old.equipmentId)!
-  const author = shortName(users[0].name)
+  const author = currentAuthor()
 
   const replacement: Replacement = {
     id: `r-${replacements.length + 1}`,
@@ -623,7 +639,12 @@ export function recordReplacement(body: NewReplacement): Replacement | { error: 
     usageUnit: body.usageUnit,
     performedBy: author,
     comment: body.comment,
+    attachments: [],
   }
+  replacement.attachments = claimAttachments(body.attachmentIds, {
+    kind: 'replacement',
+    id: replacement.id,
+  })
   replacements.unshift(replacement)
 
   const doc = (productId: string, lifecycle: ProductLifecycle) =>
@@ -671,6 +692,7 @@ export function recordReplacement(body: NewReplacement): Replacement | { error: 
               after: `${body.operatingHours.toLocaleString('ru-RU')} ${body.usageUnit === 'km' ? 'км' : 'м/ч'}`,
             },
           ]),
+      ...filesChange(replacement.attachments),
     ],
   })
   return replacement

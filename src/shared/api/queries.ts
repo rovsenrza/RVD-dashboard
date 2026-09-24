@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type {
+  Attachment,
   AuditEntry,
   ModelStats,
   BranchSummary,
@@ -30,6 +31,7 @@ export const keys = {
   products: (branch: string | null) => ['products', branch] as const,
   product: (id: string) => ['products', id] as const,
   productDocuments: (id: string) => ['products', id, 'documents'] as const,
+  productAttachments: (id: string) => ['products', id, 'attachments'] as const,
   equipment: (branch: string | null) => ['equipment', branch] as const,
   equipmentItem: (id: string) => ['equipment', id] as const,
   equipmentProducts: (id: string) => ['equipment', id, 'products'] as const,
@@ -137,8 +139,11 @@ export const useUpdateProduct = (id: string) => {
 /** Fields the client sends; 1С (and the mock) assigns number, statuses and date. */
 export type NewRequest = Omit<
   ServiceRequest,
-  'id' | 'number' | 'status' | 'shipmentStatus' | 'createdAt'
->
+  'id' | 'number' | 'status' | 'shipmentStatus' | 'createdAt' | 'attachments'
+> & {
+  /** Drafts uploaded while the form was open; the server binds them to the request. */
+  attachmentIds: string[]
+}
 
 export const useCreateRequest = () => {
   const qc = useQueryClient()
@@ -233,6 +238,7 @@ export interface NewReplacement {
   operatingHours: number | null
   usageUnit: Replacement['usageUnit']
   comment: string | null
+  attachmentIds: string[]
 }
 
 export const useCreateReplacement = () => {
@@ -256,3 +262,50 @@ export const useModelStats = () => {
     queryFn: () => api.get<ModelStats[]>(scoped('/analytics/models', branch)),
   })
 }
+
+// Files (Д25) ────────────────────────────────────────────────────────────────
+
+export const useProductAttachments = (id: string) =>
+  useQuery({
+    queryKey: keys.productAttachments(id),
+    queryFn: () => api.get<Attachment[]>(`/products/${id}/attachments`),
+  })
+
+/**
+ * Uploads one file: straight onto a hose when `productId` is given, otherwise
+ * as a draft that the request or replacement being filled in claims on submit.
+ */
+export const useUploadAttachment = (productId?: string) => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (file: File) => {
+      const form = new FormData()
+      form.append('file', file, file.name)
+      if (productId) form.append('productId', productId)
+      return api.upload<Attachment>('/attachments', form)
+    },
+    // Awaited, so the pending tile gives way to the stored file without a gap.
+    onSuccess: () =>
+      productId &&
+      Promise.all([
+        qc.invalidateQueries({ queryKey: keys.productAttachments(productId) }),
+        qc.invalidateQueries({ queryKey: keys.audit }),
+      ]),
+  })
+}
+
+/** Only a hose's own files can go; those of requests and replacements left with them for 1С. */
+export const useDeleteAttachment = (productId: string) => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (id: string) => api.delete(`/attachments/${id}`),
+    onSuccess: () =>
+      Promise.all([
+        qc.invalidateQueries({ queryKey: keys.productAttachments(productId) }),
+        qc.invalidateQueries({ queryKey: keys.audit }),
+      ]),
+  })
+}
+
+/** The file itself, by the URL the server gave for it — for downloads. */
+export const fetchAttachment = (a: Attachment) => api.file(a.url)

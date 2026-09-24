@@ -155,6 +155,8 @@ export interface Replacement {
   usageUnit: 'hours' | 'km'
   performedBy: string
   comment: string | null
+  /** Фото снятого рукава, акт — что механик приложил к замене */
+  attachments: Attachment[]
 }
 
 export type RequestStatus = 'new' | 'in_progress' | 'done' | 'rejected'
@@ -187,6 +189,28 @@ export interface ServiceRequest {
   status: RequestStatus
   shipmentStatus: ShipmentStatus
   createdAt: string
+  attachments: Attachment[]
+}
+
+/**
+ * Фото или документ на изделии, в заявке или в замене (Д25). Файлы хранит
+ * кабинет, не 1С (PLAN.md §5, вопрос 5); `url` — маршрут BFF или подписанная
+ * ссылка хранилища, клиент не собирает его сам.
+ */
+export interface Attachment {
+  id: string
+  fileName: string
+  mimeType: string
+  /** Bytes */
+  size: number
+  kind: 'photo' | 'document'
+  url: string
+  /** Reduced image for thumbnails; null for documents */
+  previewUrl: string | null
+  /** ISO date-time */
+  uploadedAt: string
+  /** «Иванов И.» — the way journals name people */
+  uploadedBy: string
 }
 
 export interface DashboardSummary {
@@ -247,6 +271,8 @@ export type AuditAction =
   | 'user.password'
   | 'settings.update'
   | 'replacement.create'
+  | 'attachment.create'
+  | 'attachment.delete'
 
 export type AuditTargetKind = 'product' | 'request' | 'user' | 'settings'
 

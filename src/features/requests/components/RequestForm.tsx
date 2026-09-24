@@ -3,6 +3,8 @@ import { useSession } from '@/app/session'
 import { REQUEST_KIND_LABEL } from '@/entities/request'
 import { useCatalogNumbers, useCreateRequest, useEquipment } from '@/shared/api/queries'
 import { Button, Dialog, Field, Input, Select, useToast } from '@/shared/ui'
+import { AttachmentPicker } from '@/features/attachments/AttachmentPicker'
+import { useUploads } from '@/features/attachments/useUploads'
 
 const NO_EQUIPMENT = ''
 
@@ -18,6 +20,7 @@ export function RequestForm({ open, onClose }: { open: boolean; onClose: () => v
   const [equipmentId, setEquipmentId] = useState(NO_EQUIPMENT)
   const [quantity, setQuantity] = useState(1)
   const [comment, setComment] = useState('')
+  const uploads = useUploads()
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
@@ -32,6 +35,7 @@ export function RequestForm({ open, onClose }: { open: boolean; onClose: () => v
         kind,
         quantity,
         comment: comment.trim() || null,
+        attachmentIds: uploads.ids,
         positions: [
           {
             catalogNumberId: cat?.id ?? null,
@@ -62,8 +66,17 @@ export function RequestForm({ open, onClose }: { open: boolean; onClose: () => v
           <Button variant="secondary" size="sm" onClick={onClose}>
             Отмена
           </Button>
-          <Button size="sm" type="submit" form="request-form" disabled={create.isPending}>
-            {create.isPending ? 'Отправляем…' : 'Создать заявку'}
+          <Button
+            size="sm"
+            type="submit"
+            form="request-form"
+            disabled={create.isPending || uploads.busy}
+          >
+            {create.isPending
+              ? 'Отправляем…'
+              : uploads.busy
+                ? 'Загружаем файлы…'
+                : 'Создать заявку'}
           </Button>
         </>
       }
@@ -134,6 +147,8 @@ export function RequestForm({ open, onClose }: { open: boolean; onClose: () => v
             />
           )}
         </Field>
+
+        <AttachmentPicker uploads={uploads} />
       </form>
     </Dialog>
   )

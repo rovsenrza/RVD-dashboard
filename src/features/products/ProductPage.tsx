@@ -4,6 +4,7 @@ import { ArrowLeftRight, Pencil, RefreshCw } from 'lucide-react'
 import { ProductStatusBadge } from '@/entities/product'
 import { useProduct } from '@/shared/api/queries'
 import { Badge, Button, PageHeader, QueryState, Skeleton } from '@/shared/ui'
+import { ProductAttachments } from '@/features/attachments/ProductAttachments'
 import { ProductReplacements } from '@/features/replacements/components/ProductReplacements'
 import { ReplacementDialog } from '@/features/replacements/components/ReplacementDialog'
 import { ProductComposition } from './components/ProductComposition'
@@ -74,7 +75,10 @@ export function ProductPage() {
           {editing && <ProductEditForm product={p} onClose={() => setEditing(false)} />}
           {replacing && <ReplacementDialog product={p} onClose={() => setReplacing(false)} />}
           <div className="grid items-start gap-5 lg:grid-cols-2">
-            <ProductDetails product={p} />
+            <div className="grid gap-5">
+              <ProductDetails product={p} />
+              <ProductAttachments productId={p.id} readOnly={p.lifecycle === 'written_off'} />
+            </div>
             <div className="grid gap-5">
               <ProductLifecycle productId={p.id} />
               <ProductComposition lines={p.composition} />

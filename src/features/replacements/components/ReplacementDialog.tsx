@@ -3,6 +3,8 @@ import { format } from 'date-fns'
 import type { Product, Replacement } from '@/entities/types'
 import { REPLACEMENT_REASONS, USAGE_UNIT_LABEL } from '@/entities/replacement'
 import { ApiError } from '@/shared/api/client'
+import { AttachmentPicker } from '@/features/attachments/AttachmentPicker'
+import { useUploads } from '@/features/attachments/useUploads'
 import {
   useCreateReplacement,
   useEquipment,
@@ -52,6 +54,7 @@ export function ReplacementDialog({
   const [unit, setUnit] = useState<Replacement['usageUnit']>('hours')
   const [comment, setComment] = useState('')
   const [error, setError] = useState<string>()
+  const uploads = useUploads()
 
   const oldHoses = (onThisMachine.data ?? []).filter(onMachine)
   const old = oldHoses.find((p) => p.id === oldId) ?? product
@@ -82,6 +85,7 @@ export function ReplacementDialog({
         operatingHours: usage ? Number(usage) : null,
         usageUnit: unit,
         comment: comment.trim() || null,
+        attachmentIds: uploads.ids,
       },
       {
         onSuccess: (r) => {
@@ -111,8 +115,13 @@ export function ReplacementDialog({
           <Button variant="secondary" size="sm" onClick={onClose}>
             Отмена
           </Button>
-          <Button size="sm" type="submit" form="replacement-form" disabled={create.isPending}>
-            {create.isPending ? 'Сохраняем…' : 'Зафиксировать'}
+          <Button
+            size="sm"
+            type="submit"
+            form="replacement-form"
+            disabled={create.isPending || uploads.busy}
+          >
+            {create.isPending ? 'Сохраняем…' : uploads.busy ? 'Загружаем фото…' : 'Зафиксировать'}
           </Button>
         </>
       }
@@ -237,6 +246,8 @@ export function ReplacementDialog({
             />
           )}
         </Field>
+
+        <AttachmentPicker uploads={uploads} label="Фото и акт" />
       </form>
     </Dialog>
   )

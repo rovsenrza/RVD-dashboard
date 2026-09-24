@@ -4,6 +4,7 @@ import { formatUsage } from '@/entities/replacement'
 import { useProductReplacements } from '@/shared/api/queries'
 import { formatDate } from '@/shared/lib/utils'
 import { Card, EmptyState, QueryState, Skeleton } from '@/shared/ui'
+import { AttachmentStrip } from '@/features/attachments/AttachmentStrip'
 
 const hose = (id: string | null, serial: string | null) =>
   id && serial ? (
@@ -52,6 +53,7 @@ export function ProductReplacements({ productId }: { productId: string }) {
                       {r.performedBy}
                       {r.comment && ` · ${r.comment}`}
                     </div>
+                    <AttachmentStrip files={r.attachments} />
                   </li>
                 )
               })}
