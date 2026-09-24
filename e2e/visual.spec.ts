@@ -27,6 +27,7 @@ const DESKTOP: { name: string; path: string; role?: Role; themes: ('light' | 'da
   { name: 'products', path: '/products', themes: ['light'] },
   { name: 'product', path: '/products/p-4', themes: ['light', 'dark'] },
   { name: 'equipment', path: '/equipment', themes: ['light'] },
+  { name: 'equipment-tree', path: '/equipment?view=tree', themes: ['light'] },
   { name: 'equipment-card', path: '/equipment/eq-1', themes: ['light'] },
   { name: 'replacements', path: '/replacements', themes: ['light'] },
   { name: 'requests', path: '/requests', themes: ['light'] },

@@ -113,16 +113,36 @@ export const catalogNumbers: CatalogNumber[] = CATALOG_SPECS.map((s, i) => {
   }
 })
 
+/** Подразделения филиалов, как их ведёт 1С: техника на участках, самосвалы — в автоколоннах. */
+const DEPARTMENTS: Record<string, { pits: string[]; fleet: string }> = {
+  'b-main': { pits: ['Карьер «Южный»', 'Участок вскрышных работ'], fleet: 'Автоколонна №1' },
+  'b-north': { pits: ['Карьер «Северный»'], fleet: 'Автоколонна №2' },
+}
+const SERIAL_PREFIX: Record<string, string> = {
+  Komatsu: 'KMTPC',
+  Caterpillar: 'CAT0',
+  Hitachi: 'HCM1',
+  Liebherr: 'LHR',
+  БелАЗ: 'Y3B',
+}
+
 export const equipment: Equipment[] = Array.from({ length: 26 }, (_, i) => {
   const [brand, model, type] = pick(BRANDS)
+  const branchId = BRANCHES[i % 2]
+  const units = DEPARTMENTS[branchId]
   return {
     id: `eq-${i + 1}`,
-    branchId: BRANCHES[i % 2],
+    branchId,
     type,
     brand,
     model,
     garageNumber: `${pick(['EX', 'HT', 'BB'])}${String(i + 4).padStart(2, '0')}`,
+    // Derived from the index, not the shared generator, so the rest of the mock data stays put.
+    factoryNumber:
+      i % 9 === 8 ? null : `${SERIAL_PREFIX[brand]}${String(10000 + ((i * 7919) % 89999))}`,
     inventoryNumber: rand() < 0.7 ? `ИНВ-${String(4200 + i)}` : null,
+    department:
+      type === 'Самосвал' ? units.fleet : units.pits[Math.floor(i / 2) % units.pits.length],
     hoseCount: 0,
     lastRepairDate: null,
     nextPlannedReplacement: null,

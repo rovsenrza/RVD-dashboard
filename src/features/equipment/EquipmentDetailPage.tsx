@@ -2,13 +2,10 @@ import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import type { ColumnDef } from '@tanstack/react-table'
 import { ArrowLeftRight, RefreshCw } from 'lucide-react'
-import type { Product, Replacement } from '@/entities/types'
+import type { Replacement } from '@/entities/types'
 import { ProductStatusBar } from '@/entities/product'
-import {
-  useEquipmentItem,
-  useEquipmentProducts,
-  useEquipmentReplacements,
-} from '@/shared/api/queries'
+import { useSession } from '@/app/session'
+import { useEquipmentItem, useEquipmentReplacements } from '@/shared/api/queries'
 import {
   Button,
   Card,
@@ -19,15 +16,15 @@ import {
   Skeleton,
 } from '@/shared/ui'
 import { formatDate } from '@/shared/lib/utils'
-import { productColumns } from '@/features/products/columns'
 import { replacementColumns } from '@/features/replacements/columns'
 import { ReplacementDialog } from '@/features/replacements/components/ReplacementDialog'
+import { HosesByPlace } from './components/HosesByPlace'
 
 export function EquipmentDetailPage() {
   const { id = '' } = useParams()
   const navigate = useNavigate()
+  const { branches } = useSession()
   const query = useEquipmentItem(id)
-  const products = useEquipmentProducts(id)
   const history = useEquipmentReplacements(id)
   const [replacing, setReplacing] = useState(false)
 
@@ -69,7 +66,10 @@ export function EquipmentDetailPage() {
                 termWidth={120}
                 items={[
                   ['Гаражный №', e.garageNumber],
+                  ['Заводской №', e.factoryNumber],
                   ['Инвентарный №', e.inventoryNumber],
+                  ['Филиал', branches.find((b) => b.id === e.branchId)?.name],
+                  ['Подразделение', e.department],
                   ['Тип', e.type],
                   ['Марка', e.brand],
                   ['Модель', e.model],
@@ -85,20 +85,8 @@ export function EquipmentDetailPage() {
               </div>
             </Card>
 
-            <Card title="Установленные изделия">
-              <QueryState query={products} skeleton={<Skeleton className="h-64" />}>
-                {(rows) => (
-                  <DataTable
-                    embedded
-                    data={rows}
-                    columns={productColumns as ColumnDef<Product, unknown>[]}
-                    pageSize={10}
-                    onRowClick={(p) => navigate(`/products/${p.id}`)}
-                    emptyTitle="На этой технике нет изделий"
-                    hiddenByDefault={['oemNumber', 'manufacturer', 'shippedAt']}
-                  />
-                )}
-              </QueryState>
+            <Card title="РВД по местам установки">
+              <HosesByPlace equipmentId={e.id} />
             </Card>
           </div>
 

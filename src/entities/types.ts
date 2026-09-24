@@ -79,9 +79,13 @@ export interface Equipment {
   type: string
   brand: string
   model: string
-  /** Заводской / гаражный номер */
+  /** Гаражный номер — как машину называют на участке */
   garageNumber: string
+  /** Заводской (серийный) номер производителя */
+  factoryNumber: string | null
   inventoryNumber: string | null
+  /** Подразделение внутри филиала (участок, карьер, автоколонна) — из 1С */
+  department: string | null
   hoseCount: number
   lastRepairDate: string | null
   nextPlannedReplacement: string | null
