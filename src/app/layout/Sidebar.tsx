@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import {
+  Bell,
   ClipboardList,
   FileChartColumn,
   History,
@@ -29,6 +30,7 @@ export const NAV: NavItem[] = [
   { to: '/equipment', label: 'Моя техника', icon: Truck },
   { to: '/replacements', label: 'История замен', icon: History },
   { to: '/requests', label: 'Заявки', icon: ClipboardList },
+  { to: '/notifications', label: 'Уведомления', icon: Bell },
 ]
 
 /** Reports and model comparison are the manager's (ТЗ roles); the administrator sees everything. */

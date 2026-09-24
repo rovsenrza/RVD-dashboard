@@ -32,6 +32,7 @@ import {
   userView,
 } from './data'
 import { buildReport } from './reports'
+import { markRead, notificationsFor, prefs, prefsView } from './notifications'
 import {
   addComment,
   commentProblem,
@@ -143,6 +144,25 @@ export const handlers = [
     ),
   ),
   http.get(api('/catalog-numbers'), () => HttpResponse.json(catalogNumbers)),
+  // Notifications (Д19): what the daily scheduler wrote for this user, in the branch scope.
+  http.get(api('/notifications'), ({ request }) =>
+    HttpResponse.json(notificationsFor(branchOf(request))),
+  ),
+  http.post(api('/notifications/read'), async ({ request }) => {
+    const { ids } = (await request.json()) as { ids?: string[] }
+    markRead(ids, branchOf(request))
+    return HttpResponse.json({
+      unread: notificationsFor(branchOf(request)).filter((n) => !n.read).length,
+    })
+  }),
+  http.get(api('/me/notification-prefs'), () => HttpResponse.json(prefsView())),
+  http.patch(api('/me/notification-prefs'), async ({ request }) => {
+    const patch = (await request.json()) as Partial<typeof prefs>
+    if (patch.kinds) Object.assign(prefs.kinds, patch.kinds)
+    if (typeof patch.email === 'boolean') prefs.email = patch.email
+    return HttpResponse.json(prefsView())
+  }),
+
   http.get(api('/reports/:id'), ({ params, request }) => {
     const q = new URL(request.url).searchParams
     const report = buildReport(params.id as Parameters<typeof buildReport>[0], {

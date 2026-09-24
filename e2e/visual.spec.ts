@@ -30,6 +30,7 @@ const DESKTOP: { name: string; path: string; role?: Role; themes: ('light' | 'da
   { name: 'equipment-card', path: '/equipment/eq-1', themes: ['light'] },
   { name: 'replacements', path: '/replacements', themes: ['light'] },
   { name: 'requests', path: '/requests', themes: ['light'] },
+  { name: 'notifications', path: '/notifications', themes: ['light', 'dark'] },
   { name: 'compare', path: '/compare', role: 'manager', themes: ['light', 'dark'] },
   { name: 'reports', path: '/reports?r=equipment', role: 'manager', themes: ['light', 'dark'] },
   // Paper is always light, whatever the theme; a fixed period keeps it stable.

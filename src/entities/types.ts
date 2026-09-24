@@ -383,3 +383,37 @@ export interface ProductComment {
   createdAt: string
   editedAt: string | null
 }
+
+/** What a notification is about (ТЗ 3.6); inspections join once 1С gives their intervals. */
+export type NotificationKind = 'warranty_end' | 'planned_replacement' | 'overdue' | 'request_status'
+
+/**
+ * One notification as the daily scheduler wrote it (Д19): a fact about one
+ * hose or request, fired a set number of days ahead, read or not by this user.
+ */
+export interface CabinetNotification {
+  id: string
+  kind: NotificationKind
+  /** Days ahead it fired (30 / 14 / 7…); 0 on the day; null for request events */
+  lead: number | null
+  /** «EHS 48703 · HT08» or «Заявка СВЦБ-05101» */
+  title: string
+  message: string
+  dueDate: string | null
+  productId: string | null
+  requestId: string | null
+  branchId: string
+  /** ISO date-time the scheduler created it */
+  createdAt: string
+  read: boolean
+}
+
+/** What this user wants to hear about, and whether by e-mail too. */
+export interface NotificationPrefs {
+  kinds: Record<NotificationKind, boolean>
+  email: boolean
+  /** Read-only: where letters go (the login e-mail) */
+  address: string
+  /** Read-only: whether the administrator allows e-mail for the company */
+  companyEmail: boolean
+}

@@ -12,6 +12,7 @@ import { RequestsPage } from '@/features/requests/RequestsPage'
 import { AdminPage } from '@/features/admin/AdminPage'
 import { ComparePage } from '@/features/compare/ComparePage'
 import { ReportsPage } from '@/features/reports/ReportsPage'
+import { NotificationsPage } from '@/features/notifications/NotificationsPage'
 import { ReportPrintPage } from '@/features/reports/ReportPrintPage'
 
 export const router = createBrowserRouter([
@@ -40,6 +41,7 @@ export const router = createBrowserRouter([
       { path: 'equipment/:id', element: <EquipmentDetailPage /> },
       { path: 'replacements', element: <ReplacementsPage /> },
       { path: 'requests', element: <RequestsPage /> },
+      { path: 'notifications', element: <NotificationsPage /> },
       { path: 'reports', element: <ReportsPage /> },
       { path: 'compare', element: <ComparePage /> },
       { path: 'admin', element: <AdminPage /> },

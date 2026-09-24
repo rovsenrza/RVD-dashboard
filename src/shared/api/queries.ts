@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type {
   Attachment,
+  CabinetNotification,
+  NotificationPrefs,
   ProductComment,
   ProductLifetime,
   Report,
@@ -52,6 +54,8 @@ export const keys = {
   settings: ['admin', 'settings'] as const,
   audit: ['admin', 'audit'] as const,
   modelStats: (branch: string | null) => ['analytics', 'models', branch] as const,
+  notifications: (branch: string | null) => ['notifications', branch] as const,
+  notificationPrefs: ['notifications', 'prefs'] as const,
   report: (id: ReportId, branch: string | null, from?: string, to?: string) =>
     ['reports', id, branch, from, to] as const,
 }
@@ -203,8 +207,13 @@ export const useResetPassword = () => {
 export const useBranchSummaries = () =>
   useQuery({ queryKey: keys.branches, queryFn: () => api.get<BranchSummary[]>('/admin/branches') })
 
-export const useSettings = () =>
-  useQuery({ queryKey: keys.settings, queryFn: () => api.get<CabinetSettings>('/admin/settings') })
+/** Company settings are the administrator's; `enabled` keeps other roles from asking. */
+export const useSettings = (enabled = true) =>
+  useQuery({
+    queryKey: keys.settings,
+    queryFn: () => api.get<CabinetSettings>('/admin/settings'),
+    enabled,
+  })
 
 export const useSaveSettings = () => {
   const qc = useQueryClient()
@@ -390,4 +399,50 @@ export const useCommentMutations = (productId: string) => {
       onSuccess,
     }),
   }
+}
+
+// Notifications (Д19) ────────────────────────────────────────────────────────
+
+/** What the scheduler wrote for this user, newest first; polled, as the BFF has no push yet. */
+export const useNotifications = () => {
+  const branch = useScope()
+  return useQuery({
+    queryKey: keys.notifications(branch),
+    queryFn: () => api.get<CabinetNotification[]>(scoped('/notifications', branch)),
+    refetchInterval: 5 * 60_000,
+  })
+}
+
+/** Read the given notifications, or all of them when no ids are passed. */
+export const useMarkRead = () => {
+  const branch = useScope()
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (ids?: string[]) =>
+      api.post<{ unread: number }>(scoped('/notifications/read', branch), ids ? { ids } : {}),
+    // Read is a UI fact first: flip it at once, the server follows.
+    onMutate: (ids) =>
+      qc.setQueryData<CabinetNotification[]>(keys.notifications(branch), (list) =>
+        list?.map((n) => (!ids || ids.includes(n.id) ? { ...n, read: true } : n)),
+      ),
+    onSettled: () => qc.invalidateQueries({ queryKey: ['notifications'] }),
+  })
+}
+
+export const useNotificationPrefs = () =>
+  useQuery({
+    queryKey: keys.notificationPrefs,
+    queryFn: () => api.get<NotificationPrefs>('/me/notification-prefs'),
+  })
+
+export const useSaveNotificationPrefs = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (patch: Partial<Pick<NotificationPrefs, 'kinds' | 'email'>>) =>
+      api.patch<NotificationPrefs>('/me/notification-prefs', patch),
+    onSuccess: (saved) => {
+      qc.setQueryData(keys.notificationPrefs, saved)
+      qc.invalidateQueries({ queryKey: ['notifications'] })
+    },
+  })
 }
