@@ -397,6 +397,21 @@ const PEOPLE: [string, string][] = [
 // u-1 is the signed-in demo user, who reaches the user list only as administrator.
 const ROLE_MIX = ['admin', 'engineer', 'manager', 'mechanic', 'mechanic', 'engineer'] as const
 
+/**
+ * The signed-in demo user. The role is the demo switch's (the mock runs in the
+ * browser and can read it), as the BFF will take the role from the token.
+ */
+export function currentUser(): CabinetUser {
+  let role = users[0].role
+  try {
+    const picked = globalThis.localStorage?.getItem('rvd.role')
+    if (picked && (ROLE_MIX as readonly string[]).includes(picked)) role = picked as typeof role
+  } catch {
+    // No storage (tests, private mode): the seeded role stands.
+  }
+  return { ...users[0], role }
+}
+
 export const users: CabinetUser[] = PEOPLE.map(([name, login], i) => {
   const role = ROLE_MIX[i % ROLE_MIX.length]
   return {

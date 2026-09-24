@@ -3,7 +3,7 @@ import type { Replacement } from '@/entities/types'
 import { formatUsage } from '@/entities/replacement'
 import { useProductReplacements } from '@/shared/api/queries'
 import { formatDate } from '@/shared/lib/utils'
-import { Card, EmptyState, QueryState, Skeleton } from '@/shared/ui'
+import { EmptyState, QueryState, Skeleton } from '@/shared/ui'
 import { AttachmentStrip } from '@/features/attachments/AttachmentStrip'
 
 const hose = (id: string | null, serial: string | null) =>
@@ -31,42 +31,40 @@ function Event({ r, productId }: { r: Replacement; productId: string }) {
 export function ProductReplacements({ productId }: { productId: string }) {
   const query = useProductReplacements(productId)
   return (
-    <Card title="История замен">
-      <QueryState query={query} skeleton={<Skeleton className="h-16 w-full" />}>
-        {(list) =>
-          list.length ? (
-            <ul className="-my-3 divide-y divide-line">
-              {list.map((r) => {
-                const usage = formatUsage(r)
-                return (
-                  <li key={r.id} className="grid gap-0.5 py-3">
-                    <div className="flex items-baseline justify-between gap-3 text-label text-ink-muted">
-                      <span>
-                        <span className="tabular">{formatDate(r.date)}</span> · {r.reason}
-                      </span>
-                      {usage && <span className="tabular">{usage}</span>}
-                    </div>
-                    <div className="text-ui">
-                      <Event r={r} productId={productId} />
-                    </div>
-                    <div className="text-label text-ink-muted">
-                      {r.performedBy}
-                      {r.comment && ` · ${r.comment}`}
-                    </div>
-                    <AttachmentStrip files={r.attachments} />
-                  </li>
-                )
-              })}
-            </ul>
-          ) : (
-            <EmptyState
-              inset
-              title="Замен ещё не было"
-              description="Когда это изделие снимут или поставят на замену другому, запись появится здесь."
-            />
-          )
-        }
-      </QueryState>
-    </Card>
+    <QueryState query={query} skeleton={<Skeleton className="h-16 w-full" />}>
+      {(list) =>
+        list.length ? (
+          <ul className="-my-3 divide-y divide-line">
+            {list.map((r) => {
+              const usage = formatUsage(r)
+              return (
+                <li key={r.id} className="grid gap-0.5 py-3">
+                  <div className="flex items-baseline justify-between gap-3 text-label text-ink-muted">
+                    <span>
+                      <span className="tabular">{formatDate(r.date)}</span> · {r.reason}
+                    </span>
+                    {usage && <span className="tabular">{usage}</span>}
+                  </div>
+                  <div className="text-ui">
+                    <Event r={r} productId={productId} />
+                  </div>
+                  <div className="text-label text-ink-muted">
+                    {r.performedBy}
+                    {r.comment && ` · ${r.comment}`}
+                  </div>
+                  <AttachmentStrip files={r.attachments} />
+                </li>
+              )
+            })}
+          </ul>
+        ) : (
+          <EmptyState
+            inset
+            title="Замен ещё не было"
+            description="Когда это изделие снимут или поставят на замену другому, запись появится здесь."
+          />
+        )
+      }
+    </QueryState>
   )
 }

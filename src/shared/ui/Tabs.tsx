@@ -31,7 +31,7 @@ export function Tabs<K extends string>({
             aria-selected={active}
             onClick={() => onChange(t.key)}
             className={cn(
-              '-mb-px flex items-center gap-2 border-b-2 pt-1 pb-2.5 text-sm transition-colors duration-150',
+              '-mb-px flex shrink-0 items-center gap-2 border-b-2 pt-1 pb-2.5 text-sm whitespace-nowrap transition-colors duration-150',
               active
                 ? 'border-brand font-medium text-ink'
                 : 'border-transparent text-ink-muted hover:text-ink',

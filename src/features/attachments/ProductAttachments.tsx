@@ -2,9 +2,9 @@ import { useState, type DragEvent } from 'react'
 import { Camera, LoaderCircle, Plus, Upload as UploadIcon } from 'lucide-react'
 import { ACCEPT_FILES, LIMITS_HINT } from '@/entities/attachment'
 import { useDeleteAttachment, useProductAttachments } from '@/shared/api/queries'
-import { Button, Card, EmptyState, FileButton, QueryState, Skeleton, Thumbnail } from '@/shared/ui'
+import { Card, EmptyState, FileButton, QueryState, Skeleton, Thumbnail } from '@/shared/ui'
 import { AttachmentViewer } from './AttachmentViewer'
-import { fileIcon, fileMeta } from './files'
+import { DocumentRow } from './DocumentRow'
 import { useUploads } from './useUploads'
 
 const hasFiles = (e: DragEvent) => e.dataTransfer.types.includes('Files')
@@ -124,27 +124,11 @@ export function ProductAttachments({
                   <section>
                     <Heading>Документы</Heading>
                     <ul className="-mx-2 grid">
-                      {documents.map((a, i) => {
-                        const Icon = fileIcon(a.fileName)
-                        return (
-                          <li key={a.id}>
-                            <Button
-                              variant="ghost"
-                              size="auto"
-                              onClick={() => setOpen(photos.length + i)}
-                              className="h-auto w-full gap-3 py-2 whitespace-normal"
-                            >
-                              <FileTile icon={Icon} />
-                              <span className="grid min-w-0">
-                                <span className="truncate text-sm text-ink">{a.fileName}</span>
-                                <span className="text-label text-ink-muted">
-                                  {fileMeta(a)} · {a.uploadedBy}
-                                </span>
-                              </span>
-                            </Button>
-                          </li>
-                        )
-                      })}
+                      {documents.map((a, i) => (
+                        <li key={a.id}>
+                          <DocumentRow file={a} onOpen={() => setOpen(photos.length + i)} />
+                        </li>
+                      ))}
                       {pendingDocuments.map((u) => (
                         <li key={u.key} className="flex items-center gap-3 px-2 py-2">
                           <FileTile icon={LoaderCircle} spin />

@@ -5,12 +5,12 @@ import { ProductStatusBadge } from '@/entities/product'
 import { useProduct } from '@/shared/api/queries'
 import { Badge, Button, PageHeader, QueryState, Skeleton } from '@/shared/ui'
 import { ProductAttachments } from '@/features/attachments/ProductAttachments'
-import { ProductReplacements } from '@/features/replacements/components/ProductReplacements'
 import { ReplacementDialog } from '@/features/replacements/components/ReplacementDialog'
+import { ProductActivity } from './components/ProductActivity'
 import { ProductComposition } from './components/ProductComposition'
 import { ProductDetails } from './components/ProductDetails'
 import { ProductEditForm } from './components/ProductEditForm'
-import { ProductLifecycle } from './components/ProductLifecycle'
+import { ProductLifetime } from './components/ProductLifetime'
 
 export function ProductPage() {
   const { id = '' } = useParams()
@@ -75,14 +75,14 @@ export function ProductPage() {
           {editing && <ProductEditForm product={p} onClose={() => setEditing(false)} />}
           {replacing && <ReplacementDialog product={p} onClose={() => setReplacing(false)} />}
           <div className="grid items-start gap-5 lg:grid-cols-2">
+            <ProductLifetime productId={p.id} />
             <div className="grid gap-5">
               <ProductDetails product={p} />
               <ProductAttachments productId={p.id} readOnly={p.lifecycle === 'written_off'} />
             </div>
             <div className="grid gap-5">
-              <ProductLifecycle productId={p.id} />
-              <ProductComposition lines={p.composition} />
-              <ProductReplacements productId={p.id} />
+              <ProductActivity productId={p.id} />
+              <ProductComposition productId={p.id} lines={p.composition} />
             </div>
           </div>
         </div>

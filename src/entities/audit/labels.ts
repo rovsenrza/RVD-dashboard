@@ -12,6 +12,9 @@ export const AUDIT_ACTION_LABEL: Record<AuditAction, string> = {
   'replacement.create': 'Зафиксирована замена',
   'attachment.create': 'Добавлен файл',
   'attachment.delete': 'Удалён файл',
+  'comment.create': 'Добавлен комментарий',
+  'comment.update': 'Изменён комментарий',
+  'comment.delete': 'Удалён комментарий',
 }
 
 export const AUDIT_TARGET_LABEL: Record<AuditTargetKind, string> = {

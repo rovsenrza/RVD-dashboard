@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type {
   Attachment,
+  ProductComment,
+  ProductLifetime,
   Report,
   ReportId,
   AuditEntry,
@@ -34,6 +36,9 @@ export const keys = {
   product: (id: string) => ['products', id] as const,
   productDocuments: (id: string) => ['products', id, 'documents'] as const,
   productAttachments: (id: string) => ['products', id, 'attachments'] as const,
+  productLifetime: (id: string) => ['products', id, 'lifetime'] as const,
+  productDocumentation: (id: string) => ['products', id, 'documentation'] as const,
+  productComments: (id: string) => ['products', id, 'comments'] as const,
   equipment: (branch: string | null) => ['equipment', branch] as const,
   equipmentItem: (id: string) => ['equipment', id] as const,
   equipmentProducts: (id: string) => ['equipment', id, 'products'] as const,
@@ -338,3 +343,51 @@ export const useReport = (
       return api.get<Report>(`/reports/${id}${qs ? `?${qs}` : ''}`)
     },
   })
+
+// Hose card (Д11) ────────────────────────────────────────────────────────────
+
+/** Phases of service life; null for a hose that was never installed. */
+export const useProductLifetime = (id: string) =>
+  useQuery({
+    queryKey: keys.productLifetime(id),
+    queryFn: () => api.get<ProductLifetime | null>(`/products/${id}/lifetime`),
+  })
+
+/** Technical documentation from 1С (БСП files) for the hose's catalogue number. */
+export const useProductDocumentation = (id: string) =>
+  useQuery({
+    queryKey: keys.productDocumentation(id),
+    queryFn: () => api.get<Attachment[]>(`/products/${id}/documentation`),
+  })
+
+export const useProductComments = (id: string) =>
+  useQuery({
+    queryKey: keys.productComments(id),
+    queryFn: () => api.get<ProductComment[]>(`/products/${id}/comments`),
+  })
+
+/** Add, edit or delete a note on a hose; every change also lands in the action log. */
+export const useCommentMutations = (productId: string) => {
+  const qc = useQueryClient()
+  const onSuccess = () =>
+    Promise.all([
+      qc.invalidateQueries({ queryKey: keys.productComments(productId) }),
+      qc.invalidateQueries({ queryKey: keys.audit }),
+    ])
+  return {
+    add: useMutation({
+      mutationFn: (text: string) =>
+        api.post<ProductComment>(`/products/${productId}/comments`, { text }),
+      onSuccess,
+    }),
+    edit: useMutation({
+      mutationFn: ({ id, text }: { id: string; text: string }) =>
+        api.patch<ProductComment>(`/comments/${id}`, { text }),
+      onSuccess,
+    }),
+    remove: useMutation({
+      mutationFn: (id: string) => api.delete(`/comments/${id}`),
+      onSuccess,
+    }),
+  }
+}

@@ -1,27 +1,26 @@
 import type { ReleaseDocument } from '@/entities/types'
 import { LIFECYCLE_LABEL } from '@/entities/product'
 import { useProductDocuments } from '@/shared/api/queries'
-import { Card, EmptyState, QueryState, Skeleton } from '@/shared/ui'
+import { EmptyState, QueryState, Skeleton } from '@/shared/ui'
 import { cn, formatDate } from '@/shared/lib/utils'
 
+/** «История ЖЦ»: the 1С release documents of this hose, oldest first; the latest is its state now. */
 export function ProductLifecycle({ productId }: { productId: string }) {
   const query = useProductDocuments(productId)
   return (
-    <Card title="Жизненный цикл">
-      <QueryState query={query} skeleton={<Skeleton className="h-40" />}>
-        {(docs) =>
-          docs.length === 0 ? (
-            <EmptyState
-              inset
-              title="Событий пока нет"
-              description="Здесь появятся документы выпуска этого изделия из 1С."
-            />
-          ) : (
-            <Timeline docs={docs} />
-          )
-        }
-      </QueryState>
-    </Card>
+    <QueryState query={query} skeleton={<Skeleton className="h-40" />}>
+      {(docs) =>
+        docs.length === 0 ? (
+          <EmptyState
+            inset
+            title="Событий пока нет"
+            description="Здесь появятся документы выпуска этого изделия из 1С."
+          />
+        ) : (
+          <Timeline docs={docs} />
+        )
+      }
+    </QueryState>
   )
 }
 

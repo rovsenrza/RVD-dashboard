@@ -32,6 +32,17 @@ import {
   userView,
 } from './data'
 import { buildReport } from './reports'
+import {
+  addComment,
+  commentProblem,
+  comments,
+  commentsOf,
+  deleteComment,
+  documentationFile,
+  documentationOf,
+  editComment,
+  productLifetime,
+} from './productCard'
 
 const api = (path: string) => `*/api${path}`
 
@@ -71,6 +82,51 @@ export const handlers = [
       })
     return HttpResponse.json(p)
   }),
+  http.get(api('/products/:id/lifetime'), ({ params }) => {
+    const p = products.find((x) => x.id === params.id)
+    return p ? HttpResponse.json(productLifetime(p)) : new HttpResponse(null, { status: 404 })
+  }),
+  http.get(api('/products/:id/documentation'), ({ params }) => {
+    const p = products.find((x) => x.id === params.id)
+    return p ? HttpResponse.json(documentationOf(p)) : new HttpResponse(null, { status: 404 })
+  }),
+  http.get(api('/documentation/:id/file'), ({ params }) => {
+    const file = documentationFile(params.id as string)
+    return file
+      ? new HttpResponse(file, { headers: { 'Content-Type': 'application/pdf' } })
+      : new HttpResponse(null, { status: 404 })
+  }),
+
+  // Comments (Д11): the cabinet's own notes, never sent to 1С.
+  http.get(api('/products/:id/comments'), ({ params }) =>
+    HttpResponse.json(commentsOf(params.id as string)),
+  ),
+  http.post(api('/products/:id/comments'), async ({ params, request }) => {
+    const p = products.find((x) => x.id === params.id)
+    if (!p) return new HttpResponse(null, { status: 404 })
+    const { text } = (await request.json()) as { text?: unknown }
+    const problem = commentProblem(text)
+    if (problem) return HttpResponse.json({ message: problem }, { status: 422 })
+    return HttpResponse.json(addComment(p, text as string), { status: 201 })
+  }),
+  http.patch(api('/comments/:id'), async ({ params, request }) => {
+    const c = comments.find((x) => x.id === params.id)
+    if (!c) return new HttpResponse(null, { status: 404 })
+    const { text } = (await request.json()) as { text?: unknown }
+    const problem = commentProblem(text)
+    if (problem) return HttpResponse.json({ message: problem }, { status: 422 })
+    const saved = editComment(c, text as string)
+    return saved === 'forbidden'
+      ? HttpResponse.json({ message: 'Изменить можно только свой комментарий' }, { status: 403 })
+      : HttpResponse.json(saved)
+  }),
+  http.delete(api('/comments/:id'), ({ params }) => {
+    const c = comments.find((x) => x.id === params.id)
+    if (!c) return new HttpResponse(null, { status: 404 })
+    deleteComment(c)
+    return new HttpResponse(null, { status: 204 })
+  }),
+
   http.get(api('/products/:id/documents'), ({ params }) =>
     HttpResponse.json(releaseDocuments.filter((d) => d.productId === params.id)),
   ),

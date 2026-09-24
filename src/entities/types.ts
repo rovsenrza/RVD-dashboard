@@ -273,6 +273,9 @@ export type AuditAction =
   | 'replacement.create'
   | 'attachment.create'
   | 'attachment.delete'
+  | 'comment.create'
+  | 'comment.update'
+  | 'comment.delete'
 
 export type AuditTargetKind = 'product' | 'request' | 'user' | 'settings'
 
@@ -347,4 +350,36 @@ export interface Report {
   rows: Record<string, ReportValue>[]
   /** «Итого» for statistics reports: sums of the countable columns */
   totals: Record<string, ReportValue> | null
+}
+
+/** One stretch of a hose's service life in a single status; `to` null = open-ended. */
+export interface LifetimePhase {
+  status: ProductStatus
+  from: string
+  to: string | null
+}
+
+/**
+ * Срок службы изделия (Д11), computed by the server with the same «Внимание»
+ * threshold as the status itself, so the timeline and the badge never disagree.
+ */
+export interface ProductLifetime {
+  installedAt: string
+  /** The day it came off the machine (written off); null while in service */
+  endedAt: string | null
+  warrantyUntil: string
+  /** Planned replacement: installation + service life */
+  plannedAt: string
+  phases: LifetimePhase[]
+}
+
+/** A specialist's note on a hose — kept in the cabinet, not in 1С (Д11). */
+export interface ProductComment {
+  id: string
+  productId: string
+  author: { id: string; name: string; role: UserRole }
+  text: string
+  /** ISO date-time */
+  createdAt: string
+  editedAt: string | null
 }

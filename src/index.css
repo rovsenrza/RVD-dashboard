@@ -227,6 +227,11 @@ body {
   outline-offset: 2px;
 }
 
+/* Text fields draw their own inset amber ring on focus; the outline would double it. */
+:is(input:not([type='checkbox'], [type='radio']), textarea, select):focus-visible {
+  outline: none;
+}
+
 /* Thin scrollbars in the field and sheets */
 * {
   scrollbar-width: thin;

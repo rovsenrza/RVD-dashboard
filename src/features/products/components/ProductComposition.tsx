@@ -1,7 +1,24 @@
+import { useState } from 'react'
 import type { CompositionLine } from '@/entities/types'
-import { Card, EmptyState } from '@/shared/ui'
+import { useProductDocumentation } from '@/shared/api/queries'
+import { Card, EmptyState, QueryState, Skeleton } from '@/shared/ui'
+import { AttachmentViewer } from '@/features/attachments/AttachmentViewer'
+import { DocumentRow } from '@/features/attachments/DocumentRow'
 
-export function ProductComposition({ lines }: { lines: CompositionLine[] }) {
+const Heading = ({ children }: { children: string }) => (
+  <h3 className="mb-1.5 text-caption font-medium tracking-wide text-ink-muted uppercase">
+    {children}
+  </h3>
+)
+
+/** The assembly as 1С specifies it, and the paperwork that comes with its catalogue number. */
+export function ProductComposition({
+  productId,
+  lines,
+}: {
+  productId: string
+  lines: CompositionLine[]
+}) {
   return (
     <Card title="Состав рукава в сборе">
       {lines.length === 0 ? (
@@ -25,6 +42,37 @@ export function ProductComposition({ lines }: { lines: CompositionLine[] }) {
           ))}
         </ul>
       )}
+      <Documentation productId={productId} />
     </Card>
+  )
+}
+
+function Documentation({ productId }: { productId: string }) {
+  const query = useProductDocumentation(productId)
+  const [open, setOpen] = useState<number | null>(null)
+  return (
+    <section className="mt-5 border-t border-line pt-4">
+      <Heading>Техническая документация · из 1С</Heading>
+      <QueryState query={query} skeleton={<Skeleton className="h-24 w-full" />}>
+        {(docs) =>
+          docs.length ? (
+            <ul className="-mx-2 grid">
+              {docs.map((d, i) => (
+                <li key={d.id}>
+                  <DocumentRow file={d} onOpen={() => setOpen(i)} />
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-ui text-ink-muted">
+              Для этого каталожного номера в 1С документов нет.
+            </p>
+          )
+        }
+      </QueryState>
+      {open !== null && query.data && (
+        <AttachmentViewer files={query.data} start={open} onClose={() => setOpen(null)} />
+      )}
+    </section>
   )
 }
