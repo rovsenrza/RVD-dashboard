@@ -314,3 +314,37 @@ export interface ModelStats {
   /** The installation place replaced most often */
   topPlace: string | null
 }
+
+/** The seven reports of ТЗ §4 (Д21). */
+export type ReportId =
+  'registry' | 'warranty' | 'due' | 'plan' | 'replacements' | 'equipment' | 'branches'
+
+/** A report column; `type` decides how the preview, Excel and print render its values. */
+export interface ReportColumn {
+  key: string
+  header: string
+  type: 'text' | 'number' | 'date' | 'status'
+  /** Width hint in characters, for Excel and print */
+  width?: number
+}
+
+/** A date is ISO `yyyy-MM-dd`; a status is a `ProductStatus` code. */
+export type ReportValue = string | number | null
+
+/**
+ * A report as the server builds it: every row in scope, never a page of them.
+ * The BFF will serve the same parameters as `.xlsx` and `.pdf` too.
+ */
+export interface Report {
+  id: ReportId
+  title: string
+  /** Branch name in scope; null = all branches of the company */
+  branch: string | null
+  period: { from: string; to: string } | null
+  /** ISO date-time */
+  generatedAt: string
+  columns: ReportColumn[]
+  rows: Record<string, ReportValue>[]
+  /** «Итого» for statistics reports: sums of the countable columns */
+  totals: Record<string, ReportValue> | null
+}

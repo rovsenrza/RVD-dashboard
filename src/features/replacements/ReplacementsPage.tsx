@@ -1,34 +1,38 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { ColumnDef } from '@tanstack/react-table'
-import { ArrowLeftRight, Download } from 'lucide-react'
+import { ArrowLeftRight } from 'lucide-react'
 import { formatISO, subDays } from 'date-fns'
 import type { Replacement } from '@/entities/types'
 import { REPLACEMENT_REASONS, USAGE_UNIT_LABEL } from '@/entities/replacement'
+import { useSession } from '@/app/session'
 import { useReplacements } from '@/shared/api/queries'
 import { ReplacementDialog } from './components/ReplacementDialog'
 import {
   Button,
   DataTable,
+  ExportMenu,
   PageHeader,
   QueryState,
   SearchInput,
   Select,
   TableSkeleton,
+  type DataTableHandle,
 } from '@/shared/ui'
-import { downloadCsv, type CsvColumn } from '@/shared/lib/csv'
+import type { ExportColumn } from '@/shared/lib/export'
 import { replacementColumns } from './columns'
 
-const CSV_COLUMNS: CsvColumn<Replacement>[] = [
-  { header: 'Дата', value: (r) => r.date },
-  { header: 'Снятое изделие (EHS)', value: (r) => r.oldSerialNumber },
-  { header: 'Установленное изделие (EHS)', value: (r) => r.newSerialNumber },
-  { header: 'Техника (гаражный №)', value: (r) => r.garageNumber },
-  { header: 'Причина', value: (r) => r.reason },
-  { header: 'Наработка', value: (r) => r.operatingHours },
-  { header: 'Единица', value: (r) => USAGE_UNIT_LABEL[r.usageUnit] },
-  { header: 'Исполнитель', value: (r) => r.performedBy },
-  { header: 'Комментарий', value: (r) => r.comment },
+const EXPORT_COLUMNS: ExportColumn<Replacement>[] = [
+  { header: 'Дата', value: (r) => r.date, type: 'date', width: 11 },
+  { header: 'Снятое изделие (EHS)', value: (r) => r.oldSerialNumber, width: 12 },
+  { header: 'Установленное изделие (EHS)', value: (r) => r.newSerialNumber, width: 14 },
+  { header: 'Техника (гаражный №)', value: (r) => r.garageNumber, width: 12 },
+  { header: 'Причина', value: (r) => r.reason, width: 20 },
+  { header: 'Наработка', value: (r) => r.operatingHours, width: 10 },
+  { header: 'Единица', value: (r) => USAGE_UNIT_LABEL[r.usageUnit], width: 8 },
+  { header: 'Исполнитель', value: (r) => r.performedBy, width: 14 },
+  { header: 'Комментарий', value: (r) => r.comment, width: 30 },
+  { header: 'Файлы', value: (r) => r.attachments.map((a) => a.fileName).join(', '), width: 24 },
 ]
 
 const PERIODS = [
@@ -42,6 +46,8 @@ export function ReplacementsPage() {
   const [filter, setFilter] = useState('')
   const [recording, setRecording] = useState(false)
   const navigate = useNavigate()
+  const { branch } = useSession()
+  const table = useRef<DataTableHandle<Replacement>>(null)
   // Filters live in the URL, so a KPI link («Замен за 30 дней») and a shared link open the same slice.
   const [params, setParams] = useSearchParams()
   const period = params.get('period') ?? ''
@@ -80,14 +86,19 @@ export function ReplacementsPage() {
         description="Журнал всех замен РВД на технике компании"
         actions={
           <>
-            <Button
-              variant="secondary"
-              size="sm"
-              icon={Download}
-              onClick={() => downloadCsv('замены.csv', CSV_COLUMNS, rows)}
-            >
-              Экспорт
-            </Button>
+            <ExportMenu
+              fileName="замены"
+              title="История замен"
+              lines={[
+                branch?.name ?? 'Все филиалы',
+                period && PERIODS.find((p) => p.value === period)?.label,
+                machine && `Техника: ${machines.find(([id]) => id === machine)?.[1] ?? machine}`,
+                reason && `Причина: ${reason}`,
+                filter.trim() && `Поиск: «${filter.trim()}»`,
+              ]}
+              columns={EXPORT_COLUMNS}
+              rows={() => table.current?.visibleRows() ?? rows}
+            />
             <Button size="sm" icon={ArrowLeftRight} onClick={() => setRecording(true)}>
               Зафиксировать замену
             </Button>
@@ -101,6 +112,7 @@ export function ReplacementsPage() {
             data={rows}
             columns={replacementColumns as ColumnDef<Replacement, unknown>[]}
             globalFilter={filter}
+            handle={table}
             onRowClick={(r) => navigate(`/products/${r.oldProductId}`)}
             emptyTitle="Замен ещё не было"
             toolbar={

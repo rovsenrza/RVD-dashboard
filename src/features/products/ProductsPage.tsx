@@ -1,40 +1,43 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { ColumnDef } from '@tanstack/react-table'
-import { Download, SlidersHorizontal } from 'lucide-react'
+import { SlidersHorizontal } from 'lucide-react'
 import type { Product, ProductLifecycle, ProductStatus } from '@/entities/types'
 import { LIFECYCLE_LABEL, STATUS_LABEL } from '@/entities/product'
+import { useSession } from '@/app/session'
 import { useCatalogNumbers, useEquipment, useProducts } from '@/shared/api/queries'
 import {
   Button,
   Chip,
   DataTable,
+  ExportMenu,
   PageHeader,
+  type DataTableHandle,
   QueryState,
   SearchInput,
   Tabs,
   TableSkeleton,
 } from '@/shared/ui'
-import { downloadCsv, type CsvColumn } from '@/shared/lib/csv'
+import type { ExportColumn } from '@/shared/lib/export'
 import { productColumns } from './columns'
 import { ProductFilters } from './components/ProductFilters'
 import { FILTER_KEYS, type FilterKey, type FilterValues } from './filters'
 
 type Tab = 'active' | 'archive'
 
-const CSV_COLUMNS: CsvColumn<Product>[] = [
-  { header: 'EHS №', value: (p) => p.serialNumber },
-  { header: 'Внутренний №', value: (p) => p.clientNumber },
-  { header: 'OEM №', value: (p) => p.oemNumber },
-  { header: 'Каталожный №', value: (p) => p.catalogNumber },
-  { header: 'Тип', value: (p) => p.type },
-  { header: 'Производитель', value: (p) => p.manufacturer },
-  { header: 'Отгружено', value: (p) => p.shippedAt },
-  { header: 'Установлено', value: (p) => p.installedAt },
-  { header: 'Место установки', value: (p) => p.installPlace },
-  { header: 'Срок эксплуатации, дн.', value: (p) => p.serviceLifeDays },
-  { header: 'Состояние', value: (p) => STATUS_LABEL[p.status] },
-  { header: 'Статус в 1С', value: (p) => LIFECYCLE_LABEL[p.lifecycle] },
+const EXPORT_COLUMNS: ExportColumn<Product>[] = [
+  { header: 'EHS №', value: (p) => p.serialNumber, width: 10 },
+  { header: 'Внутренний №', value: (p) => p.clientNumber, width: 12 },
+  { header: 'OEM №', value: (p) => p.oemNumber, width: 12 },
+  { header: 'Каталожный №', value: (p) => p.catalogNumber, width: 16 },
+  { header: 'Тип', value: (p) => p.type, width: 12 },
+  { header: 'Производитель', value: (p) => p.manufacturer, width: 14 },
+  { header: 'Отгружено', value: (p) => p.shippedAt, type: 'date', width: 11 },
+  { header: 'Установлено', value: (p) => p.installedAt, type: 'date', width: 11 },
+  { header: 'Место установки', value: (p) => p.installPlace, width: 20 },
+  { header: 'Срок эксплуатации, дн.', value: (p) => p.serviceLifeDays, width: 12 },
+  { header: 'Состояние', value: (p) => STATUS_LABEL[p.status], width: 16 },
+  { header: 'Статус в 1С', value: (p) => LIFECYCLE_LABEL[p.lifecycle], width: 16 },
 ]
 
 export function ProductsPage() {
@@ -46,6 +49,8 @@ export function ProductsPage() {
   const [tab, setTab] = useState<Tab>('active')
   const [filtersOpen, setFiltersOpen] = useState(false)
   const navigate = useNavigate()
+  const { branch } = useSession()
+  const table = useRef<DataTableHandle<Product>>(null)
 
   const active = useMemo(() => {
     const values: FilterValues = {}
@@ -103,20 +108,19 @@ export function ProductsPage() {
               Фильтры
               {Object.keys(active).length > 0 && ` · ${Object.keys(active).length}`}
             </Button>
-            <Button
-              variant="secondary"
-              size="sm"
-              icon={Download}
-              onClick={() =>
-                downloadCsv(
-                  tab === 'archive' ? 'изделия-архив.csv' : 'изделия.csv',
-                  CSV_COLUMNS,
-                  tab === 'archive' ? archived : rows,
-                )
-              }
-            >
-              Экспорт
-            </Button>
+            <ExportMenu
+              fileName={tab === 'archive' ? 'изделия-архив' : 'изделия'}
+              title={tab === 'archive' ? 'Мои изделия — архив' : 'Мои изделия'}
+              lines={[
+                branch?.name ?? 'Все филиалы',
+                ...FILTER_KEYS.filter((key) => active[key]).map((key) =>
+                  chipLabel(key, active[key]!),
+                ),
+                filter.trim() && `Поиск: «${filter.trim()}»`,
+              ]}
+              columns={EXPORT_COLUMNS}
+              rows={() => table.current?.visibleRows() ?? (tab === 'archive' ? archived : rows)}
+            />
           </>
         }
       />
@@ -132,6 +136,7 @@ export function ProductsPage() {
             data={tab === 'active' ? rows : archived}
             columns={productColumns as ColumnDef<Product, unknown>[]}
             globalFilter={filter}
+            handle={table}
             onRowClick={(p) => navigate(`/products/${p.id}`)}
             pageSize={10}
             stickyFirstColumn

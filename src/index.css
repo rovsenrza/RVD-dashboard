@@ -252,6 +252,28 @@ body {
   }
 }
 
+/* Print: reports go out as A4 landscape (Д21). Chrome fills the page-number box. */
+@page {
+  size: A4 landscape;
+  margin: 12mm 12mm 14mm;
+
+  @bottom-right {
+    content: 'Стр. ' counter(page) ' из ' counter(pages);
+    font-family: var(--font-sans);
+    font-size: 9px;
+    color: var(--color-ink-muted);
+  }
+}
+
+@media print {
+  html,
+  body,
+  #root {
+    height: auto;
+    background: var(--color-sheet);
+  }
+}
+
 /* Utilities */
 @utility sheet {
   background: var(--color-sheet);

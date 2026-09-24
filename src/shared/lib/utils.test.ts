@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { cn, daysLeft, formatDate } from './utils'
+import { cn, daysLeft, formatDate, plural } from './utils'
+import { excelDate } from './export'
 
 describe('utils', () => {
   it('keeps a type-scale size next to a text colour, and lets a later size win', () => {
@@ -14,5 +15,29 @@ describe('utils', () => {
   it('computes remaining service life', () => {
     expect(daysLeft('2025-01-01', 365, new Date('2025-07-01'))).toBe(184)
     expect(daysLeft(null, 365)).toBeNull()
+  })
+})
+
+describe('plural', () => {
+  it('agrees the noun with the number', () => {
+    const rows = (n: number) => `${n} ${plural(n, 'строка', 'строки', 'строк')}`
+    expect([1, 2, 5, 11, 12, 21, 22, 25, 111, 104].map(rows)).toEqual([
+      '1 строка',
+      '2 строки',
+      '5 строк',
+      '11 строк',
+      '12 строк',
+      '21 строка',
+      '22 строки',
+      '25 строк',
+      '111 строк',
+      '104 строки',
+    ])
+  })
+})
+
+describe('excelDate', () => {
+  it('keeps the calendar day whatever the time zone', () => {
+    expect(excelDate('2026-09-05').toISOString()).toBe('2026-09-05T00:00:00.000Z')
   })
 })

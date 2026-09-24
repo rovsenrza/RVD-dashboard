@@ -31,6 +31,14 @@ const DESKTOP: { name: string; path: string; role?: Role; themes: ('light' | 'da
   { name: 'replacements', path: '/replacements', themes: ['light'] },
   { name: 'requests', path: '/requests', themes: ['light'] },
   { name: 'compare', path: '/compare', role: 'manager', themes: ['light', 'dark'] },
+  { name: 'reports', path: '/reports?r=equipment', role: 'manager', themes: ['light', 'dark'] },
+  // Paper is always light, whatever the theme; a fixed period keeps it stable.
+  {
+    name: 'report-print',
+    path: '/reports/print?r=equipment&from=2025-09-23&to=2026-09-23',
+    role: 'manager',
+    themes: ['dark'],
+  },
   { name: 'admin-users', path: '/admin', role: 'admin', themes: ['light'] },
   { name: 'admin-settings', path: '/admin?tab=settings', role: 'admin', themes: ['light'] },
   { name: 'admin-audit', path: '/admin?tab=audit', role: 'admin', themes: ['light'] },

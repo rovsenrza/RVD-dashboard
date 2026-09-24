@@ -1,6 +1,8 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type {
   Attachment,
+  Report,
+  ReportId,
   AuditEntry,
   ModelStats,
   BranchSummary,
@@ -45,6 +47,8 @@ export const keys = {
   settings: ['admin', 'settings'] as const,
   audit: ['admin', 'audit'] as const,
   modelStats: (branch: string | null) => ['analytics', 'models', branch] as const,
+  report: (id: ReportId, branch: string | null, from?: string, to?: string) =>
+    ['reports', id, branch, from, to] as const,
 }
 
 export const useDashboard = () => {
@@ -309,3 +313,28 @@ export const useDeleteAttachment = (productId: string) => {
 
 /** The file itself, by the URL the server gave for it — for downloads. */
 export const fetchAttachment = (a: Attachment) => api.file(a.url)
+
+// Reports (Д21) ──────────────────────────────────────────────────────────────
+
+/**
+ * One report over the whole scope, built by the server. The branch is passed
+ * explicitly: the print view opens in its own tab, outside this session's switcher.
+ */
+export const useReport = (
+  id: ReportId | null,
+  { branch, from, to }: { branch: string | null; from?: string; to?: string },
+) =>
+  useQuery({
+    queryKey: keys.report(id!, branch, from, to),
+    enabled: id !== null,
+    queryFn: () => {
+      const q = new URLSearchParams()
+      if (branch) q.set('branch', branch)
+      if (from && to) {
+        q.set('from', from)
+        q.set('to', to)
+      }
+      const qs = q.toString()
+      return api.get<Report>(`/reports/${id}${qs ? `?${qs}` : ''}`)
+    },
+  })

@@ -1,6 +1,7 @@
 import { NavLink } from 'react-router-dom'
 import {
   ClipboardList,
+  FileChartColumn,
   History,
   LayoutDashboard,
   LifeBuoy,
@@ -30,7 +31,8 @@ export const NAV: NavItem[] = [
   { to: '/requests', label: 'Заявки', icon: ClipboardList },
 ]
 
-/** Model comparison is the manager's (ТЗ roles); the administrator sees everything. */
+/** Reports and model comparison are the manager's (ТЗ roles); the administrator sees everything. */
+const REPORTS_NAV: NavItem = { to: '/reports', label: 'Отчёты', icon: FileChartColumn }
 const COMPARE_NAV: NavItem = { to: '/compare', label: 'Сравнение техники', icon: Scale }
 /** Users and settings belong to the administrator; the other roles never see the entry. */
 const ADMIN_NAV: NavItem = { to: '/admin', label: 'Администрирование', icon: ShieldCheck }
@@ -39,7 +41,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
   const { user } = useSession()
   const nav = [
     ...NAV,
-    ...(user.role === 'manager' || user.role === 'admin' ? [COMPARE_NAV] : []),
+    ...(user.role === 'manager' || user.role === 'admin' ? [REPORTS_NAV, COMPARE_NAV] : []),
     ...(user.role === 'admin' ? [ADMIN_NAV] : []),
   ]
   return (

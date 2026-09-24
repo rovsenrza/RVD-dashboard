@@ -31,6 +31,7 @@ import {
   users,
   userView,
 } from './data'
+import { buildReport } from './reports'
 
 const api = (path: string) => `*/api${path}`
 
@@ -86,6 +87,15 @@ export const handlers = [
     ),
   ),
   http.get(api('/catalog-numbers'), () => HttpResponse.json(catalogNumbers)),
+  http.get(api('/reports/:id'), ({ params, request }) => {
+    const q = new URL(request.url).searchParams
+    const report = buildReport(params.id as Parameters<typeof buildReport>[0], {
+      branch: q.get('branch'),
+      from: q.get('from'),
+      to: q.get('to'),
+    })
+    return report ? HttpResponse.json(report) : new HttpResponse(null, { status: 404 })
+  }),
   http.get(api('/analytics/models'), ({ request }) =>
     HttpResponse.json(modelStats(branchOf(request))),
   ),

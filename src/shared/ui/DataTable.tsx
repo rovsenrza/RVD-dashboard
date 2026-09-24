@@ -1,4 +1,12 @@
-import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
+import {
+  Fragment,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+  type ReactNode,
+  type Ref,
+} from 'react'
 import {
   flexRender,
   getCoreRowModel,
@@ -39,6 +47,12 @@ declare module '@tanstack/react-table' {
   }
 }
 
+/** What a page may ask of its table: the rows as the user sees them, across all pages. */
+export interface DataTableHandle<T> {
+  /** Filtered by the search and sorted by the user's column, before pagination. */
+  visibleRows: () => T[]
+}
+
 export interface DataTableProps<T> {
   data: T[]
   columns: ColumnDef<T, unknown>[]
@@ -58,6 +72,8 @@ export interface DataTableProps<T> {
   tools?: boolean
   /** Columns hidden by default (ids); the user can re-enable them via the chooser. */
   hiddenByDefault?: string[]
+  /** For exports: «what I see» is the search and sort applied here, not the page's data. */
+  handle?: Ref<DataTableHandle<T>>
 }
 
 const PAGE_SIZES = [10, 20, 50]
@@ -75,6 +91,7 @@ export function DataTable<T>({
   stickyFirstColumn = false,
   tools = false,
   hiddenByDefault = [],
+  handle,
 }: DataTableProps<T>) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() =>
@@ -92,6 +109,11 @@ export function DataTable<T>({
     getPaginationRowModel: getPaginationRowModel(),
     initialState: { pagination: { pageSize } },
   })
+  useImperativeHandle(
+    handle,
+    () => ({ visibleRows: () => table.getPrePaginationRowModel().rows.map((r) => r.original) }),
+    [table],
+  )
   const { pageIndex, pageSize: size } = table.getState().pagination
   const total = table.getFilteredRowModel().rows.length
   const rows = table.getRowModel().rows

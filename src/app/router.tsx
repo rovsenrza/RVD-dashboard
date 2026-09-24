@@ -11,9 +11,20 @@ import { ReplacementsPage } from '@/features/replacements/ReplacementsPage'
 import { RequestsPage } from '@/features/requests/RequestsPage'
 import { AdminPage } from '@/features/admin/AdminPage'
 import { ComparePage } from '@/features/compare/ComparePage'
+import { ReportsPage } from '@/features/reports/ReportsPage'
+import { ReportPrintPage } from '@/features/reports/ReportPrintPage'
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
+  // Paper: outside the app shell, so nothing but the report reaches the printer.
+  {
+    path: '/reports/print',
+    element: (
+      <RequireAuth>
+        <ReportPrintPage />
+      </RequireAuth>
+    ),
+  },
   {
     path: '/',
     element: (
@@ -29,6 +40,7 @@ export const router = createBrowserRouter([
       { path: 'equipment/:id', element: <EquipmentDetailPage /> },
       { path: 'replacements', element: <ReplacementsPage /> },
       { path: 'requests', element: <RequestsPage /> },
+      { path: 'reports', element: <ReportsPage /> },
       { path: 'compare', element: <ComparePage /> },
       { path: 'admin', element: <AdminPage /> },
       // Component catalogue; `import.meta.env.DEV` is false in production builds,
