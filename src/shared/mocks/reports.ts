@@ -1,4 +1,4 @@
-import { addDays, differenceInDays, formatISO, parseISO } from 'date-fns'
+import { differenceInDays, formatISO, parseISO } from 'date-fns'
 import type {
   Product,
   ProductStatus,
@@ -8,9 +8,10 @@ import type {
   ReportValue,
 } from '@/entities/types'
 import { LIFECYCLE_LABEL } from '@/entities/product'
+import { serviceDates } from '@/entities/product/rules'
 import { USAGE_UNIT_LABEL } from '@/entities/replacement'
 import { reportMeta } from '@/entities/report'
-import { branchSummaries, equipment, products, replacements, requests } from './data'
+import { branchSummaries, equipment, products, replacements, requests, settings } from './data'
 
 export interface ReportParams {
   branch: string | null
@@ -21,7 +22,6 @@ export interface ReportParams {
 type Row = Record<string, ReportValue>
 
 const day = (d: Date) => formatISO(d, { representation: 'date' })
-const plus = (iso: string, days: number) => day(addDays(parseISO(iso), days))
 const col = (
   key: string,
   header: string,
@@ -31,7 +31,7 @@ const col = (
 
 const notRetired = (p: Product) => p.lifecycle !== 'written_off'
 const installed = (p: Product) => p.installedAt !== null && notRetired(p)
-const plannedAt = (p: Product) => (p.installedAt ? plus(p.installedAt, p.serviceLifeDays) : null)
+const plannedAt = (p: Product) => (p.installedAt ? serviceDates(p, settings)!.plannedAt : null)
 const machineOf = (p: Product) => equipment.find((e) => e.id === p.equipmentId) ?? null
 const STATUS_KEYS: ProductStatus[] = ['ok', 'warn', 'replace', 'no_warranty']
 
@@ -126,7 +126,7 @@ export function buildReport(id: ReportId, { branch, from, to }: ReportParams): R
       ]
       rows = hoses
         .filter(installed)
-        .map((p) => ({ p, until: plus(p.installedAt!, p.warrantyDays) }))
+        .map((p) => ({ p, until: serviceDates(p, settings)!.warrantyUntil }))
         .filter(({ until }) => until >= today)
         .sort((a, b) => a.until.localeCompare(b.until))
         .map(({ p, until }) => ({

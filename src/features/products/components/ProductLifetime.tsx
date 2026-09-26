@@ -55,15 +55,15 @@ export function ProductLifetime({ productId }: { productId: string }) {
 
 function Timeline({ life }: { life: Lifetime }) {
   const now = life.endedAt ?? today()
-  const lifeDays = days(life.installedAt, life.plannedAt)
+  const lifeDays = days(life.startedAt, life.plannedAt)
   // Room after the planned date for the «пора менять» stretch, or up to today when overdue.
   const tail = Math.max(30, Math.round(lifeDays * 0.12))
-  const total = Math.max(lifeDays + tail, days(life.installedAt, now) + 14)
+  const total = Math.max(lifeDays + tail, days(life.startedAt, now) + 14)
   const at = (date: string) =>
-    Math.min(100, Math.max(0, (days(life.installedAt, date) / total) * 100))
+    Math.min(100, Math.max(0, (days(life.startedAt, date) / total) * 100))
   const nowAt = at(now)
 
-  const age = days(life.installedAt, now)
+  const age = days(life.startedAt, now)
   const left = days(now, life.plannedAt)
   const current = life.phases.find((p) => p.from <= now && (!p.to || now < p.to)) ?? life.phases[0]
   const warrantyOver = life.warrantyUntil <= now
@@ -72,7 +72,7 @@ function Timeline({ life }: { life: Lifetime }) {
     <div>
       <dl className="flex flex-wrap gap-x-10 gap-y-3">
         <Stat
-          label={life.endedAt ? 'Прослужило' : 'В работе'}
+          label={life.endedAt ? 'Прослужило' : life.basis === 'shipped' ? 'С отгрузки' : 'В работе'}
           value={`${age.toLocaleString('ru-RU')} дн.`}
         />
         {life.endedAt ? (
@@ -148,6 +148,13 @@ function Timeline({ life }: { life: Lifetime }) {
           )
         })}
       </ul>
+
+      {life.basis === 'shipped' && (
+        <p className="mt-4 text-label text-ink-muted">
+          Дата установки не указана — срок считается от отгрузки {formatDate(life.startedAt)}.
+          Укажите установку в «Изменить», и срок пересчитается.
+        </p>
+      )}
     </div>
   )
 }

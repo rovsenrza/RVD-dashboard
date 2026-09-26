@@ -29,9 +29,12 @@ describe('service life', () => {
     expect(life.phases.at(-1)!.from).toBe(life.plannedAt)
   })
 
-  it('is null for a hose that was never installed', async () => {
+  it('counts from shipment for a hose that was never installed', async () => {
     const stock = products.find((x) => !x.installedAt)!
-    expect(await (await fetch(`${API}/products/${stock.id}/lifetime`)).json()).toBeNull()
+    const life = (await (
+      await fetch(`${API}/products/${stock.id}/lifetime`)
+    ).json()) as ProductLifetime
+    expect(life).toMatchObject({ startedAt: stock.shippedAt, basis: 'shipped' })
   })
 
   it('ends a written-off hose on the day it came off', async () => {

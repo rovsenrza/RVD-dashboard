@@ -20,6 +20,7 @@ import type {
   Replacement,
   ServiceRequest,
 } from '@/entities/types'
+import { DEFAULT_RULES, serviceDates, statusOf, warnRuleLabel } from '@/entities/product/rules'
 
 // Deterministic pseudo-random so mock data is stable between reloads.
 let seed = 42
@@ -33,9 +34,9 @@ const iso = (d: Date) => formatISO(d, { representation: 'date' })
 const NOW = new Date()
 const BRANCHES = ['b-main', 'b-north']
 
-/** Company settings; `warnPercent` drives every hose status below, as it will on the BFF. */
+/** Company settings; the «Внимание» rule drives every hose status below, as it will on the BFF. */
 export const settings: CabinetSettings = {
-  warnPercent: 20,
+  ...DEFAULT_RULES,
   leadDays: [30, 14, 7],
   channels: { inApp: true, email: false },
 }
@@ -150,19 +151,6 @@ export const equipment: Equipment[] = Array.from({ length: 26 }, (_, i) => {
   }
 })
 
-function statusFor(
-  installedAt: Date | null,
-  lifeDays: number,
-  warrantyDays: number,
-): ProductStatus {
-  if (!installedAt) return 'no_warranty'
-  const age = (NOW.getTime() - installedAt.getTime()) / 86_400_000
-  if (age > lifeDays) return 'replace'
-  if (age > lifeDays * (1 - settings.warnPercent / 100)) return 'warn'
-  if (age > warrantyDays) return 'no_warranty'
-  return 'ok'
-}
-
 function lifecycleFor(installed: Date | null, status: ProductStatus): ProductLifecycle {
   if (!installed) return rand() < 0.5 ? 'in_stock' : 'shipped'
   return status === 'replace' ? 'needs_replacement' : 'in_operation'
@@ -174,11 +162,16 @@ export const products: Product[] = Array.from({ length: 420 }, (_, i) => {
   const hose = components.find((c) => c.id === cat.composition[0].componentId)!
   const shipped = subDays(NOW, Math.floor(rand() * 500))
   const installed = eq ? addDays(shipped, Math.floor(rand() * 20)) : null
-  // Health from the stored date, as every later recount (and the BFF) derives it.
-  const status = statusFor(
-    installed ? new Date(iso(installed)) : null,
-    cat.serviceLifeDays,
-    cat.warrantyDays,
+  // Health from the stored dates, as every later recount (and the BFF) derives it.
+  const status = statusOf(
+    {
+      installedAt: installed ? iso(installed) : null,
+      shippedAt: iso(shipped),
+      serviceLifeDays: cat.serviceLifeDays,
+      warrantyDays: cat.warrantyDays,
+    },
+    settings,
+    NOW,
   )
   return {
     id: `p-${i + 1}`,
@@ -245,11 +238,12 @@ export function recountEquipment(eq: Equipment) {
   eq.hoseCount = own.length
   eq.statusBreakdown = { ok: 0, warn: 0, replace: 0, no_warranty: 0 }
   for (const p of own) eq.statusBreakdown[p.status]++
+  const today = iso(NOW)
   const next = own
-    .map((p) => addDays(new Date(p.installedAt!), p.serviceLifeDays))
-    .filter((d) => d >= NOW)
-    .sort((a, b) => a.getTime() - b.getTime())[0]
-  eq.nextPlannedReplacement = next ? iso(next) : null
+    .map((p) => serviceDates(p, settings)!.plannedAt)
+    .filter((d) => d >= today)
+    .sort()[0]
+  eq.nextPlannedReplacement = next ?? null
 }
 
 /**
@@ -262,10 +256,9 @@ export function applyInstallation(
 ) {
   const before = p.equipmentId
   Object.assign(p, patch)
-  const installed = p.installedAt ? new Date(p.installedAt) : null
-  p.status = statusFor(installed, p.serviceLifeDays, p.warrantyDays)
+  p.status = statusOf(p, settings, NOW)
   if (p.lifecycle !== 'written_off') {
-    p.lifecycle = installed
+    p.lifecycle = p.installedAt
       ? p.status === 'replace'
         ? 'needs_replacement'
         : 'in_operation'
@@ -365,7 +358,7 @@ export function dashboardSummary(branch: string | null = null): DashboardSummary
       productId: p.id,
       serialNumber: p.serialNumber,
       equipment: equipment.find((e) => e.id === p.equipmentId)?.garageNumber ?? '—',
-      dueDate: iso(addDays(new Date(p.installedAt!), p.serviceLifeDays)),
+      dueDate: serviceDates(p, settings)!.plannedAt,
     }))
     .filter((u) => u.dueDate >= iso(NOW))
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
@@ -388,13 +381,13 @@ export function dashboardSummary(branch: string | null = null): DashboardSummary
   }
 }
 
-/** Re-derive every live hose's health after a threshold change, then the counts built on it. */
+/** Re-derive every hose's health after a rule change (stock counts from shipment), then the counts built on it. */
 export function applySettings(patch: Partial<CabinetSettings>) {
   Object.assign(settings, patch)
   for (const p of products) {
-    if (!live(p)) continue
-    p.status = statusFor(new Date(p.installedAt!), p.serviceLifeDays, p.warrantyDays)
-    p.lifecycle = p.status === 'replace' ? 'needs_replacement' : 'in_operation'
+    if (p.lifecycle === 'written_off') continue
+    p.status = statusOf(p, settings, NOW)
+    if (live(p)) p.lifecycle = p.status === 'replace' ? 'needs_replacement' : 'in_operation'
   }
   for (const eq of equipment) recountEquipment(eq)
   return settings
@@ -502,7 +495,7 @@ export const userView = (u: CabinetUser): View => ({
 })
 
 export const settingsView = (s: CabinetSettings): View => ({
-  '«Внимание» при остатке ресурса': `${s.warnPercent} %`,
+  '«Внимание»': warnRuleLabel(s),
   'Предупреждать за, дней': s.leadDays.join(', ') || 'не предупреждать',
   'Письма на почту': s.channels.email ? 'Включены' : 'Выключены',
 })

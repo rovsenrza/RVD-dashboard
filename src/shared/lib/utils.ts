@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from 'clsx'
 import { extendTailwindMerge } from 'tailwind-merge'
-import { differenceInDays, format, parseISO } from 'date-fns'
+import { format, parseISO } from 'date-fns'
 
 /** The type scale from src/index.css; unregistered, `text-caption` would read as a colour. */
 const twMerge = extendTailwindMerge({
@@ -28,11 +28,6 @@ export function formatDateTime(iso: string): string {
 
 export function formatNumber(n: number) {
   return n.toLocaleString('ru-RU')
-}
-
-export function daysLeft(startIso: string | null, lifeDays: number, now = new Date()) {
-  if (!startIso) return null
-  return lifeDays - differenceInDays(now, parseISO(startIso))
 }
 
 /** Russian noun agreement: plural(21, 'строка', 'строки', 'строк') → «строка». */

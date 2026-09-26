@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react'
 import type { Product } from '@/entities/types'
-import { LIFECYCLE_LABEL } from '@/entities/product'
+import { LIFECYCLE_LABEL, STATUS_TONE, daysLeft } from '@/entities/product'
 import { Badge, Card, DescriptionList } from '@/shared/ui'
-import { daysLeft, formatDate } from '@/shared/lib/utils'
+import { formatDate } from '@/shared/lib/utils'
 
 export function ProductDetails({ product: p }: { product: Product }) {
-  const left = daysLeft(p.installedAt, p.serviceLifeDays)
+  const left = daysLeft(p)
   const groups: { title: string; rows: [string, ReactNode][] }[] = [
     {
       title: 'Идентификация',
@@ -38,7 +38,7 @@ export function ProductDetails({ product: p }: { product: Product }) {
         [
           'До плановой замены',
           left === null ? null : (
-            <Badge tone={left < 0 ? 'replace' : left <= 30 ? 'warn' : 'ok'}>
+            <Badge tone={STATUS_TONE[p.status]}>
               {left < 0 ? `просрочено на ${-left} дн.` : `${left} дн.`}
             </Badge>
           ),

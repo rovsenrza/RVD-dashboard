@@ -1,4 +1,5 @@
 import { http, HttpResponse } from 'msw'
+import { rulesProblem } from '@/entities/product/rules'
 import {
   attachmentsOf,
   claimAttachments,
@@ -344,8 +345,11 @@ export const handlers = [
   http.get(api('/admin/branches'), () => HttpResponse.json(branchSummaries())),
   http.get(api('/admin/settings'), () => HttpResponse.json(settings)),
   http.patch(api('/admin/settings'), async ({ request }) => {
+    const patch = (await request.json()) as Partial<typeof settings>
+    const problem = rulesProblem(patch)
+    if (problem) return HttpResponse.json({ message: problem }, { status: 422 })
     const before = settingsView(settings)
-    applySettings((await request.json()) as Partial<typeof settings>)
+    applySettings(patch)
     const changes = diff(before, settingsView(settings))
     if (changes.length)
       record({

@@ -258,8 +258,12 @@ export interface BranchSummary extends Branch {
 
 /** Company-wide settings the administrator owns (PLAN.md §5, questions 4 and 7). */
 export interface CabinetSettings {
-  /** A hose turns «Внимание» when less than this share of its service life is left, %. */
+  /** How «Внимание» is measured until the customer settles it (Д13): share of life or fixed days. */
+  warnRule: 'percent' | 'days'
+  /** `percent`: «Внимание» over the last this share of the service life, %. */
   warnPercent: number
+  /** `days`: «Внимание» over the last this many days before the planned replacement. */
+  warnDays: number
   /** Days before a due date (warranty end, planned replacement, overrun) to notify. */
   leadDays: number[]
   channels: { inApp: boolean; email: boolean }
@@ -368,7 +372,9 @@ export interface LifetimePhase {
  * threshold as the status itself, so the timeline and the badge never disagree.
  */
 export interface ProductLifetime {
-  installedAt: string
+  /** Installation, or shipment when the installation date is unknown (see `basis`) */
+  startedAt: string
+  basis: 'installed' | 'shipped'
   /** The day it came off the machine (written off); null while in service */
   endedAt: string | null
   warrantyUntil: string

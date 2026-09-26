@@ -1,9 +1,41 @@
 import { useState, type FormEvent } from 'react'
 import type { CabinetSettings } from '@/entities/types'
+import { WARN_DAYS_RANGE, WARN_PERCENT_RANGE, warnRuleLabel } from '@/entities/product'
 import { useSaveSettings, useSettings } from '@/shared/api/queries'
-import { Button, Card, Checkbox, Field, Input, QueryState, Skeleton, useToast } from '@/shared/ui'
+import {
+  Button,
+  Card,
+  Checkbox,
+  Field,
+  Input,
+  QueryState,
+  SegmentedControl,
+  Skeleton,
+  useToast,
+} from '@/shared/ui'
 
 const LEAD_OPTIONS = [60, 30, 14, 7, 3, 1]
+
+type WarnRule = CabinetSettings['warnRule']
+const RULES: { value: WarnRule; label: string }[] = [
+  { value: 'percent', label: 'Доля срока' },
+  { value: 'days', label: 'Дни до замены' },
+]
+/** Per rule: allowed range, unit, and the wording under the field. */
+const RULE_FIELD = {
+  percent: {
+    range: WARN_PERCENT_RANGE,
+    unit: '%',
+    maxLength: 2,
+    label: 'Последние, % срока эксплуатации',
+  },
+  days: {
+    range: WARN_DAYS_RANGE,
+    unit: 'дн.',
+    maxLength: 3,
+    label: 'Последние, дней до плановой замены',
+  },
+} as const
 
 export function SettingsTab() {
   const settings = useSettings()
@@ -17,14 +49,21 @@ export function SettingsTab() {
 function SettingsForm({ saved }: { saved: CabinetSettings }) {
   const toast = useToast()
   const save = useSaveSettings()
-  const [warn, setWarn] = useState(String(saved.warnPercent))
+  const [rule, setRule] = useState(saved.warnRule)
+  const [percent, setPercent] = useState(String(saved.warnPercent))
+  const [days, setDays] = useState(String(saved.warnDays))
   const [leadDays, setLeadDays] = useState(saved.leadDays)
   const [email, setEmail] = useState(saved.channels.email)
 
-  const warnPercent = Number(warn)
-  const warnValid = Number.isInteger(warnPercent) && warnPercent >= 5 && warnPercent <= 50
+  const field = RULE_FIELD[rule]
+  const [warn, setWarn] = rule === 'percent' ? [percent, setPercent] : [days, setDays]
+  const [min, max] = field.range
+  const warnValid = /^\d+$/.test(warn) && Number(warn) >= min && Number(warn) <= max
+  // The unused rule keeps its saved value, so switching back and forth is not a change.
   const next: CabinetSettings = {
-    warnPercent,
+    warnRule: rule,
+    warnPercent: rule === 'percent' ? Number(percent) : saved.warnPercent,
+    warnDays: rule === 'days' ? Number(days) : saved.warnDays,
     leadDays: [...leadDays].sort((a, b) => b - a),
     channels: { inApp: true, email },
   }
@@ -36,7 +75,7 @@ function SettingsForm({ saved }: { saved: CabinetSettings }) {
     save.mutate(next, {
       onSuccess: () =>
         toast(
-          next.warnPercent !== saved.warnPercent
+          warnRuleLabel(next) !== warnRuleLabel(saved)
             ? 'Настройки сохранены, статусы изделий пересчитаны'
             : 'Настройки сохранены',
         ),
@@ -48,26 +87,40 @@ function SettingsForm({ saved }: { saved: CabinetSettings }) {
     <form onSubmit={submit} className="grid gap-5">
       <div className="grid items-start gap-5 lg:grid-cols-2">
         <Card title="Состояние ресурса">
-          <Field
-            label="«Внимание», когда ресурса осталось меньше"
-            hint={`Сейчас: ${saved.warnPercent} % срока эксплуатации. От 5 до 50 %. Статусы пересчитываются сразу после сохранения.`}
-            error={warn && !warnValid ? 'Введите целое число от 5 до 50' : undefined}
-          >
-            {(id) => (
-              <div className="flex items-center gap-2">
-                <Input
-                  id={id}
-                  inputMode="numeric"
-                  value={warn}
-                  required
-                  aria-invalid={!warnValid || undefined}
-                  onChange={(e) => setWarn(e.target.value.replace(/\D/g, '').slice(0, 2))}
-                  className="w-24 tabular"
-                />
-                <span className="text-ink-muted">%</span>
-              </div>
-            )}
-          </Field>
+          <div className="grid gap-4">
+            <div className="grid gap-1.5">
+              <span className="text-ui font-medium">«Внимание» — считать как</span>
+              <SegmentedControl
+                label="Правило «Внимание»"
+                value={rule}
+                options={RULES}
+                onChange={setRule}
+                className="justify-self-start"
+              />
+            </div>
+            <Field
+              label={field.label}
+              hint={`Сейчас: ${warnRuleLabel(saved)}. От ${min} до ${max}. Отсчёт — от установки, без неё — от отгрузки. Статусы пересчитываются сразу после сохранения.`}
+              error={warn && !warnValid ? `Введите целое число от ${min} до ${max}` : undefined}
+            >
+              {(id) => (
+                <div className="flex items-center gap-2">
+                  <Input
+                    id={id}
+                    inputMode="numeric"
+                    value={warn}
+                    required
+                    aria-invalid={!warnValid || undefined}
+                    onChange={(e) =>
+                      setWarn(e.target.value.replace(/\D/g, '').slice(0, field.maxLength))
+                    }
+                    className="w-24 tabular"
+                  />
+                  <span className="text-ink-muted">{field.unit}</span>
+                </div>
+              )}
+            </Field>
+          </div>
         </Card>
 
         <Card title="Уведомления">
@@ -108,7 +161,9 @@ function SettingsForm({ saved }: { saved: CabinetSettings }) {
           variant="ghost"
           disabled={!dirty || save.isPending}
           onClick={() => {
-            setWarn(String(saved.warnPercent))
+            setRule(saved.warnRule)
+            setPercent(String(saved.warnPercent))
+            setDays(String(saved.warnDays))
             setLeadDays(saved.leadDays)
             setEmail(saved.channels.email)
           }}

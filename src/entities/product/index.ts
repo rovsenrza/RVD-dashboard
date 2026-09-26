@@ -1,4 +1,5 @@
 export * from './status'
+export * from './rules'
 export { ProductStatusBadge } from './ProductStatusBadge'
 export { ProductStatusBar } from './ProductStatusBar'
 export { INSTALL_PLACES } from './places'

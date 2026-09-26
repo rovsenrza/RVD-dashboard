@@ -1,4 +1,4 @@
-import { addDays, formatISO, parseISO, setHours, subDays } from 'date-fns'
+import { setHours, subDays } from 'date-fns'
 import type {
   Attachment,
   AuditChange,
@@ -7,40 +7,25 @@ import type {
   ProductLifetime,
 } from '@/entities/types'
 import { COMMENT_MAX } from '@/entities/comment'
+import { lifetimePhases, serviceDates } from '@/entities/product/rules'
 import { currentUser, products, record, replacements, settings, users } from './data'
-
-const day = (d: Date) => formatISO(d, { representation: 'date' })
-const plus = (iso: string, days: number) => day(addDays(parseISO(iso), days))
 
 // ── Срок службы ─────────────────────────────────────────────────────────────
 
-/**
- * The phases in the order the status rule applies them: «Внимание» takes over
- * from the warranty when both would hold, so a long warranty never hides it.
- */
+/** The phases come from the status rule itself, so the timeline and the badge never disagree. */
 export function productLifetime(p: Product): ProductLifetime | null {
-  if (!p.installedAt) return null
-  const from = p.installedAt
-  const warrantyUntil = plus(from, p.warrantyDays)
-  const warnFrom = plus(from, Math.round(p.serviceLifeDays * (1 - settings.warnPercent / 100)))
-  const plannedAt = plus(from, p.serviceLifeDays)
+  const d = serviceDates(p, settings)
+  if (!d) return null
   const swap =
     p.lifecycle === 'written_off' ? replacements.find((r) => r.oldProductId === p.id) : null
-  const endedAt = swap ? (swap.date < from ? from : swap.date) : null
-  const okUntil = warrantyUntil < warnFrom ? warrantyUntil : warnFrom
+  const endedAt = swap ? (swap.date < d.start ? d.start : swap.date) : null
   return {
-    installedAt: from,
+    startedAt: d.start,
+    basis: d.basis,
     endedAt,
-    warrantyUntil,
-    plannedAt,
-    phases: [
-      { status: 'ok', from, to: okUntil },
-      ...(warrantyUntil < warnFrom
-        ? [{ status: 'no_warranty' as const, from: warrantyUntil, to: warnFrom }]
-        : []),
-      { status: 'warn', from: warnFrom, to: plannedAt },
-      { status: 'replace', from: plannedAt, to: null },
-    ],
+    warrantyUntil: d.warrantyUntil,
+    plannedAt: d.plannedAt,
+    phases: lifetimePhases(d),
   }
 }
 

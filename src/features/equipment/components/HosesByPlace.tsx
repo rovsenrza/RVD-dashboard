@@ -1,8 +1,8 @@
 import { Link } from 'react-router-dom'
 import type { Product, ProductStatus } from '@/entities/types'
-import { INSTALL_PLACES, ProductStatusBadge } from '@/entities/product'
+import { INSTALL_PLACES, ProductStatusBadge, daysLeft } from '@/entities/product'
 import { useEquipmentProducts } from '@/shared/api/queries'
-import { cn, daysLeft, plural } from '@/shared/lib/utils'
+import { cn, plural } from '@/shared/lib/utils'
 import { EmptyState, QueryState, Skeleton } from '@/shared/ui'
 
 /** Worst first inside a place: what needs a hand today leads. */
@@ -30,7 +30,7 @@ function byPlace(hoses: Product[]) {
 }
 
 function Left({ p }: { p: Product }) {
-  const left = daysLeft(p.installedAt, p.serviceLifeDays)
+  const left = daysLeft(p)
   if (left === null) return null
   return (
     <span className={cn('tabular', left < 0 ? 'text-status-replace-ink' : 'text-ink-muted')}>
