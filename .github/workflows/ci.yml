@@ -14,6 +14,19 @@ jobs:
     name: Lint · Typecheck · Test · Build
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    services:
+      # The API tests run against a real Postgres (products are filtered and sorted in SQL).
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: rvd
+          POSTGRES_PASSWORD: rvd
+          POSTGRES_DB: rvd
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U rvd" --health-interval 5s --health-timeout 3s
+          --health-retries 10
     steps:
       - uses: actions/checkout@v4
 
@@ -38,6 +51,8 @@ jobs:
 
       - name: Test
         run: npm test
+        env:
+          TEST_DATABASE_URL: postgres://rvd:rvd@localhost:5432/rvd
 
       - name: Build
         run: npm run build

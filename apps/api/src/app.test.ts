@@ -13,7 +13,12 @@ describe('health', () => {
 })
 
 describe('loadConfig', () => {
-  const env = { ODATA_URL: 'https://1c.example/odata', ODATA_USER: 'u', ODATA_PASSWORD: 'p' }
+  const env = {
+    DATABASE_URL: 'postgres://x',
+    ODATA_URL: 'https://1c.example/odata',
+    ODATA_USER: 'u',
+    ODATA_PASSWORD: 'p',
+  }
 
   it('fills the defaults', () => {
     expect(loadConfig(env)).toMatchObject({
@@ -24,6 +29,6 @@ describe('loadConfig', () => {
   })
 
   it('names every missing value', () => {
-    expect(() => loadConfig({})).toThrow(/ODATA_URL.*ODATA_USER.*ODATA_PASSWORD/)
+    expect(() => loadConfig({})).toThrow(/DATABASE_URL.*ODATA_URL.*ODATA_USER.*ODATA_PASSWORD/)
   })
 })

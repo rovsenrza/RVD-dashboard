@@ -7,14 +7,18 @@
   "scripts": {
     "dev": "tsx watch --env-file=../../.env src/server.ts",
     "start": "tsx --env-file=../../.env src/server.ts",
-    "onec:smoke": "tsx --env-file=../../.env src/onec/smoke.ts"
+    "onec:smoke": "tsx --env-file=../../.env src/onec/smoke.ts",
+    "migrate": "tsx --env-file=../../.env src/db/cli.ts",
+    "sync": "tsx --env-file=../../.env src/sync/cli.ts"
   },
   "dependencies": {
     "@rvd/contracts": "*",
     "fastify": "^5.12.5",
+    "pg": "^8.23.0",
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@types/pg": "^8.23.1",
     "tsx": "^4.23.15"
   }
 }
