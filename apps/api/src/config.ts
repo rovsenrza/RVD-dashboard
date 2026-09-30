@@ -4,6 +4,8 @@ const schema = z.object({
   PORT: z.coerce.number().int().positive().default(3001),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   DATABASE_URL: z.string().min(1),
+  /** Browser origins allowed to call the API, comma-separated */
+  CORS_ORIGIN: z.string().default('http://localhost:5173'),
   ODATA_URL: z.url(),
   ODATA_USER: z.string().min(1),
   ODATA_PASSWORD: z.string().min(1),

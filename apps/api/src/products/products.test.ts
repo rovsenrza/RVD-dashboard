@@ -131,6 +131,18 @@ describe.skipIf(!hasDb)('products in the cache', () => {
     expect((await app.inject('/products?limit=0')).statusCode).toBe(400)
   })
 
+  it('lays the service life out on a timeline, or says null without dates', async () => {
+    const life = await get('/products/p1/lifetime')
+    expect(life).toMatchObject({
+      basis: 'installed',
+      startedAt: '2026-08-01',
+      plannedAt: '2027-08-01',
+    })
+    expect(life.phases.at(-1)).toEqual({ status: 'replace', from: '2027-08-01', to: null })
+    expect(await get('/products/p4/lifetime')).toBeNull()
+    expect((await app.inject('/products/nope/lifetime')).statusCode).toBe(404)
+  })
+
   it('records the sync', async () => {
     const state = await get('/sync/status')
     expect(state).toMatchObject([{ entity: 'products', rows: 4 }])

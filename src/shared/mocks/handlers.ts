@@ -1,4 +1,5 @@
-import { http, HttpResponse } from 'msw'
+import { http, HttpResponse, passthrough } from 'msw'
+import { LIVE_PRODUCTS } from '@/shared/api/live'
 import { rulesProblem } from '@/entities/product/rules'
 import {
   attachmentsOf,
@@ -63,9 +64,10 @@ export const handlers = [
     HttpResponse.json(dashboardSummary(branchOf(request))),
   ),
   http.get(api('/products'), ({ request }) =>
-    HttpResponse.json(inBranch(products, branchOf(request))),
+    LIVE_PRODUCTS ? passthrough() : HttpResponse.json(inBranch(products, branchOf(request))),
   ),
   http.get(api('/products/:id'), ({ params }) => {
+    if (LIVE_PRODUCTS) return passthrough()
     const p = products.find((x) => x.id === params.id)
     return p ? HttpResponse.json(p) : new HttpResponse(null, { status: 404 })
   }),
@@ -85,6 +87,7 @@ export const handlers = [
     return HttpResponse.json(p)
   }),
   http.get(api('/products/:id/lifetime'), ({ params }) => {
+    if (LIVE_PRODUCTS) return passthrough()
     const p = products.find((x) => x.id === params.id)
     return p ? HttpResponse.json(productLifetime(p)) : new HttpResponse(null, { status: 404 })
   }),

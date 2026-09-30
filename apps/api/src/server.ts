@@ -6,7 +6,11 @@ import { createPool } from './db/pool.ts'
 const config = loadConfig()
 const db = createPool(config.DATABASE_URL)
 await migrate(db)
-const app = buildApp({ logLevel: config.LOG_LEVEL, db })
+const app = buildApp({
+  logLevel: config.LOG_LEVEL,
+  db,
+  corsOrigins: config.CORS_ORIGIN.split(',').map((o) => o.trim()),
+})
 
 try {
   await app.listen({ port: config.PORT, host: '0.0.0.0' })

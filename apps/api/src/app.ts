@@ -1,12 +1,16 @@
+import cors from '@fastify/cors'
 import Fastify, { type FastifyInstance } from 'fastify'
 import { DEFAULT_RULES, ProductListQuery } from '@rvd/contracts'
 import type { Db } from './db/pool.ts'
+import { productLifetime } from './products/lifetime.ts'
 import { getProduct, listProducts, type Clock } from './products/query.ts'
 
 export interface AppOptions {
   logLevel?: string
   /** The cache; without it only `/health` answers (enough for config checks) */
   db?: Db
+  /** Browser origins allowed to call the API */
+  corsOrigins?: string[]
   /** Today and the status rules; the rules will come from the company settings */
   clock?: () => Clock
 }
@@ -18,6 +22,8 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
   const app = Fastify({ logger: { level: options.logLevel ?? 'info' } })
   const { db } = options
   const clock = options.clock ?? (() => ({ today: localToday(), rules: DEFAULT_RULES }))
+
+  if (options.corsOrigins?.length) void app.register(cors, { origin: options.corsOrigins })
 
   app.get('/health', async () => ({ status: 'ok', uptime: Math.round(process.uptime()) }))
 
@@ -32,6 +38,14 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
     app.get<{ Params: { id: string } }>('/products/:id', async (req, reply) => {
       const product = await getProduct(db, req.params.id, clock())
       return product ?? reply.code(404).send({ error: 'Not found' })
+    })
+
+    app.get<{ Params: { id: string } }>('/products/:id/lifetime', async (req, reply) => {
+      const c = clock()
+      const product = await getProduct(db, req.params.id, c)
+      if (!product) return reply.code(404).send({ error: 'Not found' })
+      // A plain `null` is a valid answer: no dates, no timeline.
+      return reply.type('application/json').send(JSON.stringify(productLifetime(product, c.rules)))
     })
 
     app.get(

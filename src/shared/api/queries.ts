@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type {
+  Paginated,
   Attachment,
   CabinetNotification,
   NotificationPrefs,
@@ -22,6 +23,7 @@ import type {
 } from '@/entities/types'
 import { useSession } from '@/app/session'
 import { api } from './client'
+import { LIVE_PRODUCTS } from './live'
 
 /**
  * Branch scope travels as a query parameter, the way the BFF will receive it
@@ -72,7 +74,12 @@ export const useProducts = () => {
   const branch = useScope()
   return useQuery({
     queryKey: keys.products(branch),
-    queryFn: () => api.get<Product[]>(scoped('/products', branch)),
+    // Live: the API pages; one big page until the registry pages on the server.
+    // The branch switcher still lists mock branches, so it does not narrow live data.
+    queryFn: async () =>
+      LIVE_PRODUCTS
+        ? (await api.get<Paginated<Product>>('/products?limit=5000')).items
+        : api.get<Product[]>(scoped('/products', branch)),
   })
 }
 
