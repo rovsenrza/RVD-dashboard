@@ -290,7 +290,7 @@ const LIFECYCLE_CHAIN: ProductLifecycle[] = [
 let documentNumber = 0
 export const releaseDocuments: ReleaseDocument[] = products.flatMap((p) => {
   const reached = LIFECYCLE_CHAIN.indexOf(p.lifecycle)
-  const start = new Date(p.manufacturedAt)
+  const start = new Date(p.manufacturedAt ?? p.shippedAt ?? Date.now())
   // A hose retired on a planned swap never passed through «требует замены».
   const passed = LIFECYCLE_CHAIN.slice(0, reached + 1).filter(
     (step) => step !== 'needs_replacement' || p.status === 'replace',

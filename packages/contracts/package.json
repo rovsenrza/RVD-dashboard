@@ -1,0 +1,14 @@
+{
+  "name": "@rvd/contracts",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "description": "Shared domain types and rules: the one definition the web app, the mocks and the API agree on.",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "date-fns": "^4.4.0",
+    "zod": "^4.6.5"
+  }
+}

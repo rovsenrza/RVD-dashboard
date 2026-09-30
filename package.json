@@ -8,7 +8,7 @@
     "prebuild": "npm run msw:init",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "lint": "oxlint src",
+    "lint": "oxlint src apps packages",
     "typecheck": "tsc -b --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -20,6 +20,7 @@
     "lint:arch": "bash scripts/check-arch.sh"
   },
   "dependencies": {
+    "@rvd/contracts": "*",
     "@tanstack/react-query": "^5.102.8",
     "@tanstack/react-table": "^8.21.3",
     "@zxing/browser": "^0.2.1",
@@ -61,5 +62,9 @@
     "workerDirectory": [
       "public"
     ]
-  }
+  },
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ]
 }

@@ -6,7 +6,7 @@ import {
   statusOf,
   type ServiceFacts,
   type StatusRules,
-} from './rules'
+} from './status'
 
 const PERCENT: StatusRules = { warnRule: 'percent', warnPercent: 20, warnDays: 60 }
 const DAYS: StatusRules = { ...PERCENT, warnRule: 'days' }
