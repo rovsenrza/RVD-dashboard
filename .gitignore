@@ -53,3 +53,6 @@ public/mockServiceWorker.js
 # Playwright (visual regression) run output
 test-results/
 playwright-report/
+
+# Font and asset archives are kept out of the repo
+*.zip
