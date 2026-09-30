@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { Outlet } from 'react-router-dom'
+import { useTrackOrigin } from '@/shared/lib/origin'
 import { Header } from './Header'
 import { Sidebar } from './Sidebar'
 
 export function Layout() {
   const [open, setOpen] = useState(false)
+  useTrackOrigin()
   return (
     <div className="flex h-full">
       <Sidebar open={open} onClose={() => setOpen(false)} />

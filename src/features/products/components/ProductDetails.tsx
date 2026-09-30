@@ -10,10 +10,9 @@ export function ProductDetails({ product: p }: { product: Product }) {
     {
       title: 'Идентификация',
       rows: [
-        ['EHS №', p.serialNumber],
-        ['Внутренний №', p.clientNumber],
-        ['OEM №', p.oemNumber],
-        ['Каталожный №', p.catalogNumber],
+        ['Серийный № (EHS)', p.serialNumber],
+        ['Ваш внутренний №', p.clientNumber],
+        ['Каталожный № (OEM)', p.catalogNumber],
         ['Номенклатурный №', p.nomenclatureNumber],
       ],
     },
@@ -32,7 +31,14 @@ export function ProductDetails({ product: p }: { product: Product }) {
       rows: [
         ['Изготовлено', formatDate(p.manufacturedAt)],
         ['Отгружено', formatDate(p.shippedAt)],
-        ['Установлено', formatDate(p.installedAt)],
+        [
+          'Установлено',
+          p.installedAt ? (
+            formatDate(p.installedAt)
+          ) : p.shippedAt ? (
+            <span className="text-ink-muted">{formatDate(p.shippedAt)} · по дате отгрузки</span>
+          ) : null,
+        ],
         ['Гарантия', `${p.warrantyDays} дн.`],
         ['Срок эксплуатации', `${p.serviceLifeDays} дн.`],
         [

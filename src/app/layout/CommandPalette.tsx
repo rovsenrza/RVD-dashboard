@@ -149,7 +149,7 @@ export function CommandPalette({
             id="command-palette"
             value={q}
             onChange={(e) => setQ(e.target.value)}
-            placeholder="Номер EHS, OEM, каталожный или гаражный номер…"
+            placeholder="Серийный, каталожный или гаражный номер…"
           />
         </div>
 

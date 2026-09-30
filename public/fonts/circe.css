@@ -1,0 +1,27 @@
+/*
+ * Circe — the customer's brand typeface (ВГИЗ brand book, "Фирменная типографика"),
+ * Regular and Bold. It is a commercial face: drop the licensed web files next to
+ * this file as Circe-Regular.woff2 and Circe-Bold.woff2. Until they are there the
+ * stack falls back to Golos Text (see --font-sans in src/index.css).
+ * Circe has no 500/600 cut, so medium maps to Regular and semibold to Bold.
+ */
+@font-face {
+  font-family: 'Circe';
+  font-style: normal;
+  font-weight: 400 500;
+  font-display: swap;
+  src:
+    local('Circe Regular'),
+    local('Circe-Regular'),
+    url('/fonts/Circe-Regular.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Circe';
+  font-style: normal;
+  font-weight: 600 700;
+  font-display: swap;
+  src:
+    local('Circe Bold'),
+    local('Circe-Bold'),
+    url('/fonts/Circe-Bold.woff2') format('woff2');
+}

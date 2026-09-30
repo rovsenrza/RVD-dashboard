@@ -8,11 +8,11 @@ const col = createColumnHelper<Product>()
 
 export const productColumns = [
   col.accessor('serialNumber', {
-    header: 'EHS №',
+    header: 'Серийный №',
     cell: (c) => <span className="font-medium text-brand-deep">{c.getValue()}</span>,
   }),
-  col.accessor('clientNumber', { header: 'Внутр. №', cell: (c) => valueOr(c.getValue()) }),
-  col.accessor('oemNumber', { header: 'OEM', cell: (c) => valueOr(c.getValue()) }),
+  col.accessor('clientNumber', { header: 'Ваш №', cell: (c) => valueOr(c.getValue()) }),
+  col.accessor('catalogNumber', { header: 'Каталожный №', cell: (c) => valueOr(c.getValue()) }),
   col.accessor('type', { header: 'Тип' }),
   col.accessor('manufacturer', {
     header: 'Производитель',
@@ -24,9 +24,24 @@ export const productColumns = [
     meta: { mobile: 'hide' },
     cell: (c) => valueOr(formatDate(c.getValue())),
   }),
+  // Until an installation is recorded the date defaults to the shipment date;
+  // the fallback is muted so it does not read as a recorded fact.
   col.accessor('installedAt', {
     header: 'Установка',
-    cell: (c) => valueOr(formatDate(c.getValue())),
+    cell: (c) => {
+      const { installedAt, shippedAt } = c.row.original
+      if (installedAt) return formatDate(installedAt)
+      return shippedAt ? (
+        <span
+          className="text-ink-muted"
+          title="Дата установки не указана — по умолчанию дата отгрузки"
+        >
+          {formatDate(shippedAt)}
+        </span>
+      ) : (
+        valueOr(null)
+      )
+    },
   }),
   col.accessor('status', {
     header: 'Статус',

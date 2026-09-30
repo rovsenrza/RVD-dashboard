@@ -13,7 +13,7 @@
  */
 @theme {
   --font-sans:
-    'Golos Text', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    Circe, 'Golos Text', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 
   /*
    * Type scale by role. Sizes only: line-height is inherited (body 1.45) or set
@@ -35,15 +35,15 @@
   --color-sheet: #ffffff;
   --color-sheet-muted: #f8f8f6;
   --color-pop: #ffffff; /* menus, dialogs, toasts, tooltips — lifted above sheets */
-  --color-row-hover: #fffaf0; /* opaque, so sticky cells match the row under them */
+  --color-row-hover: #fffbe6; /* opaque, so sticky cells match the row under them */
   --color-line: #e6e6e2;
   --color-line-strong: #d6d6d0;
   --color-wash: rgb(25 25 22 / 0.05); /* hover / pressed tint for ghost controls */
   --color-scrim: rgb(20 20 18 / 0.4);
 
   /* Rail — dark in both themes */
-  --color-rail: #161616;
-  --color-rail-raised: #222222;
+  --color-rail: #000000;
+  --color-rail-raised: #1a1a1a;
   --color-rail-hover: rgb(255 255 255 / 0.07);
   --color-rail-ink: #f3f3f1;
   --color-rail-muted: #8a8a86;
@@ -55,12 +55,12 @@
   --color-ink-faint: #a3a39d;
 
   /* Accent: fill, hover, press, text-on-white, tint, text-on-fill */
-  --color-brand: #f5a623;
-  --color-brand-dark: #d98c0c;
-  --color-brand-press: #cf850b;
-  --color-brand-deep: #9a6206;
-  --color-brand-soft: #fff3dc;
-  --color-on-brand: #191919;
+  --color-brand: #ffcc00;
+  --color-brand-dark: #e6b800;
+  --color-brand-press: #d1a300;
+  --color-brand-deep: #7a5f00;
+  --color-brand-soft: #fff5c2;
+  --color-on-brand: #000000;
 
   /* Status: ok / warn / replace / none — base hue for marks, -soft for grounds */
   --color-status-ok: #2e9e5b;
@@ -114,13 +114,13 @@
     --color-sheet: #1b1b1a;
     --color-sheet-muted: #232321;
     --color-pop: #242422;
-    --color-row-hover: #2a251b;
+    --color-row-hover: #2a2712;
     --color-line: #2b2b29;
     --color-line-strong: #3b3b38;
     --color-wash: rgb(255 255 255 / 0.06);
     --color-scrim: rgb(0 0 0 / 0.6);
-    --color-rail: #0b0b0a;
-    --color-rail-raised: #1a1a19;
+    --color-rail: #000000;
+    --color-rail-raised: #171716;
     --color-rail-hover: rgb(255 255 255 / 0.06);
     --color-rail-ink: #f3f3f1;
     --color-rail-muted: #8f8f8a;
@@ -128,12 +128,12 @@
     --color-ink-secondary: #bebeb8;
     --color-ink-muted: #92928c;
     --color-ink-faint: #62625e;
-    --color-brand: #f5a623;
-    --color-brand-dark: #ffb743;
-    --color-brand-press: #dc9215;
-    --color-brand-deep: #f6b54d;
-    --color-brand-soft: #3a2c13;
-    --color-on-brand: #191919;
+    --color-brand: #ffcc00;
+    --color-brand-dark: #ffd633;
+    --color-brand-press: #e6b800;
+    --color-brand-deep: #ffd633;
+    --color-brand-soft: #3a3210;
+    --color-on-brand: #000000;
     --color-status-ok: #2e9e5b;
     --color-status-ok-soft: #16301f;
     --color-status-warn: #e8961b;
@@ -160,13 +160,13 @@
   --color-sheet: #1b1b1a;
   --color-sheet-muted: #232321;
   --color-pop: #242422;
-  --color-row-hover: #2a251b;
+  --color-row-hover: #2a2712;
   --color-line: #2b2b29;
   --color-line-strong: #3b3b38;
   --color-wash: rgb(255 255 255 / 0.06);
   --color-scrim: rgb(0 0 0 / 0.6);
-  --color-rail: #0b0b0a;
-  --color-rail-raised: #1a1a19;
+  --color-rail: #000000;
+  --color-rail-raised: #171716;
   --color-rail-hover: rgb(255 255 255 / 0.06);
   --color-rail-ink: #f3f3f1;
   --color-rail-muted: #8f8f8a;
@@ -174,12 +174,12 @@
   --color-ink-secondary: #bebeb8;
   --color-ink-muted: #92928c;
   --color-ink-faint: #62625e;
-  --color-brand: #f5a623;
-  --color-brand-dark: #ffb743;
-  --color-brand-press: #dc9215;
-  --color-brand-deep: #f6b54d;
-  --color-brand-soft: #3a2c13;
-  --color-on-brand: #191919;
+  --color-brand: #ffcc00;
+  --color-brand-dark: #ffd633;
+  --color-brand-press: #e6b800;
+  --color-brand-deep: #ffd633;
+  --color-brand-soft: #3a3210;
+  --color-on-brand: #000000;
   --color-status-ok: #2e9e5b;
   --color-status-ok-soft: #16301f;
   --color-status-warn: #e8961b;
@@ -223,7 +223,7 @@ body {
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-brand);
+  outline: 2px solid var(--color-brand-deep);
   outline-offset: 2px;
 }
 

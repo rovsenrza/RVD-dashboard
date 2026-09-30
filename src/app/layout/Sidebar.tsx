@@ -112,13 +112,11 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
   )
 }
 
-/** Placeholder mark until the customer supplies a logo: amber ring + wordmark. */
+/** The customer's ВГИЗ logo (yellow on the black rail) beside the product name. */
 function Brand() {
   return (
     <span className="flex items-center gap-2.5 font-semibold tracking-[-0.01em]">
-      <span className="grid size-7 place-items-center rounded-lg bg-brand">
-        <span className="size-3 rounded-full border-[3px] border-on-brand" />
-      </span>
+      <img src="/brand/vgiz-yellow.svg" alt="ВГИЗ" className="h-8 w-auto" />
       <span className="leading-none">
         РВД Кабинет
         <span className="mt-0.5 block text-micro font-normal tracking-wide text-rail-muted uppercase">

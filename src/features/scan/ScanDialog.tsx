@@ -137,7 +137,7 @@ export function ScanDialog({ onClose }: { onClose: () => void }) {
                     setTyped(e.target.value)
                     setMiss(null)
                   }}
-                  placeholder="EHS, OEM, внутренний или гаражный №"
+                  placeholder="Серийный, каталожный или гаражный №"
                   autoComplete="off"
                 />
               )}

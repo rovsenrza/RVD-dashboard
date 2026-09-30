@@ -156,7 +156,7 @@ export function ProductAttachments({
       </Card>
 
       {dragging && (
-        <div className="pointer-events-none absolute inset-0 z-10 grid place-items-center rounded-sheet bg-brand-soft/90 text-brand-deep shadow-[inset_0_0_0_2px_var(--color-brand)]">
+        <div className="pointer-events-none absolute inset-0 z-10 grid place-items-center rounded-sheet bg-brand-soft/90 text-brand-deep shadow-[inset_0_0_0_2px_var(--color-brand-deep)]">
           <span className="flex items-center gap-2 text-sm font-medium">
             <UploadIcon size={18} strokeWidth={1.75} />
             Отпустите, чтобы добавить к изделию

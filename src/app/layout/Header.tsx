@@ -173,9 +173,9 @@ function GlobalSearch({ className, onOpen }: { className?: string; onOpen: () =>
         id="global-search"
         readOnly
         value=""
-        placeholder="Номер EHS, OEM, гаражный номер…"
+        placeholder="Серийный, каталожный или гаражный номер…"
         hint={<Kbd>⌘K</Kbd>}
-        className="bg-field! [&_input]:cursor-pointer [&_input]:shadow-none [&_input]:hover:shadow-none [&_input]:focus:shadow-[inset_0_0_0_2px_var(--color-brand)]"
+        className="bg-field! [&_input]:cursor-pointer [&_input]:shadow-none [&_input]:hover:shadow-none [&_input]:focus:shadow-[inset_0_0_0_2px_var(--color-brand-deep)]"
       />
     </div>
   )

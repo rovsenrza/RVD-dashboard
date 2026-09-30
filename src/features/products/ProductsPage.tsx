@@ -26,10 +26,9 @@ import { FILTER_KEYS, type FilterKey, type FilterValues } from './filters'
 type Tab = 'active' | 'archive'
 
 const EXPORT_COLUMNS: ExportColumn<Product>[] = [
-  { header: 'EHS №', value: (p) => p.serialNumber, width: 10 },
-  { header: 'Внутренний №', value: (p) => p.clientNumber, width: 12 },
-  { header: 'OEM №', value: (p) => p.oemNumber, width: 12 },
-  { header: 'Каталожный №', value: (p) => p.catalogNumber, width: 16 },
+  { header: 'Серийный № (EHS)', value: (p) => p.serialNumber, width: 14 },
+  { header: 'Ваш внутренний №', value: (p) => p.clientNumber, width: 14 },
+  { header: 'Каталожный № (OEM)', value: (p) => p.catalogNumber, width: 18 },
   { header: 'Тип', value: (p) => p.type, width: 12 },
   { header: 'Производитель', value: (p) => p.manufacturer, width: 14 },
   { header: 'Отгружено', value: (p) => p.shippedAt, type: 'date', width: 11 },
@@ -154,6 +153,11 @@ export function ProductsPage() {
                   onChange={setTab}
                   className="border-b-0"
                 />
+                <p className="text-ui text-ink-muted">
+                  {tab === 'archive'
+                    ? 'Списанные изделия: сняты с техники и заменены.'
+                    : 'Изделия в работе: на технике или ещё на складе.'}
+                </p>
                 {FILTER_KEYS.filter((key) => active[key]).map((key) => (
                   <Chip key={key} onRemove={() => removeFilter(key)}>
                     {chipLabel(key, active[key]!)}
@@ -166,7 +170,7 @@ export function ProductsPage() {
                 id="products-search"
                 value={filter}
                 onChange={(e) => setFilter(e.target.value)}
-                placeholder="EHS, OEM, внутренний номер, техника…"
+                placeholder="Серийный, каталожный, ваш номер, техника…"
               />
             }
           />

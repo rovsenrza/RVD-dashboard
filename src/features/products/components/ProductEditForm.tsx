@@ -19,7 +19,7 @@ export function ProductEditForm({
 
   const [equipmentId, setEquipmentId] = useState(p.equipmentId ?? '')
   const [installPlace, setInstallPlace] = useState(p.installPlace ?? '')
-  const [installedAt, setInstalledAt] = useState(p.installedAt ?? '')
+  const [installedAt, setInstalledAt] = useState(p.installedAt ?? p.shippedAt ?? '')
   const [clientNumber, setClientNumber] = useState(p.clientNumber ?? '')
 
   const submit = (e: FormEvent) => {
@@ -88,7 +88,10 @@ export function ProductEditForm({
               )}
             </Field>
 
-            <Field label="Дата установки" hint="От неё считается остаток ресурса">
+            <Field
+              label="Дата установки"
+              hint="По умолчанию — дата отгрузки. Если установили в другой день, укажите его: от даты считается остаток ресурса"
+            >
               {(id) => (
                 <DatePicker
                   id={id}

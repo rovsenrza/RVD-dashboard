@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { ArrowLeftRight, Pencil, RefreshCw } from 'lucide-react'
 import { ProductStatusBadge } from '@/entities/product'
 import { useProduct } from '@/shared/api/queries'
+import { readOrigin } from '@/shared/lib/origin'
 import { Badge, Button, PageHeader, QueryState, Skeleton } from '@/shared/ui'
 import { ProductAttachments } from '@/features/attachments/ProductAttachments'
 import { ReplacementDialog } from '@/features/replacements/components/ReplacementDialog'
@@ -16,6 +17,7 @@ export function ProductPage() {
   const { id = '' } = useParams()
   const query = useProduct(id)
   const navigate = useNavigate()
+  const origin = readOrigin({ to: '/products', label: 'К списку изделий' })
   const [editing, setEditing] = useState(false)
   const [replacing, setReplacing] = useState(false)
   return (
@@ -24,8 +26,8 @@ export function ProductPage() {
         <div>
           <PageHeader
             stickyActions
-            backTo="/products"
-            backLabel="К списку изделий"
+            backTo={origin.to}
+            backLabel={origin.label}
             title={
               <>
                 Изделие {p.serialNumber}{' '}

@@ -42,7 +42,7 @@ The supplier already manufactures and serialises every hose and records its life
 
 ## Brand Commitments
 
-- Product/customer name and logo are not yet provided; the UI carries the placeholder «РВД Кабинет» until the customer supplies brand assets. Do not invent a company name.
+- Brand assets are supplied by the customer (ВГИЗ brand book, docs/customer/info): logo in public/brand, colours yellow #FFCC00 (Pantone 116C) and black #000000, typeface Circe Regular/Bold. The product keeps its own name «РВД Кабинет».
 - Binding visual reference set by the user: stay close to the Eurohydroservice ESM reference (dark sidebar, amber accent, light content area, dense data tables) while executing it more modern; avoid generic "AI-template" looks such as uniform bordered cards on every block.
 - Interface language: Russian only. Domain terms are Russian (РВД, ЕГС/EHS, ESM, гаражный номер, моточасы) and must be used verbatim.
 
