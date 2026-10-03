@@ -171,8 +171,16 @@ export type RequestStatus = 'new' | 'in_progress' | 'done' | 'rejected'
 
 export type ShipmentStatus = 'not_shipped' | 'shipped'
 
+/**
+ * Тип заявки (заказчик, 2026-10-03): «Замена» — взамен изделий, которые уже
+ * есть у компании; «Изготовление» и «Ремонт» — по номерам или по таблице Excel.
+ */
+export type RequestKind = 'replace' | 'manufacture' | 'repair'
+
 /** Позиция заявки — в 1С это строка табличной части «Заказа клиента». */
 export interface RequestPosition {
+  /** «Замена»: изделие, взамен которого заказ (в 1С — `Изделие_Key` строки); иначе null */
+  productId: string | null
   catalogNumberId: string | null
   catalogNumber: string | null
   /** Техника, на которую пойдёт изделие; null — «без привязки к технике» */
@@ -190,7 +198,7 @@ export interface ServiceRequest {
   number: string
   branchId: string
   productId: string | null
-  kind: 'replace' | 'manufacture'
+  kind: RequestKind
   positions: RequestPosition[]
   quantity: number
   comment: string | null

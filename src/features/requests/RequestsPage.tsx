@@ -17,6 +17,7 @@ import {
   type DataTableHandle,
 } from '@/shared/ui'
 import { requestColumns } from './columns'
+import { isSpreadsheet } from '@/entities/request/rules'
 import { RequestForm } from './components/RequestForm'
 
 type Tab = 'all' | 'open' | 'done'
@@ -33,7 +34,8 @@ const EXPORT_COLUMNS: ExportColumn<ServiceRequest>[] = [
       r.positions
         .map((p) => p.catalogNumber)
         .filter(Boolean)
-        .join(', '),
+        .join(', ') ||
+      (r.attachments.some((f) => isSpreadsheet(f.fileName)) ? 'в файле Excel' : ''),
     width: 18,
   },
   { header: 'Кол-во', value: (r) => r.quantity, width: 8 },
@@ -65,7 +67,7 @@ export function RequestsPage() {
     <div>
       <PageHeader
         title="Заявки"
-        description="Заявки на замену и изготовление РВД"
+        description="Заявки на замену, изготовление и ремонт РВД"
         actions={
           <>
             <ExportMenu
@@ -81,7 +83,7 @@ export function RequestsPage() {
           </>
         }
       />
-      <RequestForm open={formOpen} onClose={() => setFormOpen(false)} />
+      {formOpen && <RequestForm onClose={() => setFormOpen(false)} />}
       <QueryState query={query} skeleton={<TableSkeleton />}>
         {() => (
           <DataTable

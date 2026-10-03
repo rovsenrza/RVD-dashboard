@@ -1,10 +1,9 @@
 import { http, HttpResponse, passthrough } from 'msw'
 import { LIVE_PRODUCTS } from '@/shared/api/live'
-import type { InstallationPatch, NewSupportMessage } from '@/shared/api/queries'
+import type { InstallationPatch, NewRequest, NewSupportMessage } from '@/shared/api/queries'
 import { rulesProblem } from '@/entities/product/rules'
 import {
   attachmentsOf,
-  claimAttachments,
   deleteAttachment,
   storedFile,
   storeUpload,
@@ -35,6 +34,7 @@ import {
   userView,
 } from './data'
 import { buildReport } from './reports'
+import { createRequest } from './requests'
 import { sendSupportMessage } from './support'
 import { markRead, notificationsFor, prefs, prefsView } from './notifications'
 import {
@@ -280,34 +280,10 @@ export const handlers = [
     HttpResponse.json(inBranch(requests, branchOf(request))),
   ),
   http.post(api('/requests'), async ({ request }) => {
-    const { attachmentIds, ...body } = (await request.json()) as Record<string, unknown> & {
-      attachmentIds?: string[]
-    }
-    const id = `req-${requests.length + 1}`
-    const created = {
-      id,
-      number: `СВЦБ-${String(5200 + requests.length).padStart(5, '0')}`,
-      status: 'new',
-      shipmentStatus: 'not_shipped',
-      createdAt: new Date().toISOString().slice(0, 10),
-      ...body,
-      attachments: claimAttachments(attachmentIds, { kind: 'request', id }),
-    }
-    requests.unshift(created as (typeof requests)[number])
-    record({
-      action: 'request.create',
-      target: { kind: 'request', id: created.id, label: created.number },
-      changes: [
-        {
-          field: 'Тип',
-          before: null,
-          after: body.kind === 'manufacture' ? 'Изготовление' : 'Замена',
-        },
-        { field: 'Количество', before: null, after: String(body.quantity ?? '') || null },
-        ...filesChange(created.attachments),
-      ],
-    })
-    return HttpResponse.json(created, { status: 201 })
+    const result = createRequest((await request.json()) as NewRequest)
+    return 'error' in result
+      ? HttpResponse.json({ message: result.error }, { status: 400 })
+      : HttpResponse.json(result, { status: 201 })
   }),
 
   // Administration: company-wide, not narrowed by branch.

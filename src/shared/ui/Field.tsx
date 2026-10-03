@@ -13,8 +13,9 @@ export function Field({
   children: (id: string) => ReactNode
 }) {
   const id = useId()
+  // min-w-0: a field in a grid may hold a long row that truncates; it must not widen the grid.
   return (
-    <div>
+    <div className="min-w-0">
       <label htmlFor={id} className="mb-1.5 block text-ui font-medium">
         {label}
       </label>

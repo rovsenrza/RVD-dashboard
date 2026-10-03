@@ -230,6 +230,12 @@ body {
   outline: none;
 }
 
+/* Suggestion lists (`input list=…`): Chrome's solid triangle, toned to sit like the select chevron. */
+input[list]::-webkit-calendar-picker-indicator {
+  opacity: 0.5;
+  cursor: pointer;
+}
+
 /* Thin scrollbars in the field and sheets */
 * {
   scrollbar-width: thin;

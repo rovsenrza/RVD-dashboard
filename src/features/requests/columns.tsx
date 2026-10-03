@@ -1,6 +1,7 @@
 import { createColumnHelper } from '@tanstack/react-table'
 import type { ServiceRequest } from '@/entities/types'
 import { REQUEST_KIND_LABEL, RequestStatusBadge } from '@/entities/request'
+import { isSpreadsheet } from '@/entities/request/rules'
 import { formatDate } from '@/shared/lib/utils'
 import { valueOr } from '@/shared/ui'
 import { AttachmentsButton } from '@/features/attachments/AttachmentStrip'
@@ -28,7 +29,14 @@ export const requestColumns = [
     {
       id: 'catalog',
       header: 'Каталожный № (OEM)',
-      cell: (c) => valueOr(c.getValue() || null),
+      // A request sent with only an Excel file has no lines: say where they are.
+      cell: (c) =>
+        c.getValue() ||
+        (c.row.original.attachments.some((f) => isSpreadsheet(f.fileName)) ? (
+          <span className="text-ink-muted">в файле Excel</span>
+        ) : (
+          valueOr(null)
+        )),
     },
   ),
   col.accessor('quantity', { header: 'Кол-во' }),

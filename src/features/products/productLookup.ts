@@ -32,22 +32,3 @@ export function findProduct(
     products.find((p) => p.clientNumber?.trim().toLowerCase() === whole)
   )
 }
-
-/** Suggestions for an `Input list={id}`; the browser filters them as the user types. */
-export function ProductOptions({
-  id,
-  products,
-  labelOf,
-}: {
-  id: string
-  products: Product[]
-  labelOf: (p: Product) => string
-}) {
-  return (
-    <datalist id={id}>
-      {products.map((p) => (
-        <option key={p.id} value={labelOf(p)} />
-      ))}
-    </datalist>
-  )
-}

@@ -44,7 +44,7 @@ export function ProductDetails({
         [
           'Установлено',
           p.installedAt || p.shippedAt ? (
-            <span className="inline-flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <span key="installed" className="inline-flex flex-wrap items-baseline gap-x-3 gap-y-1">
               {p.installedAt ? (
                 formatDate(p.installedAt)
               ) : (

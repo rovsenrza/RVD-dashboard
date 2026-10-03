@@ -314,15 +314,19 @@ export const releaseDocuments: ReleaseDocument[] = products.flatMap((p) => {
 export const requests: ServiceRequest[] = Array.from({ length: 12 }, (_, i) => {
   const product = pick(products)
   const cat = catalogNumbers.find((c) => c.id === product.catalogNumberId)!
-  const quantity = 1 + Math.floor(rand() * 4)
+  const ordered = 1 + Math.floor(rand() * 4)
+  const kind = rand() < 0.5 ? 'replace' : 'manufacture'
+  // «Замена» names the hose itself, one per line; manufacture orders a quantity of a number.
+  const quantity = kind === 'replace' ? 1 : ordered
   return {
     id: `req-${i + 1}`,
     number: `СВЦБ-${String(5100 + i).padStart(5, '0')}`,
     branchId: product.branchId,
     productId: product.id,
-    kind: rand() < 0.5 ? 'replace' : 'manufacture',
+    kind,
     positions: [
       {
+        productId: kind === 'replace' ? product.id : null,
         catalogNumberId: cat.id,
         catalogNumber: cat.name,
         equipmentId: product.equipmentId,

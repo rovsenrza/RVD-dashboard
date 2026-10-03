@@ -1,13 +1,13 @@
-import { useId, useMemo, useState, type FormEvent } from 'react'
+import { useMemo, useState, type FormEvent } from 'react'
 import { format } from 'date-fns'
-import { X } from 'lucide-react'
 import { SUPPORT_TOPIC_LABEL } from '@/entities/support'
 import type { Product, SupportTopic } from '@/entities/types'
 import { ApiError } from '@/shared/api/client'
 import { useEquipment, useProducts, useSendSupportMessage } from '@/shared/api/queries'
 import { formatDate } from '@/shared/lib/utils'
-import { Button, DatePicker, Dialog, Field, Input, Select, Textarea, useToast } from '@/shared/ui'
-import { findProduct, ProductOptions, productLabel } from '@/features/products/productLookup'
+import { Button, DatePicker, Dialog, Field, Select, Textarea, useToast } from '@/shared/ui'
+import { ProductPicker, ProductRow } from '@/features/products/components/ProductPicker'
+import { productLabel } from '@/features/products/productLookup'
 
 /** What the dialog opens with: a hose card asks about its own hose and date. */
 export interface ContactPreset {
@@ -41,11 +41,9 @@ export function ContactDialog({
   const send = useSendSupportMessage()
   const products = useProducts()
   const equipment = useEquipment()
-  const listId = useId()
 
   const [topic, setTopic] = useState<SupportTopic | ''>(preset?.topic ?? '')
   const [product, setProduct] = useState<Product | undefined>(preset?.product)
-  const [typed, setTyped] = useState('')
   const [miss, setMiss] = useState<string>()
   const [date, setDate] = useState('')
   const [text, setText] = useState('')
@@ -62,18 +60,6 @@ export function ContactDialog({
       ),
     [products.data, topic],
   )
-
-  const pick = (p: Product) => {
-    setProduct(p)
-    setTyped('')
-    setMiss(undefined)
-  }
-  // While typing only a whole suggestion counts; a bare number is read once the field is left.
-  const take = (value: string) => {
-    const hit = findProduct(candidates, value, labelOf)
-    if (hit) pick(hit)
-    else if (value.trim()) setMiss('Такого изделия нет среди ваших')
-  }
 
   const current = product?.installedAt ?? product?.shippedAt ?? null
   const ready =
@@ -141,23 +127,20 @@ export function ContactDialog({
 
         {aboutHose &&
           (product ? (
-            <div className="grid gap-1.5">
-              <span className="text-label font-medium text-ink">Изделие</span>
-              <div className="flex min-h-9 items-center justify-between gap-3 rounded-lg bg-field px-3 py-1.5 text-sm">
-                <span className="min-w-0 truncate">{labelOf(product)}</span>
-                {!locked && (
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    icon={X}
-                    aria-label="Выбрать другое изделие"
-                    onClick={() => {
-                      setProduct(undefined)
-                      setDate('')
-                    }}
-                  />
-                )}
-              </div>
+            <div>
+              <span className="mb-1.5 block text-ui font-medium">Изделие</span>
+              <ProductRow
+                label={labelOf(product)}
+                removeLabel="Выбрать другое изделие"
+                onRemove={
+                  locked
+                    ? undefined
+                    : () => {
+                        setProduct(undefined)
+                        setDate('')
+                      }
+                }
+              />
             </div>
           ) : (
             <Field
@@ -166,31 +149,16 @@ export function ContactDialog({
               error={miss}
             >
               {(id) => (
-                <>
-                  <Input
-                    id={id}
-                    list={listId}
-                    value={typed}
-                    autoComplete="off"
-                    required={topic === 'install_date'}
-                    aria-invalid={!!miss || undefined}
-                    placeholder="Например: 48703"
-                    onChange={(e) => {
-                      const value = e.target.value
-                      const suggestion = candidates.find((p) => labelOf(p) === value)
-                      if (suggestion) return pick(suggestion)
-                      setTyped(value)
-                      setMiss(undefined)
-                    }}
-                    onBlur={() => take(typed)}
-                    onKeyDown={(e) => {
-                      if (e.key !== 'Enter') return
-                      e.preventDefault()
-                      take(typed)
-                    }}
-                  />
-                  <ProductOptions id={listId} products={candidates} labelOf={labelOf} />
-                </>
+                <ProductPicker
+                  id={id}
+                  candidates={candidates}
+                  labelOf={labelOf}
+                  required={topic === 'install_date'}
+                  invalid={!!miss}
+                  placeholder="Например: 48703"
+                  onPick={setProduct}
+                  onMiss={setMiss}
+                />
               )}
             </Field>
           ))}
