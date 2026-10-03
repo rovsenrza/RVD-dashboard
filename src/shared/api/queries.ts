@@ -270,31 +270,6 @@ export const useEquipmentReplacements = (id: string) =>
     queryFn: () => api.get<Replacement[]>(`/equipment/${id}/replacements`),
   })
 
-/** What the mechanic records; the server fills numbers, machine, author and the 1С side. */
-export interface NewReplacement {
-  oldProductId: string
-  newProductId: string | null
-  date: string
-  reason: string
-  operatingHours: number | null
-  usageUnit: Replacement['usageUnit']
-  comment: string | null
-  attachmentIds: string[]
-}
-
-export const useCreateReplacement = () => {
-  const qc = useQueryClient()
-  return useMutation({
-    mutationFn: (body: NewReplacement) => api.post<Replacement>('/replacements', body),
-    onSuccess: () => {
-      // The old hose is written off, the new one installed: everything built on them moves.
-      for (const key of ['replacements', 'products', 'equipment', 'dashboard', 'analytics'])
-        qc.invalidateQueries({ queryKey: [key] })
-      qc.invalidateQueries({ queryKey: keys.audit })
-    },
-  })
-}
-
 /** Machine models compared (Д15): computed by the server over the whole fleet, never in the browser. */
 export const useModelStats = () => {
   const branch = useScope()

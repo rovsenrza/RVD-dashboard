@@ -79,10 +79,10 @@ test.describe('phone', () => {
       await expect(page).toHaveScreenshot(`${name}-phone.png`)
     })
 
-  test('replacement sheet · phone', async ({ page }) => {
+  test('replacement request sheet · phone', async ({ page }) => {
     await open(page, '/products/p-4', 'light')
-    await page.getByRole('button', { name: 'Замена' }).click()
+    await page.getByRole('button', { name: 'Заявка на замену' }).click()
     await expect(page.getByRole('dialog')).toBeVisible()
-    await expect(page).toHaveScreenshot('replacement-sheet-phone.png')
+    await expect(page).toHaveScreenshot('request-sheet-phone.png')
   })
 })

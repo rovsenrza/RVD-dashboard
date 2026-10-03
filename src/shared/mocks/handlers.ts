@@ -24,7 +24,6 @@ import {
   modelStats,
   products,
   record,
-  recordReplacement,
   releaseDocuments,
   replacements,
   requests,
@@ -258,14 +257,6 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 })
   }),
 
-  http.post(api('/replacements'), async ({ request }) => {
-    const result = recordReplacement(
-      (await request.json()) as Parameters<typeof recordReplacement>[0],
-    )
-    return 'error' in result
-      ? HttpResponse.json({ message: result.error }, { status: 409 })
-      : HttpResponse.json(result, { status: 201 })
-  }),
   http.get(api('/products/:id/replacements'), ({ params }) =>
     HttpResponse.json(
       newestFirst(

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import type { ColumnDef } from '@tanstack/react-table'
-import { ArrowLeftRight, RefreshCw } from 'lucide-react'
+import { RefreshCw } from 'lucide-react'
 import type { Replacement } from '@/entities/types'
 import { ProductStatusBar } from '@/entities/product'
 import { useSession } from '@/app/session'
@@ -17,7 +17,7 @@ import {
 } from '@/shared/ui'
 import { formatDate } from '@/shared/lib/utils'
 import { replacementColumns } from '@/features/replacements/columns'
-import { ReplacementDialog } from '@/features/replacements/components/ReplacementDialog'
+import { RequestForm } from '@/features/requests/components/RequestForm'
 import { HosesByPlace } from './components/HosesByPlace'
 
 export function EquipmentDetailPage() {
@@ -26,7 +26,7 @@ export function EquipmentDetailPage() {
   const { branches } = useSession()
   const query = useEquipmentItem(id)
   const history = useEquipmentReplacements(id)
-  const [replacing, setReplacing] = useState(false)
+  const [requesting, setRequesting] = useState(false)
 
   return (
     <QueryState query={query} skeleton={<Skeleton className="sheet h-96" />}>
@@ -40,24 +40,17 @@ export function EquipmentDetailPage() {
             description={`${e.type} · ${e.hoseCount} РВД на технике`}
             actions={
               <>
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  icon={ArrowLeftRight}
-                  onClick={() => setReplacing(true)}
-                  disabled={!e.hoseCount}
-                >
-                  <span className="sm:hidden">Замена</span>
-                  <span className="max-sm:hidden">Зафиксировать замену</span>
-                </Button>
-                <Button size="sm" icon={RefreshCw} onClick={() => navigate('/requests')}>
+                <Button size="sm" icon={RefreshCw} onClick={() => setRequesting(true)}>
                   Заявка на замену
                 </Button>
               </>
             }
           />
-          {replacing && (
-            <ReplacementDialog equipmentId={e.id} onClose={() => setReplacing(false)} />
+          {requesting && (
+            <RequestForm
+              preset={{ kind: 'replace', equipmentId: e.id }}
+              onClose={() => setRequesting(false)}
+            />
           )}
 
           <div className="grid items-start gap-5 lg:grid-cols-[minmax(0,320px)_1fr]">

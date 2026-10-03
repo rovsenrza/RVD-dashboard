@@ -9,7 +9,6 @@ export const AUDIT_ACTION_LABEL: Record<AuditAction, string> = {
   'user.activate': 'Возвращён доступ',
   'user.password': 'Сброшен пароль',
   'settings.update': 'Изменены настройки',
-  'replacement.create': 'Зафиксирована замена',
   'attachment.create': 'Добавлен файл',
   'attachment.delete': 'Удалён файл',
   'comment.create': 'Добавлен комментарий',

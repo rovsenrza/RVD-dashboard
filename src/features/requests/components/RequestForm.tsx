@@ -57,10 +57,11 @@ interface Row {
   quantity: number
 }
 
-/** What the form opens with: a hose card asks to replace its own hose. */
+/** What the form opens with: a hose card brings its hose, a machine card puts its own hoses first. */
 export interface RequestPreset {
   kind?: RequestKind
   products?: Product[]
+  equipmentId?: string
 }
 
 /**
@@ -91,9 +92,17 @@ export function RequestForm({ preset, onClose }: { preset?: RequestPreset; onClo
   const uploads = useUploads()
 
   const labelOf = (p: Product) => productLabel(p, equipment.data)
+  const machine = preset?.equipmentId
   const candidates = useMemo(
-    () => (stock.data ?? []).filter((p) => p.lifecycle !== 'manufacturing').sort(byUrgency),
-    [stock.data],
+    () =>
+      (stock.data ?? [])
+        .filter((p) => p.lifecycle !== 'manufacturing')
+        .sort(
+          (a, b) =>
+            Number(b.equipmentId === machine && !!machine) -
+              Number(a.equipmentId === machine && !!machine) || byUrgency(a, b),
+        ),
+    [stock.data, machine],
   )
   const taken = useMemo(() => new Set(picked.map((p) => p.id)), [picked])
 

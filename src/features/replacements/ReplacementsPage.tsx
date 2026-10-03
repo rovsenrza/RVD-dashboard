@@ -1,13 +1,13 @@
 import { useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { ColumnDef } from '@tanstack/react-table'
-import { ArrowLeftRight } from 'lucide-react'
+import { RefreshCw } from 'lucide-react'
 import { formatISO, subDays } from 'date-fns'
 import type { Replacement } from '@/entities/types'
 import { REPLACEMENT_REASONS, USAGE_UNIT_LABEL } from '@/entities/replacement'
 import { useSession } from '@/app/session'
 import { useReplacements } from '@/shared/api/queries'
-import { ReplacementDialog } from './components/ReplacementDialog'
+import { RequestForm } from '@/features/requests/components/RequestForm'
 import {
   Button,
   DataTable,
@@ -44,7 +44,7 @@ const PERIODS = [
 export function ReplacementsPage() {
   const query = useReplacements()
   const [filter, setFilter] = useState('')
-  const [recording, setRecording] = useState(false)
+  const [requesting, setRequesting] = useState(false)
   const navigate = useNavigate()
   const { branch } = useSession()
   const table = useRef<DataTableHandle<Replacement>>(null)
@@ -83,7 +83,7 @@ export function ReplacementsPage() {
     <div>
       <PageHeader
         title="История замен"
-        description="Журнал всех замен РВД на технике компании"
+        description="Журнал замен РВД на технике компании — их проводит и списывает поставщик в 1С"
         actions={
           <>
             <ExportMenu
@@ -99,13 +99,15 @@ export function ReplacementsPage() {
               columns={EXPORT_COLUMNS}
               rows={() => table.current?.visibleRows() ?? rows}
             />
-            <Button size="sm" icon={ArrowLeftRight} onClick={() => setRecording(true)}>
-              Зафиксировать замену
+            <Button size="sm" icon={RefreshCw} onClick={() => setRequesting(true)}>
+              Заявка на замену
             </Button>
           </>
         }
       />
-      {recording && <ReplacementDialog onClose={() => setRecording(false)} />}
+      {requesting && (
+        <RequestForm preset={{ kind: 'replace' }} onClose={() => setRequesting(false)} />
+      )}
       <QueryState query={query} skeleton={<TableSkeleton />}>
         {() => (
           <DataTable

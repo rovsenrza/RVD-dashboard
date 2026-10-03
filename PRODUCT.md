@@ -8,9 +8,9 @@ web
 
 ## Users
 
-Primary: engineers and managers of industrial companies (mining, construction, logistics fleets) who own heavy equipment fitted with high-pressure hydraulic hoses (РВД). They work at a desk, on a desktop browser, for planning and control: which hoses are installed on which machine, which are nearing end of life, what to order. Secondary: field mechanics who record a replacement or raise a request from a tablet/phone in a workshop; and the supplier's managers who process requests in their own 1С system (outside this product).
+Primary: engineers and managers of industrial companies (mining, construction, logistics fleets) who own heavy equipment fitted with high-pressure hydraulic hoses (РВД). They work at a desk, on a desktop browser, for planning and control: which hoses are installed on which machine, which are nearing end of life, what to order. Secondary: field mechanics who raise a replacement request or look a hose up from a tablet/phone in a workshop; and the supplier's managers who process requests in their own 1С system (outside this product).
 
-Roles: механик (own branch, read + record replacement + create request), инженер (all branches of the company), руководитель (+ reports and comparisons), администратор (users, settings).
+Roles: механик (own branch, read + create requests), инженер (all branches of the company), руководитель (+ reports and comparisons), администратор (users, settings).
 
 ## Product Purpose
 
@@ -18,11 +18,11 @@ A client cabinet ("личный кабинет") where a customer of a hose supp
 
 ## Positioning
 
-The supplier already manufactures and serialises every hose and records its lifecycle in 1С. This cabinet is the customer-facing window into that same data — not a separate inventory the customer must maintain — plus the actions the customer owns (replacement facts, mileage, requests). The reference product (Eurohydroservice ESM by Киберэкс) has no KPI dashboard, no equipment hierarchy view, no notifications and no export in its manager panel; those are this product's differentiators.
+The supplier already manufactures and serialises every hose and records its lifecycle in 1С. This cabinet is the customer-facing window into that same data — not a separate inventory the customer must maintain — plus the actions the customer owns (requests, where a hose sits on a machine, comments and files). The reference product (Eurohydroservice ESM by Киберэкс) has no KPI dashboard, no equipment hierarchy view, no notifications and no export in its manager panel; those are this product's differentiators.
 
 ## Operating Context
 
-- Source of truth for hoses, assemblies, customers, branches, catalog, OEM numbers and lifecycle history is the supplier's 1С (platform 8.5, custom configuration on БСП), exposed via OData. Requests and replacement facts created here are sent to 1С, which runs its own business logic.
+- Source of truth for hoses, assemblies, customers, branches, catalog, OEM numbers and lifecycle history is the supplier's 1С (platform 8.5, custom configuration on БСП), exposed via OData. Requests created here are sent to 1С, which runs its own business logic. Installation dates and replacements (the write-off and the old → new link) are the supplier's, recorded in 1С; the customer asks for a replacement and asks the specialist to correct a date (customer, 2026-10-03).
 - Data scale in the reference deployment: ~170 000 serialised hoses, ~62 000 assemblies, ~16 000 OEM numbers, ~780 customer companies. Server-side pagination and search are mandatory.
 - Domain model is two-level: **Рукав в сборе** (assembly / BOM: hose + 2 fittings + 2 couplings + optional protection, seals, plates, bolts, adapters; identified by number ЕГС) → **Изделие** (serialised unit, number ESM/EHS, shipped to a customer, installed on a machine under a garage number).
 - Hierarchy the customer thinks in: Компания → Филиал → Единица техники (гаражный номер) → Узел / место установки → РВД.
@@ -37,7 +37,8 @@ The supplier already manufactures and serialises every hose and records its life
 - Product card must show full technical data, current status, remaining days to planned replacement, warranty status, equipment and installation place, photos/documents, repair/replacement history, specialist comments, and a one-click request for replacement or an identical hose.
 - Access is scoped per company and branch; users of one company never see another's data.
 - Browser-only, no installation; must work on tablet and phone as a secondary path.
-- Undecided (open with customer): exact status thresholds (fixed 10–11.99 months vs. percentage of service life), where photos/documents are stored (here or 1С), which 1С object receives requests, hosting (customer server vs. ours), SMTP for e-mail notifications.
+- Settled with the customer (2026-10-03): «Внимание» is the last 30 days before the planned replacement; one field «Каталожный № (OEM)»; requests are «Замена» (own hoses only) or «Изготовление» / «Ремонт» (free entry or an Excel file), ten lines at most.
+- Undecided (open with customer): where photos/documents are stored (here or 1С), which 1С object receives requests, hosting (customer server vs. ours), SMTP for e-mail notifications.
 - Current codebase: React 19, TypeScript, Vite, Tailwind v4, TanStack Query/Table, Recharts, MSW mocks; component layers `shared/ui` → `entities` → `features` → `app`, enforced by CI. Backend (BFF + Postgres + 1С sync) is planned, not built.
 
 ## Brand Commitments
@@ -55,7 +56,7 @@ The supplier already manufactures and serialises every hose and records its life
 
 ## Product Principles
 
-1. **1С is the truth; the cabinet is the lens.** Never make the customer re-enter what the supplier already knows; only capture what the customer alone knows (installation, mileage, replacement facts, requests).
+1. **1С is the truth; the cabinet is the lens.** Never make the customer re-enter what the supplier already knows; only capture what the customer alone knows (requests, where a hose sits, comments and files).
 2. **Attention before inventory.** The first screen answers "what needs my action this month", then lets the user drill to the hose.
 3. **Every hose reachable in one search.** EHS, OEM, garage number, client number — one field, one result list.
 4. **Scan, don't read.** Status is encoded in colour and shape consistently everywhere (table cell, card, chart, equipment bar).

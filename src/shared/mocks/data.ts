@@ -1,5 +1,4 @@
 import { addDays, formatISO, parseISO, setHours, setMinutes, subDays } from 'date-fns'
-import { claimAttachments } from './attachments'
 import type {
   Attachment,
   AuditChange,
@@ -623,19 +622,7 @@ for (const r of requests) {
   )
 }
 
-// ── Recording a replacement ─────────────────────────────────────────────────
-
-export interface NewReplacement {
-  oldProductId: string
-  newProductId: string | null
-  date: string
-  reason: string
-  operatingHours: number | null
-  usageUnit: Replacement['usageUnit']
-  comment: string | null
-  /** Drafts uploaded while the form was open */
-  attachmentIds?: string[]
-}
+// ── Who did it ──────────────────────────────────────────────────────────────
 
 /** «Иванов Иван» → «Иванов И.», the way the journal names who did the work. */
 const shortName = (name: string) => {
@@ -645,93 +632,6 @@ const shortName = (name: string) => {
 
 /** The signed-in demo user as journals name them; the BFF takes it from the token. */
 export const currentAuthor = () => shortName(users[0].name)
-
-/**
- * What 1С will do when the replacement arrives through the outbox (Д17):
- * the old hose is written off where it stood, the new one takes its machine
- * and place from the replacement date, and every count built on them follows.
- */
-export function recordReplacement(body: NewReplacement): Replacement | { error: string } {
-  const old = products.find((p) => p.id === body.oldProductId)
-  if (!old || !live(old)) return { error: 'Это изделие уже снято или не установлено' }
-  const fresh = body.newProductId ? products.find((p) => p.id === body.newProductId) : null
-  if (body.newProductId && (!fresh || fresh.installedAt || fresh.lifecycle === 'written_off'))
-    return { error: 'Новое изделие уже установлено или списано' }
-  const machine = equipment.find((e) => e.id === old.equipmentId)!
-  const author = currentAuthor()
-
-  const replacement: Replacement = {
-    id: `r-${replacements.length + 1}`,
-    oldProductId: old.id,
-    oldSerialNumber: old.serialNumber,
-    newProductId: fresh?.id ?? null,
-    newSerialNumber: fresh?.serialNumber ?? null,
-    equipmentId: machine.id,
-    garageNumber: machine.garageNumber,
-    date: body.date,
-    reason: body.reason,
-    operatingHours: body.operatingHours,
-    usageUnit: body.usageUnit,
-    performedBy: author,
-    comment: body.comment,
-    attachments: [],
-  }
-  replacement.attachments = claimAttachments(body.attachmentIds, {
-    kind: 'replacement',
-    id: replacement.id,
-  })
-  replacements.unshift(replacement)
-
-  const doc = (productId: string, lifecycle: ProductLifecycle) =>
-    releaseDocuments.push({
-      id: `doc-${productId}-r${replacement.id}`,
-      number: `ЗМН-${String(++documentNumber).padStart(6, '0')}`,
-      date: body.date,
-      productId,
-      lifecycle,
-      author,
-      requestId: null,
-    })
-
-  old.lifecycle = 'written_off'
-  doc(old.id, 'written_off')
-  if (fresh) {
-    fresh.replacedProductId = old.id
-    applyInstallation(fresh, {
-      equipmentId: machine.id,
-      installPlace: old.installPlace,
-      installedAt: body.date,
-    })
-    doc(fresh.id, 'in_operation')
-  }
-  recountEquipment(machine)
-
-  record({
-    action: 'replacement.create',
-    target: { kind: 'product', id: old.id, label: `EHS ${old.serialNumber}` },
-    changes: [
-      { field: 'Статус', before: 'В эксплуатации', after: 'Списан' },
-      {
-        field: 'Заменено на',
-        before: null,
-        after: fresh ? `EHS ${fresh.serialNumber}` : 'не указано',
-      },
-      { field: 'Техника', before: null, after: machine.garageNumber },
-      { field: 'Причина', before: null, after: body.reason },
-      ...(body.operatingHours === null
-        ? []
-        : [
-            {
-              field: 'Наработка',
-              before: null,
-              after: `${body.operatingHours.toLocaleString('ru-RU')} ${body.usageUnit === 'km' ? 'км' : 'м/ч'}`,
-            },
-          ]),
-      ...filesChange(replacement.attachments),
-    ],
-  })
-  return replacement
-}
 
 // ── Model comparison (Д15) ─────────────────────────────────────────────────
 

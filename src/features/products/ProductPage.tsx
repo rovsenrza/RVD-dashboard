@@ -1,12 +1,12 @@
 import { useState } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
-import { ArrowLeftRight, Pencil, RefreshCw } from 'lucide-react'
+import { useParams } from 'react-router-dom'
+import { Pencil, RefreshCw } from 'lucide-react'
 import { ProductStatusBadge } from '@/entities/product'
 import { useProduct } from '@/shared/api/queries'
 import { readOrigin } from '@/shared/lib/origin'
 import { Badge, Button, PageHeader, QueryState, Skeleton } from '@/shared/ui'
 import { ProductAttachments } from '@/features/attachments/ProductAttachments'
-import { ReplacementDialog } from '@/features/replacements/components/ReplacementDialog'
+import { RequestForm } from '@/features/requests/components/RequestForm'
 import { ContactDialog, type ContactPreset } from '@/features/support/ContactDialog'
 import { ProductActivity } from './components/ProductActivity'
 import { ProductComposition } from './components/ProductComposition'
@@ -17,10 +17,9 @@ import { ProductLifetime } from './components/ProductLifetime'
 export function ProductPage() {
   const { id = '' } = useParams()
   const query = useProduct(id)
-  const navigate = useNavigate()
   const origin = readOrigin({ to: '/products', label: 'К списку изделий' })
   const [editing, setEditing] = useState(false)
-  const [replacing, setReplacing] = useState(false)
+  const [requesting, setRequesting] = useState(false)
   const [contact, setContact] = useState<ContactPreset | null>(null)
   return (
     <QueryState query={query} skeleton={<Skeleton className="sheet h-96" />}>
@@ -46,7 +45,7 @@ export function ProductPage() {
             description={`${p.type} · ${p.manufacturer}`}
             actions={
               <>
-                {/* Phones: three actions share the pinned bar, so the labels shorten. */}
+                {/* Phones: both actions share the pinned bar; the edit keeps only its icon. */}
                 <Button
                   variant="secondary"
                   size="sm"
@@ -58,19 +57,9 @@ export function ProductPage() {
                 >
                   <span className="max-sm:sr-only">Изменить</span>
                 </Button>
-                {p.installedAt && p.lifecycle !== 'written_off' && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    icon={ArrowLeftRight}
-                    onClick={() => setReplacing(true)}
-                  >
-                    <span className="sm:hidden">Замена</span>
-                    <span className="max-sm:hidden">Зафиксировать замену</span>
-                  </Button>
-                )}
-                <Button size="sm" icon={RefreshCw} onClick={() => navigate('/requests')}>
-                  <span className="sm:hidden">Заявка</span>
+                {/* The supplier replaces and writes off in 1С; the customer asks for it. */}
+                <Button size="sm" icon={RefreshCw} onClick={() => setRequesting(true)}>
+                  <span className="sm:hidden">Заявка на замену</span>
                   <span className="max-sm:hidden">Создать заявку на замену</span>
                 </Button>
               </>
@@ -86,7 +75,12 @@ export function ProductPage() {
               }}
             />
           )}
-          {replacing && <ReplacementDialog product={p} onClose={() => setReplacing(false)} />}
+          {requesting && (
+            <RequestForm
+              preset={{ kind: 'replace', products: [p] }}
+              onClose={() => setRequesting(false)}
+            />
+          )}
           {contact && <ContactDialog preset={contact} onClose={() => setContact(null)} />}
           <div className="grid items-start gap-5 lg:grid-cols-2">
             <ProductLifetime productId={p.id} />

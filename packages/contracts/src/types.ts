@@ -290,7 +290,6 @@ export type AuditAction =
   | 'user.activate'
   | 'user.password'
   | 'settings.update'
-  | 'replacement.create'
   | 'attachment.create'
   | 'attachment.delete'
   | 'comment.create'
