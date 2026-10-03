@@ -36,31 +36,42 @@ const MACHINE = `e.data || jsonb_build_object(
     'replace', coalesce(m.replace, 0), 'no_warranty', coalesce(m.no_warranty, 0)),
   'nextPlannedReplacement', m.next_planned)`
 
-/** «Моя техника»: every machine with its hoses counted for today. */
-export async function listEquipment(db: Db, clock: Clock): Promise<Equipment[]> {
+/** «Моя техника»: the client's machines with their hoses counted for today. */
+export async function listEquipment(db: Db, clock: Clock, client?: string): Promise<Equipment[]> {
   const { rows } = await db.query<{ machine: Equipment }>(
     `with ${ON_MACHINE}
      select ${MACHINE} as machine
      from equipment e left join on_machine m on m.equipment_id = e.id
+     where ($5::text is null or e.client_id = $5)
      order by e.garage_number, e.id`,
-    ruleParams(clock),
+    [...ruleParams(clock), client ?? null],
   )
   return rows.map((r) => r.machine)
 }
 
-export async function getEquipment(db: Db, id: string, clock: Clock): Promise<Equipment | null> {
+export async function getEquipment(
+  db: Db,
+  id: string,
+  clock: Clock,
+  client?: string,
+): Promise<Equipment | null> {
   const { rows } = await db.query<{ machine: Equipment }>(
     `with ${ON_MACHINE}
      select ${MACHINE} as machine
      from equipment e left join on_machine m on m.equipment_id = e.id
-     where e.id = $5`,
-    [...ruleParams(clock), id],
+     where e.id = $5 and ($6::text is null or e.client_id = $6)`,
+    [...ruleParams(clock), id, client ?? null],
   )
   return rows[0]?.machine ?? null
 }
 
 /** The hoses on one machine now, each with its status for today. */
-export async function equipmentProducts(db: Db, id: string, clock: Clock): Promise<Product[]> {
-  const query = ProductListQuery.parse({ equipment: id, archive: '0', limit: 5000 })
+export async function equipmentProducts(
+  db: Db,
+  id: string,
+  clock: Clock,
+  client?: string,
+): Promise<Product[]> {
+  const query = ProductListQuery.parse({ equipment: id, archive: '0', limit: 5000, client })
   return (await listProducts(db, query, clock)).items
 }

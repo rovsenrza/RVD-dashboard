@@ -40,7 +40,7 @@ const COMPARE_NAV: NavItem = { to: '/compare', label: 'Сравнение тех
 const ADMIN_NAV: NavItem = { to: '/admin', label: 'Администрирование', icon: ShieldCheck }
 
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { user } = useSession()
+  const { user, demo } = useSession()
   const nav = [
     ...NAV,
     ...(user.role === 'manager' || user.role === 'admin' ? [REPORTS_NAV, COMPARE_NAV] : []),
@@ -99,7 +99,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
           <div className="px-3 pt-3 text-caption leading-5 text-rail-muted/80">
             <div className="flex items-center gap-2">
               <span className="size-1.5 rounded-full bg-status-ok" />
-              Данные 1С · демо-режим
+              {demo ? 'Данные 1С · демо-режим' : 'Данные 1С'}
             </div>
             <div>v0.2</div>
           </div>

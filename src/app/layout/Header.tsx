@@ -137,6 +137,10 @@ function BranchSwitcher() {
     </>
   )
 
+  // Nothing to switch between: a live company has no branches from 1С yet.
+  if (branches.length === 0)
+    return <span className="flex h-10 items-center gap-2.5 rounded-lg px-2">{label}</span>
+
   // A mechanic works inside one branch: show it, but offer nothing to switch.
   if (branchLocked)
     return (
@@ -200,7 +204,7 @@ function GlobalSearch({ className, onOpen }: { className?: string; onOpen: () =>
 }
 
 function UserMenu({ onContact }: { onContact: () => void }) {
-  const { user, signOut, setRole } = useSession()
+  const { user, demo, signOut, setRole } = useSession()
   const navigate = useNavigate()
   const [theme, setTheme] = useThemePreference()
   return (
@@ -236,16 +240,18 @@ function UserMenu({ onContact }: { onContact: () => void }) {
               onChange={setTheme}
             />
           </div>
-          {/* Until real auth: lets the customer see the cabinet through each role. */}
-          <label className="mt-2.5 flex items-center justify-between gap-3">
-            <span className="text-label whitespace-nowrap text-ink-muted">Роль · демо</span>
-            <Select
-              value={user.role}
-              onChange={(e) => setRole(e.target.value as typeof user.role)}
-              options={ROLE_ORDER.map((r) => ({ value: r, label: ROLE_LABEL[r] }))}
-              className="w-40"
-            />
-          </label>
+          {/* The demo only: lets the customer see the cabinet through each role. */}
+          {demo && (
+            <label className="mt-2.5 flex items-center justify-between gap-3">
+              <span className="text-label whitespace-nowrap text-ink-muted">Роль · демо</span>
+              <Select
+                value={user.role}
+                onChange={(e) => setRole(e.target.value as typeof user.role)}
+                options={ROLE_ORDER.map((r) => ({ value: r, label: ROLE_LABEL[r] }))}
+                className="w-40"
+              />
+            </label>
+          )}
         </div>
       }
       items={[

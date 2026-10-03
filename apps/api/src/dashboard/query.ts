@@ -22,8 +22,12 @@ interface Totals {
  * warranty or due for replacement then (only hoses already in service then).
  * Replacements come from 1С with Д16; until then there are none to count.
  */
-export async function dashboardSummary(db: Db, clock: Clock): Promise<DashboardSummary> {
-  const params = ruleParams(clock)
+export async function dashboardSummary(
+  db: Db,
+  clock: Clock,
+  client?: string,
+): Promise<DashboardSummary> {
+  const params = [...ruleParams(clock), client ?? null]
   const {
     rows: [t],
   } = await db.query<Totals>(
@@ -32,7 +36,7 @@ export async function dashboardSummary(db: Db, clock: Clock): Promise<DashboardS
          case when coalesce(installed_at, shipped_at) <= $1::date - 30
               then ${statusAt('($1::date - 30)')} end as status_then,
          installed_at, shipped_at
-       from products where lifecycle <> 'written_off'
+       from products where lifecycle <> 'written_off' and ($5::text is null or client_id = $5)
      )
      select count(*)::int as shipped_total,
        count(*) filter (where installed_at is not null)::int as in_operation,
@@ -52,6 +56,7 @@ export async function dashboardSummary(db: Db, clock: Clock): Promise<DashboardS
     `with p as (
        select products.*, ${STATUS_SQL} as status, ${PLANNED_AT} as planned_at from products
        where lifecycle <> 'written_off' and equipment_id is not null and service_life_days > 0
+         and ($5::text is null or client_id = $5)
      )
      select p.id as "productId", p.serial_number as "serialNumber",
        coalesce(e.garage_number, '—') as equipment, to_char(p.planned_at, 'YYYY-MM-DD') as "dueDate"

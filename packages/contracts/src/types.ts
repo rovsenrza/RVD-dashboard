@@ -474,3 +474,10 @@ export interface SupportMessage {
   installedAt: string | null
   text: string
 }
+
+/** What the cabinet learns on signing in (and on each token refresh): who, which company, a short access token. */
+export interface SignedIn {
+  accessToken: string
+  user: { id: string; name: string; email: string; role: UserRole }
+  company: { id: string; name: string }
+}

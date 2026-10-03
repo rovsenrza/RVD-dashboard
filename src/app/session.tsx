@@ -1,11 +1,18 @@
-import { createContext, useContext, useMemo, useState, type ReactNode } from 'react'
-import type { Branch, Company, UserRole } from '@/entities/types'
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
+import type { Branch, Company, SignedIn, UserRole } from '@/entities/types'
 import { isBranchBound } from '@/entities/user'
+import { api, authToken } from '@/shared/api/client'
+import { LIVE } from '@/shared/api/live'
 
 export type Role = UserRole
 
 export interface Session {
+  /** False only while a live cabinet asks the server whether the sign-in still holds */
+  ready: boolean
   authenticated: boolean
+  /** The demo (mocks): roles can be previewed; a live cabinet signs in for real */
+  demo: boolean
   user: { id: string; name: string; role: Role }
   company: Company
   branches: Branch[]
@@ -14,9 +21,10 @@ export interface Session {
   /** True for branch-bound roles (mechanic): the branch cannot be changed. */
   branchLocked: boolean
   setBranchId: (id: string | null) => void
-  /** Demo only, until real auth: preview the cabinet as another role. */
+  /** Demo only: preview the cabinet as another role. */
   setRole: (role: Role) => void
-  signIn: () => void
+  /** Rejects with the server's reason (an ApiError) when the pair does not match */
+  signIn: (email: string, password: string) => Promise<void>
   signOut: () => void
 }
 
@@ -26,8 +34,9 @@ const ROLE_KEY = 'rvd.role'
 const SessionContext = createContext<Session | null>(null)
 
 /**
- * Mock session until auth lands. Swapping to a real provider (JWT → /me)
- * changes only this file; consumers keep useSession().
+ * Two providers behind one useSession(): the demo's mock session (any
+ * well-formed pair signs in, roles can be previewed) and, in live mode, the
+ * real one — sign-in against the API, the company from the token.
  */
 const MOCK_USER = { id: 'u-1', name: 'Иванов Иван' }
 const ROLES: Role[] = ['mechanic', 'engineer', 'manager', 'admin']
@@ -64,13 +73,23 @@ const readRole = (): Role => {
 }
 
 export function SessionProvider({ children }: { children: ReactNode }) {
+  return LIVE ? (
+    <LiveSessionProvider>{children}</LiveSessionProvider>
+  ) : (
+    <MockSessionProvider>{children}</MockSessionProvider>
+  )
+}
+
+function MockSessionProvider({ children }: { children: ReactNode }) {
   const [authenticated, setAuthenticated] = useState(readAuth)
   const [role, setRoleState] = useState(readRole)
   const [branchId, setBranchId] = useState<string | null>(MOCK_BRANCHES[0].id)
 
   const value = useMemo<Session>(
     () => ({
+      ready: true,
       authenticated,
+      demo: true,
       user: { ...MOCK_USER, role },
       company: MOCK_COMPANY,
       branches: MOCK_BRANCHES,
@@ -88,7 +107,11 @@ export function SessionProvider({ children }: { children: ReactNode }) {
         }
         setRoleState(next)
       },
-      signIn: () => {
+      signIn: async (email, password) => {
+        // The demo signs in any well-formed pair.
+        await new Promise((r) => setTimeout(r, 400))
+        if (!email.includes('@') || password.length < 4)
+          throw new Error('Неверный логин или пароль')
         writeAuth(true)
         setAuthenticated(true)
       },
@@ -103,16 +126,88 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
 }
 
+const NO_USER = { id: '', name: '', role: 'engineer' as Role }
+
+/**
+ * The live session (Д6): the access token stays in memory, a reload keeps the
+ * sign-in through the refresh cookie, and the company is whatever the token
+ * says. 1С knows no branches of the client yet, so there are none to pick.
+ * Signing in or out drops every cached answer: the next company must never
+ * glimpse the last one's hoses.
+ */
+function LiveSessionProvider({ children }: { children: ReactNode }) {
+  const queries = useQueryClient()
+  const [state, setState] = useState<{ ready: boolean; me: SignedIn | null }>({
+    ready: false,
+    me: null,
+  })
+
+  useEffect(() => {
+    let alive = true
+    const out = () => {
+      queries.clear()
+      if (alive) setState({ ready: true, me: null })
+    }
+    authToken.onExpired(out)
+    api
+      .post<SignedIn>('/auth/refresh', {})
+      .then((me) => {
+        authToken.set(me.accessToken)
+        if (alive) setState({ ready: true, me })
+      })
+      .catch(() => alive && setState({ ready: true, me: null }))
+    return () => {
+      alive = false
+      authToken.onExpired(null)
+    }
+  }, [queries])
+
+  const value = useMemo<Session>(
+    () => ({
+      ready: state.ready,
+      authenticated: state.me !== null,
+      demo: false,
+      user: state.me
+        ? { id: state.me.user.id, name: state.me.user.name, role: state.me.user.role }
+        : NO_USER,
+      company: state.me?.company ?? { id: '', name: '' },
+      branches: [],
+      branch: null,
+      branchLocked: false,
+      setBranchId: () => {},
+      setRole: () => {},
+      signIn: async (email, password) => {
+        const me = await api.post<SignedIn>('/auth/login', { email, password })
+        authToken.set(me.accessToken)
+        queries.clear()
+        setState({ ready: true, me })
+      },
+      signOut: () => {
+        void api.post('/auth/logout', {}).catch(() => {})
+        authToken.set(null)
+        queries.clear()
+        setState({ ready: true, me: null })
+      },
+    }),
+    [state, queries],
+  )
+
+  return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
+}
+
 export function useSession(): Session {
   const ctx = useContext(SessionContext)
   if (!ctx) throw new Error('useSession must be used inside <SessionProvider>')
   return ctx
 }
 
+/** Two letters for the avatar, from the first two words that have letters («Администратор (локально)» → «АЛ»). */
 export function initials(name: string) {
   return name
     .split(/\s+/)
+    .map((w) => w.match(/\p{L}/u)?.[0] ?? '')
+    .filter(Boolean)
     .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? '')
     .join('')
+    .toUpperCase()
 }

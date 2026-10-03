@@ -21,10 +21,22 @@ const schema = z.object({
   /** How often the queue is sent, ms */
   OUTBOX_INTERVAL_MS: z.coerce.number().int().positive().default(30_000),
   /**
-   * The 1С client (Клиент_Key) this cabinet stands for, until login ties each
-   * company to its client (Д6–Д7).
+   * The 1С client (Клиент_Key) whose data the cabinet shows while sign-in is
+   * off; signed in, each company sees its own client (Д6–Д7).
    */
   CABINET_CLIENT_KEY: z.string().optional(),
+  /** Signs access tokens; 32+ random characters. Without it the server will not start… */
+  JWT_SECRET: z.string().min(32).optional(),
+  /** …unless sign-in is switched off on purpose, for local runs: everyone is the demo user, secret or not. */
+  AUTH_DISABLED: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
+  /** The refresh cookie only over HTTPS; on wherever the cabinet is served over HTTPS */
+  COOKIE_SECURE: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
 })
 
 export type Config = z.infer<typeof schema>

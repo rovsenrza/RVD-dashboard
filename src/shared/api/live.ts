@@ -11,6 +11,10 @@ export const LIVE =
  * the dev server forwards them; a route joins this list when the BFF has it.
  */
 export const LIVE_ROUTES = [
+  ['post', '/auth/login'],
+  ['post', '/auth/refresh'],
+  ['post', '/auth/logout'],
+  ['get', '/me'],
   ['get', '/products'],
   ['get', '/products/:id'],
   ['get', '/products/:id/lifetime'],

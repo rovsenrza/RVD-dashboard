@@ -1,10 +1,11 @@
 import { useState, type FormEvent } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useSession } from '@/app/session'
+import { ApiError } from '@/shared/api/client'
 import { Button, Field, Input } from '@/shared/ui'
 
 export function LoginPage() {
-  const { authenticated, signIn } = useSession()
+  const { ready, authenticated, signIn } = useSession()
   const navigate = useNavigate()
   const location = useLocation()
   const [email, setEmail] = useState('')
@@ -14,21 +15,24 @@ export function LoginPage() {
 
   const from = (location.state as { from?: string } | null)?.from ?? '/'
 
+  if (!ready) return null
   if (authenticated) return <Navigate to={from} replace />
 
   const submit = async (e: FormEvent) => {
     e.preventDefault()
     setError(null)
     setPending(true)
-    // Mock: any well-formed pair signs in. Auth against the BFF lands at Д6.
-    await new Promise((r) => setTimeout(r, 400))
-    if (!email.includes('@') || password.length < 4) {
+    try {
+      await signIn(email, password)
+      navigate(from, { replace: true })
+    } catch (err) {
       setPending(false)
-      setError('Неверный логин или пароль')
-      return
+      setError(
+        err instanceof ApiError && err.status !== 401
+          ? 'Не удалось войти — попробуйте ещё раз'
+          : 'Неверный логин или пароль',
+      )
     }
-    signIn()
-    navigate(from, { replace: true })
   }
 
   return (

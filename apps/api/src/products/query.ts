@@ -73,11 +73,25 @@ export async function listProducts(
   }
 }
 
-export async function getProduct(db: Db, id: string, clock: Clock): Promise<Product | null> {
+/** One hose; with `client`, only if it is that client's — anyone else's is as absent as a typo. */
+export async function getProduct(
+  db: Db,
+  id: string,
+  clock: Clock,
+  client?: string,
+): Promise<Product | null> {
   const { rows } = await db.query<{ product: Product }>(
     `with p as (select products.*, ${STATUS_SQL} as status from products)
-     select data || jsonb_build_object('status', status) as product from p where id = $5`,
-    [clock.today, clock.rules.warnRule, clock.rules.warnPercent, clock.rules.warnDays, id],
+     select data || jsonb_build_object('status', status) as product from p
+     where id = $5 and ($6::text is null or client_id = $6)`,
+    [
+      clock.today,
+      clock.rules.warnRule,
+      clock.rules.warnPercent,
+      clock.rules.warnDays,
+      id,
+      client ?? null,
+    ],
   )
   return rows[0]?.product ?? null
 }

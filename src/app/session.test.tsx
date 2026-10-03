@@ -1,5 +1,5 @@
 import { act, render, screen } from '@testing-library/react'
-import { SessionProvider, useSession, type Session } from './session'
+import { initials, SessionProvider, useSession, type Session } from './session'
 
 let session: Session
 function Probe() {
@@ -42,5 +42,13 @@ describe('demo role', () => {
       </SessionProvider>,
     )
     expect(session.user.role).toBe('admin')
+  })
+})
+
+describe('initials', () => {
+  it('takes the first letter of the first two words that have one', () => {
+    expect(initials('Анна Петрова')).toBe('АП')
+    expect(initials('Администратор (локально)')).toBe('АЛ')
+    expect(initials('  «БВ-ГРУПП»  ')).toBe('Б')
   })
 })
