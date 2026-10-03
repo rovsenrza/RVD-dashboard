@@ -10,12 +10,12 @@ import type { CabinetSettings, LifetimePhase, Product, ProductStatus } from './t
 export type StatusRules = Pick<CabinetSettings, 'warnRule' | 'warnPercent' | 'warnDays'>
 
 /**
- * ТЗ conflicts on «Внимание» (PLAN.md §5, q. 4): «последние 20 %» of the service
- * life, or a fixed stretch before the planned replacement (10–11,99 мес. at 12 —
- * the last two months). Both are offered; the administrator picks until the
- * customer settles it.
+ * ТЗ conflicted on «Внимание» (PLAN.md §5, q. 4): «последние 20 %» of the service
+ * life, or a fixed stretch before the planned replacement. The customer settled
+ * it on 2026-10-03: the last 30 days before the planned replacement. The percent
+ * rule stays available to the administrator.
  */
-export const DEFAULT_RULES: StatusRules = { warnRule: 'percent', warnPercent: 20, warnDays: 60 }
+export const DEFAULT_RULES: StatusRules = { warnRule: 'days', warnPercent: 20, warnDays: 30 }
 export const WARN_PERCENT_RANGE = [5, 50] as const
 export const WARN_DAYS_RANGE = [7, 180] as const
 

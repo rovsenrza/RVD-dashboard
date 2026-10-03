@@ -149,10 +149,11 @@ describe.skipIf(!hasDb)('products in the cache', () => {
   })
 
   it('answers exactly as the TypeScript rule for every combination', async () => {
-    const days = [0, 1, 59, 60, 61, 179, 180, 181, 300, 330, 364, 365, 366, 500]
+    const days = [0, 1, 59, 60, 61, 179, 180, 181, 300, 330, 334, 335, 336, 364, 365, 366, 500]
     const rulesList: StatusRules[] = [
       DEFAULT_RULES,
       { warnRule: 'days', warnPercent: 20, warnDays: 60 },
+      { warnRule: 'percent', warnPercent: 20, warnDays: 30 },
       { warnRule: 'percent', warnPercent: 33, warnDays: 60 },
     ]
     const facts = []

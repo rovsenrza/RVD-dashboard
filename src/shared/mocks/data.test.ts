@@ -1,27 +1,31 @@
-import { statusOf } from '@/entities/product/rules'
+import { DEFAULT_RULES, statusOf } from '@/entities/product/rules'
 import { applySettings, branchSummaries, equipment, products, settings, users } from './data'
 
 const warnHoses = () => products.filter((p) => p.status === 'warn').length
 const warnOnMachines = () => equipment.reduce((sum, e) => sum + e.statusBreakdown.warn, 0)
 
 describe('mock administration', () => {
-  afterEach(() => applySettings({ warnRule: 'percent', warnPercent: 20, warnDays: 60 }))
+  afterEach(() => applySettings(DEFAULT_RULES))
+
+  it('starts from the agreed rule: the last 30 days before the planned replacement', () => {
+    expect(settings).toMatchObject({ warnRule: 'days', warnDays: 30 })
+  })
 
   it('re-derives hose health and the machine counts built on it from the «Внимание» threshold', () => {
     const hoses = warnHoses()
     const machines = warnOnMachines()
-    applySettings({ warnPercent: 40 })
+    applySettings({ warnDays: 120 })
     expect(warnHoses()).toBeGreaterThan(hoses)
     expect(warnOnMachines()).toBeGreaterThan(machines)
-    applySettings({ warnPercent: 20 })
+    applySettings({ warnDays: 30 })
     expect(warnHoses()).toBe(hoses)
   })
 
-  it('switches between the percent and the days rule', () => {
+  it('switches between the days and the percent rule', () => {
     const hoses = warnHoses()
-    applySettings({ warnRule: 'days', warnDays: 180 })
+    applySettings({ warnRule: 'percent', warnPercent: 50 })
     expect(warnHoses()).toBeGreaterThan(hoses)
-    applySettings({ warnRule: 'percent' })
+    applySettings({ warnRule: 'days' })
     expect(warnHoses()).toBe(hoses)
   })
 
