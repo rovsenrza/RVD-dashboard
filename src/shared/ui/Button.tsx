@@ -15,6 +15,8 @@ const button = cva(
         ghost: 'text-ink-secondary hover:bg-wash hover:text-ink',
         rail: 'text-rail-muted hover:bg-rail-hover hover:text-rail-ink',
         danger: 'bg-status-replace-ink text-sheet hover:bg-status-replace-ink/90',
+        /** A text action inside running text or a value cell; pair with size `inline`. */
+        link: 'text-brand-deep underline-offset-2 hover:underline',
       },
       size: {
         sm: 'h-8 px-2.5 py-1.5 text-ui pointer-coarse:h-10 pointer-coarse:px-3.5',
@@ -22,6 +24,8 @@ const button = cva(
         icon: 'size-9 p-0 pointer-coarse:size-11',
         'icon-sm': 'size-8 p-0 pointer-coarse:size-10',
         auto: 'h-10 justify-start px-2 py-1 text-left font-normal',
+        // Keeps the line's height and size; the hit area grows invisibly to a usable target.
+        inline: 'relative h-auto p-0 after:absolute after:-inset-x-1.5 after:-inset-y-2.5',
       },
     },
     defaultVariants: { variant: 'primary', size: 'md' },

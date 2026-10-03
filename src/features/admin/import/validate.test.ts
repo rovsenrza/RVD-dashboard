@@ -90,62 +90,64 @@ describe('installation import', () => {
     { id: 'p2', serialNumber: '48704' },
   ] as Product[]
   const equipment = [{ id: 'e1', garageNumber: 'НТ04' }] as Equipment[]
-  const header = ['EHS №', 'Гаражный №', 'Место установки', 'Дата установки', 'Внутренний №']
-  const today = new Date(2026, 8, 23)
+  const header = ['EHS №', 'Гаражный №', 'Место установки', 'Внутренний №']
 
-  it('accepts a date cell or дд.мм.гггг text and builds the installation patch', () => {
+  it('builds the installation patch: machine, place and internal number', () => {
     const rows = rowsOf(
       checkInstallations(
-        [
-          header,
-          [48703, 'нт04', 'ковш', new Date(2026, 8, 1), 'К-1'],
-          ['EHS 48704', 'НТ04', 'Рукоять', '15.09.2026', ''],
-        ],
+        [header, [48703, 'нт04', 'ковш', 'К-1'], ['EHS 48704', 'НТ04', 'Рукоять', '']],
         products,
         equipment,
-        today,
       ),
     )
     expect(rows.map((r) => r.value)).toEqual([
       {
         productId: 'p1',
         label: 'EHS 48703',
-        patch: {
-          equipmentId: 'e1',
-          installPlace: 'Ковш',
-          installedAt: '2026-09-01',
-          clientNumber: 'К-1',
-        },
+        patch: { equipmentId: 'e1', installPlace: 'Ковш', clientNumber: 'К-1' },
       },
       {
         productId: 'p2',
         label: 'EHS 48704',
-        patch: { equipmentId: 'e1', installPlace: 'Рукоять', installedAt: '2026-09-15' },
+        patch: { equipmentId: 'e1', installPlace: 'Рукоять' },
       },
     ])
   })
 
-  it('names unknown hoses and machines, bad places and dates, and repeats', () => {
+  it('never takes an installation date — it is the supplier’s, even from an old template', () => {
+    const rows = rowsOf(
+      checkInstallations(
+        [
+          ['EHS №', 'Гаражный №', 'Место установки', 'Дата установки'],
+          ['48703', 'НТ04', 'Ковш', '01.09.2026'],
+        ],
+        products,
+        equipment,
+      ),
+    )
+    expect(rows[0].errors).toEqual([])
+    expect(rows[0].value?.patch).not.toHaveProperty('installedAt')
+  })
+
+  it('names unknown hoses and machines, bad places, and repeats', () => {
     const rows = rowsOf(
       checkInstallations(
         [
           header,
-          ['49999', 'ЕХ99', 'Кабина', '31.02.2026', ''],
-          ['48703', 'НТ04', 'Ковш', '01.10.2026', ''],
-          ['48703', 'НТ04', 'Ковш', '01.09.2026', ''],
+          ['49999', 'ЕХ99', 'Кабина', ''],
+          ['48703', 'НТ04', 'Ковш', ''],
+          ['48703', 'НТ04', 'Ковш', ''],
         ],
         products,
         equipment,
-        today,
       ),
     )
     expect(rows[0].errors).toEqual([
       'изделие EHS 49999 не найдено',
       'техника ЕХ99 не найдена',
       'место — одно из: Стрела, левый контур; Рукоять; Ковш; Гидромотор хода; Насос, напор',
-      'дата — в формате дд.мм.гггг',
     ])
-    expect(rows[1].errors).toEqual(['дата установки в будущем'])
+    expect(rows[1].errors).toEqual([])
     expect(rows[2].errors).toEqual(['изделие повторяется: строка 3'])
   })
 })

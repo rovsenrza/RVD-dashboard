@@ -1,4 +1,4 @@
-import { format, isValid, parse } from 'date-fns'
+import { format } from 'date-fns'
 import type { Branch, CabinetUser, Equipment, Product, UserRole } from '@/entities/types'
 import { INSTALL_PLACES } from '@/entities/product'
 import { ROLE_LABEL, ROLE_ORDER, isBranchBound } from '@/entities/user'
@@ -117,11 +117,15 @@ export function checkUsers(
 
 // ── Installation facts ───────────────────────────────────────────────────────
 
+/**
+ * Where each hose sits. No date column: the installation date is the
+ * supplier's (1С), and a «Дата установки» column left in an old template is
+ * simply not read.
+ */
 export const INSTALL_COLUMNS: ImportColumn[] = [
   { key: 'ehs', header: 'EHS №', required: true },
   { key: 'garage', header: 'Гаражный №', required: true },
   { key: 'place', header: 'Место установки', required: true },
-  { key: 'date', header: 'Дата установки', required: true },
   { key: 'client', header: 'Внутренний №' },
 ]
 
@@ -131,21 +135,12 @@ export interface InstallationRow {
   patch: InstallationPatch
 }
 
-/** A date cell, or text as дд.мм.гггг; returned as ISO. */
-function dateOf(c: Cell): string | null {
-  if (c instanceof Date) return isValid(c) ? format(c, 'yyyy-MM-dd') : null
-  const d = parse(text(c), 'dd.MM.yyyy', new Date())
-  return isValid(d) && format(d, 'dd.MM.yyyy') === text(c) ? format(d, 'yyyy-MM-dd') : null
-}
-
 export function checkInstallations(
   sheet: Cell[][],
   products: Product[],
   equipment: Equipment[],
-  today = new Date(),
 ): ImportCheck<InstallationRow> {
   const seen = new Map<string, number>()
-  const todayIso = format(today, 'yyyy-MM-dd')
   return checkSheet(sheet, INSTALL_COLUMNS, (get, errors, line) => {
     const ehs = text(get('ehs')).replace(/^(ehs|esm)[\s:№#-]*/i, '')
     const product = products.find((p) => p.serialNumber === ehs)
@@ -160,11 +155,7 @@ export function checkInstallations(
     const place = INSTALL_PLACES.find((p) => norm(p) === norm(text(get('place'))))
     if (!place) errors.push(`место — одно из: ${INSTALL_PLACES.join('; ')}`)
 
-    const installedAt = dateOf(get('date'))
-    if (!installedAt) errors.push('дата — в формате дд.мм.гггг')
-    else if (installedAt > todayIso) errors.push('дата установки в будущем')
-
-    if (errors.length || !product || !machine || !place || !installedAt) return null
+    if (errors.length || !product || !machine || !place) return null
     const client = text(get('client'))
     return {
       productId: product.id,
@@ -172,7 +163,6 @@ export function checkInstallations(
       patch: {
         equipmentId: machine.id,
         installPlace: place,
-        installedAt,
         ...(client ? { clientNumber: client } : {}),
       },
     }

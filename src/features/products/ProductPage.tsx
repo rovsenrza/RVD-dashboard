@@ -7,6 +7,7 @@ import { readOrigin } from '@/shared/lib/origin'
 import { Badge, Button, PageHeader, QueryState, Skeleton } from '@/shared/ui'
 import { ProductAttachments } from '@/features/attachments/ProductAttachments'
 import { ReplacementDialog } from '@/features/replacements/components/ReplacementDialog'
+import { ContactDialog, type ContactPreset } from '@/features/support/ContactDialog'
 import { ProductActivity } from './components/ProductActivity'
 import { ProductComposition } from './components/ProductComposition'
 import { ProductDetails } from './components/ProductDetails'
@@ -20,6 +21,7 @@ export function ProductPage() {
   const origin = readOrigin({ to: '/products', label: 'К списку изделий' })
   const [editing, setEditing] = useState(false)
   const [replacing, setReplacing] = useState(false)
+  const [contact, setContact] = useState<ContactPreset | null>(null)
   return (
     <QueryState query={query} skeleton={<Skeleton className="sheet h-96" />}>
       {(p) => (
@@ -74,12 +76,29 @@ export function ProductPage() {
               </>
             }
           />
-          {editing && <ProductEditForm product={p} onClose={() => setEditing(false)} />}
+          {editing && (
+            <ProductEditForm
+              product={p}
+              onClose={() => setEditing(false)}
+              onAskDate={() => {
+                setEditing(false)
+                setContact({ topic: 'install_date', product: p })
+              }}
+            />
+          )}
           {replacing && <ReplacementDialog product={p} onClose={() => setReplacing(false)} />}
+          {contact && <ContactDialog preset={contact} onClose={() => setContact(null)} />}
           <div className="grid items-start gap-5 lg:grid-cols-2">
             <ProductLifetime productId={p.id} />
             <div className="grid gap-5">
-              <ProductDetails product={p} />
+              <ProductDetails
+                product={p}
+                onAskDate={
+                  p.lifecycle === 'written_off'
+                    ? undefined
+                    : () => setContact({ topic: 'install_date', product: p })
+                }
+              />
               <ProductAttachments productId={p.id} readOnly={p.lifecycle === 'written_off'} />
             </div>
             <div className="grid gap-5">

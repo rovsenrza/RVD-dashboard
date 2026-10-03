@@ -288,8 +288,9 @@ export type AuditAction =
   | 'comment.create'
   | 'comment.update'
   | 'comment.delete'
+  | 'support.message'
 
-export type AuditTargetKind = 'product' | 'request' | 'user' | 'settings'
+export type AuditTargetKind = 'product' | 'request' | 'user' | 'settings' | 'message'
 
 /** One changed field, already in the customer's words: the log is read by people, not processed. */
 export interface AuditChange {
@@ -430,4 +431,23 @@ export interface NotificationPrefs {
   address: string
   /** Read-only: whether the administrator allows e-mail for the company */
   companyEmail: boolean
+}
+
+/** What a customer asks the supplier's specialist about («Связаться со специалистом»). */
+export type SupportTopic = 'install_date' | 'product' | 'request' | 'other'
+
+/**
+ * A message to the supplier's specialist. Installation dates belong to the
+ * supplier (customer, 2026-10-03): the customer cannot change one, only ask
+ * here, naming the hose and the date that is right.
+ */
+export interface SupportMessage {
+  id: string
+  /** ISO date-time */
+  createdAt: string
+  topic: SupportTopic
+  productId: string | null
+  /** `install_date` only: the installation date the customer says is right (ISO date) */
+  installedAt: string | null
+  text: string
 }

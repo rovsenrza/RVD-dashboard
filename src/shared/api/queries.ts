@@ -20,6 +20,7 @@ import type {
   ReleaseDocument,
   Replacement,
   ServiceRequest,
+  SupportMessage,
 } from '@/entities/types'
 import { useSession } from '@/app/session'
 import { api } from './client'
@@ -135,9 +136,13 @@ export const useRequests = () => {
   })
 }
 
-/** The installation facts a customer may record; everything derived is recomputed server-side. */
+/**
+ * The installation facts a customer may record; everything derived is recomputed
+ * server-side. The installation date is not one of them: the supplier keeps it in
+ * 1С, and the customer asks the specialist to correct it (`useSendSupportMessage`).
+ */
 export type InstallationPatch = Partial<
-  Pick<Product, 'equipmentId' | 'installPlace' | 'installedAt' | 'clientNumber'>
+  Pick<Product, 'equipmentId' | 'installPlace' | 'clientNumber'>
 >
 
 export const useUpdateProduct = (id: string) => {
@@ -153,6 +158,17 @@ export const useUpdateProduct = (id: string) => {
       qc.invalidateQueries({ queryKey: ['analytics'] })
       qc.invalidateQueries({ queryKey: keys.audit })
     },
+  })
+}
+
+/** A message to the supplier's specialist; the server stamps id and time. */
+export type NewSupportMessage = Pick<SupportMessage, 'topic' | 'productId' | 'installedAt' | 'text'>
+
+export const useSendSupportMessage = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (body: NewSupportMessage) => api.post<SupportMessage>('/support/messages', body),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.audit }),
   })
 }
 

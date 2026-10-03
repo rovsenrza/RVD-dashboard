@@ -30,6 +30,7 @@ import {
 } from '@/shared/ui'
 import { cn } from '@/shared/lib/utils'
 import { ScanDialog } from '@/features/scan/ScanDialog'
+import { ContactDialog } from '@/features/support/ContactDialog'
 import { CommandPalette } from './CommandPalette'
 import { NotificationsPanel } from './NotificationsPanel'
 
@@ -42,6 +43,7 @@ const THEME_OPTIONS: SegmentedOption<ThemePreference>[] = [
 export function Header({ onMenu }: { onMenu: () => void }) {
   const [searchOpen, setSearchOpen] = useState(false)
   const [scanOpen, setScanOpen] = useState(false)
+  const [contactOpen, setContactOpen] = useState(false)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -93,11 +95,27 @@ export function Header({ onMenu }: { onMenu: () => void }) {
           onClick={() => setScanOpen(true)}
         />
         {scanOpen && <ScanDialog onClose={() => setScanOpen(false)} />}
-        <Button variant="primary" size="sm" icon={Headset} className="hidden xl:inline-flex">
+        {/* The full button where the header has room, an icon on tablets; phones use the user menu. */}
+        <Button
+          variant="ghost"
+          size="icon"
+          icon={Headset}
+          className="max-sm:hidden xl:hidden"
+          aria-label="Связаться со специалистом"
+          onClick={() => setContactOpen(true)}
+        />
+        <Button
+          variant="primary"
+          size="sm"
+          icon={Headset}
+          className="hidden xl:inline-flex"
+          onClick={() => setContactOpen(true)}
+        >
           Связаться со специалистом
         </Button>
+        {contactOpen && <ContactDialog onClose={() => setContactOpen(false)} />}
         <NotificationsPanel />
-        <UserMenu />
+        <UserMenu onContact={() => setContactOpen(true)} />
       </div>
     </header>
   )
@@ -181,7 +199,7 @@ function GlobalSearch({ className, onOpen }: { className?: string; onOpen: () =>
   )
 }
 
-function UserMenu() {
+function UserMenu({ onContact }: { onContact: () => void }) {
   const { user, signOut, setRole } = useSession()
   const navigate = useNavigate()
   const [theme, setTheme] = useThemePreference()
@@ -233,6 +251,7 @@ function UserMenu() {
       items={[
         { label: 'Профиль', icon: UserRound, separator: true },
         { label: 'Настройки уведомлений', icon: Settings },
+        { label: 'Связаться со специалистом', icon: Headset, onSelect: onContact },
         {
           label: 'Выйти',
           icon: LogOut,

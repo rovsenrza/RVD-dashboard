@@ -1,5 +1,6 @@
 import { http, HttpResponse, passthrough } from 'msw'
 import { LIVE_PRODUCTS } from '@/shared/api/live'
+import type { InstallationPatch, NewSupportMessage } from '@/shared/api/queries'
 import { rulesProblem } from '@/entities/product/rules'
 import {
   attachmentsOf,
@@ -34,6 +35,7 @@ import {
   userView,
 } from './data'
 import { buildReport } from './reports'
+import { sendSupportMessage } from './support'
 import { markRead, notificationsFor, prefs, prefsView } from './notifications'
 import {
   addComment,
@@ -74,7 +76,13 @@ export const handlers = [
   http.patch(api('/products/:id'), async ({ params, request }) => {
     const p = products.find((x) => x.id === params.id)
     if (!p) return new HttpResponse(null, { status: 404 })
-    const patch = (await request.json()) as Parameters<typeof applyInstallation>[1]
+    const patch = (await request.json()) as InstallationPatch
+    // The installation date is the supplier's (1С): the customer asks the specialist instead.
+    if ('installedAt' in patch)
+      return HttpResponse.json(
+        { message: 'Дату установки исправляет специалист — напишите ему из карточки изделия' },
+        { status: 400 },
+      )
     const before = installationView(p)
     applyInstallation(p, patch)
     const changes = diff(before, installationView(p))
@@ -85,6 +93,12 @@ export const handlers = [
         changes,
       })
     return HttpResponse.json(p)
+  }),
+  http.post(api('/support/messages'), async ({ request }) => {
+    const result = sendSupportMessage((await request.json()) as NewSupportMessage)
+    return 'error' in result
+      ? HttpResponse.json({ message: result.error }, { status: 400 })
+      : HttpResponse.json(result, { status: 201 })
   }),
   http.get(api('/products/:id/lifetime'), ({ params }) => {
     if (LIVE_PRODUCTS) return passthrough()

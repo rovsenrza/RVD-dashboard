@@ -1,10 +1,20 @@
 import type { ReactNode } from 'react'
 import type { Product } from '@/entities/types'
 import { LIFECYCLE_LABEL, STATUS_TONE, daysLeft } from '@/entities/product'
-import { Badge, Card, DescriptionList } from '@/shared/ui'
+import { Badge, Button, Card, DescriptionList } from '@/shared/ui'
 import { formatDate } from '@/shared/lib/utils'
 
-export function ProductDetails({ product: p }: { product: Product }) {
+/**
+ * `onAskDate`: the installation date is the supplier's (1С) — the customer
+ * cannot edit it, only ask the specialist to correct it.
+ */
+export function ProductDetails({
+  product: p,
+  onAskDate,
+}: {
+  product: Product
+  onAskDate?: () => void
+}) {
   const left = daysLeft(p)
   const groups: { title: string; rows: [string, ReactNode][] }[] = [
     {
@@ -33,10 +43,19 @@ export function ProductDetails({ product: p }: { product: Product }) {
         ['Отгружено', formatDate(p.shippedAt)],
         [
           'Установлено',
-          p.installedAt ? (
-            formatDate(p.installedAt)
-          ) : p.shippedAt ? (
-            <span className="text-ink-muted">{formatDate(p.shippedAt)} · по дате отгрузки</span>
+          p.installedAt || p.shippedAt ? (
+            <span className="inline-flex flex-wrap items-baseline gap-x-3 gap-y-1">
+              {p.installedAt ? (
+                formatDate(p.installedAt)
+              ) : (
+                <span className="text-ink-muted">{formatDate(p.shippedAt)} · по дате отгрузки</span>
+              )}
+              {onAskDate && (
+                <Button variant="link" size="inline" onClick={onAskDate}>
+                  Попросить исправить
+                </Button>
+              )}
+            </span>
           ) : null,
         ],
         ['Гарантия', `${p.warrantyDays} дн.`],

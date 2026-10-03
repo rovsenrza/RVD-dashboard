@@ -1,17 +1,20 @@
 import { useState, type FormEvent } from 'react'
-import { format } from 'date-fns'
 import type { Product } from '@/entities/types'
 import { INSTALL_PLACES } from '@/entities/product'
 import { useEquipment, useUpdateProduct } from '@/shared/api/queries'
-import { Button, DatePicker, Dialog, Field, Input, Select, useToast } from '@/shared/ui'
+import { formatDate } from '@/shared/lib/utils'
+import { Button, Dialog, Field, Input, Select, useToast } from '@/shared/ui'
 
 /** Mounted only while open, so every opening reads the product afresh. */
 export function ProductEditForm({
   product: p,
   onClose,
+  onAskDate,
 }: {
   product: Product
   onClose: () => void
+  /** The date is the supplier's: this hands over to «Связаться со специалистом». */
+  onAskDate: () => void
 }) {
   const equipment = useEquipment()
   const update = useUpdateProduct(p.id)
@@ -19,7 +22,6 @@ export function ProductEditForm({
 
   const [equipmentId, setEquipmentId] = useState(p.equipmentId ?? '')
   const [installPlace, setInstallPlace] = useState(p.installPlace ?? '')
-  const [installedAt, setInstalledAt] = useState(p.installedAt ?? p.shippedAt ?? '')
   const [clientNumber, setClientNumber] = useState(p.clientNumber ?? '')
 
   const submit = (e: FormEvent) => {
@@ -28,7 +30,6 @@ export function ProductEditForm({
       {
         equipmentId: equipmentId || null,
         installPlace: equipmentId ? installPlace || null : null,
-        installedAt: equipmentId ? installedAt || null : null,
         clientNumber: clientNumber.trim() || null,
       },
       {
@@ -41,12 +42,16 @@ export function ProductEditForm({
     )
   }
 
+  const date = p.installedAt
+    ? formatDate(p.installedAt)
+    : p.shippedAt && `${formatDate(p.shippedAt)}, по дате отгрузки`
+
   return (
     <Dialog
       open
       onClose={onClose}
       title={`Изделие ${p.serialNumber}`}
-      description="Факт установки и ваш внутренний номер. Сроки и состав приходят из 1С."
+      description="Техника, место установки и ваш внутренний номер. Даты, сроки и состав ведёт поставщик в 1С."
       footer={
         <>
           <Button variant="secondary" size="sm" onClick={onClose}>
@@ -75,34 +80,27 @@ export function ProductEditForm({
         </Field>
 
         {equipmentId && (
-          <>
-            <Field label="Место установки">
-              {(id) => (
-                <Select
-                  id={id}
-                  value={installPlace}
-                  onChange={(e) => setInstallPlace(e.target.value)}
-                  placeholder="Не указано"
-                  options={INSTALL_PLACES.map((place) => ({ value: place, label: place }))}
-                />
-              )}
-            </Field>
+          <Field label="Место установки">
+            {(id) => (
+              <Select
+                id={id}
+                value={installPlace}
+                onChange={(e) => setInstallPlace(e.target.value)}
+                placeholder="Не указано"
+                options={INSTALL_PLACES.map((place) => ({ value: place, label: place }))}
+              />
+            )}
+          </Field>
+        )}
 
-            <Field
-              label="Дата установки"
-              hint="По умолчанию — дата отгрузки. Если установили в другой день, укажите его: от даты считается остаток ресурса"
-            >
-              {(id) => (
-                <DatePicker
-                  id={id}
-                  required
-                  value={installedAt}
-                  max={format(new Date(), 'yyyy-MM-dd')}
-                  onChange={setInstalledAt}
-                />
-              )}
-            </Field>
-          </>
+        {date && (
+          <p className="text-label text-ink-muted">
+            Дата установки — {date}. Её ведёт поставщик: если она неверна,{' '}
+            <Button variant="link" size="inline" onClick={onAskDate}>
+              попросите специалиста исправить
+            </Button>
+            .
+          </p>
         )}
 
         <Field label="Внутренний номер" hint="Ваш собственный учётный номер">

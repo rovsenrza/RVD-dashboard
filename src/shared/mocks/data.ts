@@ -1,4 +1,4 @@
-import { addDays, format, formatISO, parseISO, setHours, setMinutes, subDays } from 'date-fns'
+import { addDays, formatISO, parseISO, setHours, setMinutes, subDays } from 'date-fns'
 import { claimAttachments } from './attachments'
 import type {
   Attachment,
@@ -478,7 +478,6 @@ const ROLE_WORD: Record<CabinetUser['role'], string> = {
   manager: 'Руководитель',
   admin: 'Администратор',
 }
-const day = (isoDate: string | null) => (isoDate ? format(parseISO(isoDate), 'dd.MM.yyyy') : null)
 const branchNames = (ids: string[]) =>
   ids.length ? ids.map((id) => BRANCH_META[id]?.name ?? id).join(', ') : 'Все филиалы'
 
@@ -487,7 +486,6 @@ type View = Record<string, string | null>
 export const installationView = (p: Product): View => ({
   Техника: equipment.find((e) => e.id === p.equipmentId)?.garageNumber ?? null,
   'Место установки': p.installPlace,
-  'Дата установки': day(p.installedAt),
   'Внутренний №': p.clientNumber,
 })
 
@@ -551,8 +549,8 @@ for (const p of products.filter((x) => live(x) && x.equipmentId).slice(0, 26)) {
     kind === 0
       ? { ...now, 'Место установки': pick(PLACES.filter((x) => x !== p.installPlace)) }
       : kind === 1
-        ? { ...now, 'Дата установки': day(iso(addDays(new Date(p.installedAt!), 2))) }
-        : { ...now, Техника: null, 'Место установки': null, 'Дата установки': null }
+        ? { ...now, 'Внутренний №': p.clientNumber ? null : `K-${p.serialNumber}` }
+        : { ...now, Техника: null, 'Место установки': null }
   record(
     {
       action: 'installation.update',

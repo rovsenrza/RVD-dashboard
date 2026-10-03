@@ -15,6 +15,7 @@ export const AUDIT_ACTION_LABEL: Record<AuditAction, string> = {
   'comment.create': 'Добавлен комментарий',
   'comment.update': 'Изменён комментарий',
   'comment.delete': 'Удалён комментарий',
+  'support.message': 'Обращение к специалисту',
 }
 
 export const AUDIT_TARGET_LABEL: Record<AuditTargetKind, string> = {
@@ -22,4 +23,5 @@ export const AUDIT_TARGET_LABEL: Record<AuditTargetKind, string> = {
   request: 'Заявки',
   user: 'Пользователи',
   settings: 'Настройки',
+  message: 'Обращения',
 }
