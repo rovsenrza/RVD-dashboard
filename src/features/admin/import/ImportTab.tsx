@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Download, FileSpreadsheet, Upload } from 'lucide-react'
-import type { CabinetUser, Equipment, Product } from '@/entities/types'
+import type { CabinetUser, Equipment, ProductPage } from '@/entities/types'
 import { useSession } from '@/app/session'
 import { api } from '@/shared/api/client'
 import { keys, type UserDraft } from '@/shared/api/queries'
@@ -111,7 +111,7 @@ export function ImportTab() {
                 checkInstallations(
                   sheet,
                   // The whole company, not the branch picked in the header.
-                  await api.get<Product[]>('/products'),
+                  (await api.get<ProductPage>('/products?limit=5000')).items,
                   await api.get<Equipment[]>('/equipment'),
                 ),
               'installations',

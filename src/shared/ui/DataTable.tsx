@@ -69,6 +69,23 @@ export interface TableSelection<T> {
   label: (row: T) => string
 }
 
+/**
+ * The server pages, sorts and searches: `data` is one page of `total` rows, and
+ * the table only reports what the user asks for. Without it the table does all
+ * three over `data` itself.
+ */
+export interface ServerPaging {
+  total: number
+  pageIndex: number
+  pageSize: number
+  sorting: SortingState
+  onPageChange: (pageIndex: number) => void
+  onPageSizeChange: (pageSize: number) => void
+  onSortingChange: (sorting: SortingState) => void
+  /** The next page is on its way: the current one stays up, dimmed */
+  pending?: boolean
+}
+
 /** Keeps a tick from also clicking (or Enter-opening) the row around it. */
 const stop = {
   onClick: (e: { stopPropagation: () => void }) => e.stopPropagation(),
@@ -98,6 +115,8 @@ export interface DataTableProps<T> {
   handle?: Ref<DataTableHandle<T>>
   /** Tick boxes for a bulk action; see TableSelection. */
   selection?: TableSelection<T>
+  /** Paging, sorting and search done by the server; see ServerPaging. */
+  server?: ServerPaging
 }
 
 const PAGE_SIZES = [10, 20, 50]
@@ -117,6 +136,7 @@ export function DataTable<T>({
   hiddenByDefault = [],
   handle,
   selection,
+  server,
 }: DataTableProps<T>) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() =>
@@ -125,9 +145,30 @@ export function DataTable<T>({
   const table = useReactTable({
     data,
     columns,
-    state: { sorting, globalFilter, columnVisibility },
-    onSortingChange: setSorting,
+    state: {
+      sorting: server?.sorting ?? sorting,
+      globalFilter: server ? undefined : globalFilter,
+      columnVisibility,
+      ...(server && { pagination: { pageIndex: server.pageIndex, pageSize: server.pageSize } }),
+    },
+    onSortingChange: server
+      ? (update) =>
+          server.onSortingChange(typeof update === 'function' ? update(server.sorting) : update)
+      : setSorting,
     onColumnVisibilityChange: setColumnVisibility,
+    // Only when the server pages: a key set to undefined would replace the table's own handler.
+    ...(server && {
+      manualPagination: true,
+      manualSorting: true,
+      manualFiltering: true,
+      rowCount: server.total,
+      onPaginationChange: (update) => {
+        const now = { pageIndex: server.pageIndex, pageSize: server.pageSize }
+        const next = typeof update === 'function' ? update(now) : update
+        if (next.pageSize !== now.pageSize) server.onPageSizeChange(next.pageSize)
+        else if (next.pageIndex !== now.pageIndex) server.onPageChange(next.pageIndex)
+      },
+    }),
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
@@ -140,7 +181,7 @@ export function DataTable<T>({
     [table],
   )
   const { pageIndex, pageSize: size } = table.getState().pagination
-  const total = table.getFilteredRowModel().rows.length
+  const total = server ? server.total : table.getFilteredRowModel().rows.length
   const rows = table.getRowModel().rows
   const pageCount = table.getPageCount() || 1
   const showPagination = total > 0 && (!embedded || total > size)
@@ -234,131 +275,136 @@ export function DataTable<T>({
         </div>
       )}
 
-      <RowCards
-        rows={rows}
-        onRowClick={onRowClick}
-        box={selection && rowBox}
-        className={embedded ? 'px-0' : 'px-5'}
-      />
-      <div className="relative max-sm:hidden">
-        <div ref={overflow.ref} className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              {table.getHeaderGroups().map((hg) => (
-                <tr key={hg.id} className="border-b border-line">
-                  {hg.headers.map((h, i) => {
-                    const sorted = h.column.getIsSorted()
-                    const canSort = h.column.getCanSort()
-                    return (
-                      <th
-                        key={h.id}
-                        onClick={h.column.getToggleSortingHandler()}
-                        aria-sort={
-                          sorted === 'asc'
-                            ? 'ascending'
-                            : sorted === 'desc'
-                              ? 'descending'
-                              : undefined
-                        }
-                        className={cn(
-                          'py-2.5 text-left text-caption font-medium tracking-wide whitespace-nowrap text-ink-muted uppercase select-none',
-                          cellX,
-                          canSort && 'cursor-pointer hover:text-ink',
-                          sticky && i === 0 && 'sticky left-0 z-10 bg-sheet',
-                        )}
-                      >
-                        <span className="inline-flex items-center gap-1">
-                          {selection && i === 0 && pageIds.length > 0 && (
-                            <span {...stop} className="-my-2 mr-1.5 -ml-2 inline-flex p-2">
-                              <Checkbox
-                                label="Выбрать все на странице"
-                                hideLabel
-                                checked={pickedOnPage === pageIds.length}
-                                indeterminate={pickedOnPage > 0 && pickedOnPage < pageIds.length}
-                                onChange={(e) => togglePage(e.target.checked)}
-                              />
-                            </span>
+      <div
+        aria-busy={server?.pending || undefined}
+        className={cn('transition-opacity duration-150', server?.pending && 'opacity-60')}
+      >
+        <RowCards
+          rows={rows}
+          onRowClick={onRowClick}
+          box={selection && rowBox}
+          className={embedded ? 'px-0' : 'px-5'}
+        />
+        <div className="relative max-sm:hidden">
+          <div ref={overflow.ref} className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                {table.getHeaderGroups().map((hg) => (
+                  <tr key={hg.id} className="border-b border-line">
+                    {hg.headers.map((h, i) => {
+                      const sorted = h.column.getIsSorted()
+                      const canSort = h.column.getCanSort()
+                      return (
+                        <th
+                          key={h.id}
+                          onClick={h.column.getToggleSortingHandler()}
+                          aria-sort={
+                            sorted === 'asc'
+                              ? 'ascending'
+                              : sorted === 'desc'
+                                ? 'descending'
+                                : undefined
+                          }
+                          className={cn(
+                            'py-2.5 text-left text-caption font-medium tracking-wide whitespace-nowrap text-ink-muted uppercase select-none',
+                            cellX,
+                            canSort && 'cursor-pointer hover:text-ink',
+                            sticky && i === 0 && 'sticky left-0 z-10 bg-sheet',
                           )}
-                          {flexRender(h.column.columnDef.header, h.getContext())}
-                          {canSort &&
-                            (sorted === 'asc' ? (
-                              <ArrowUp size={12} className="text-brand-dark" />
-                            ) : sorted === 'desc' ? (
-                              <ArrowDown size={12} className="text-brand-dark" />
-                            ) : (
-                              <ChevronsUpDown size={12} className="opacity-40" />
-                            ))}
-                        </span>
-                      </th>
-                    )
-                  })}
-                </tr>
-              ))}
-            </thead>
-            <tbody>
-              {rows.map((row) => {
-                const ticked = !!selection?.selected.has(selection.rowId(row.original))
-                return (
-                  <tr
-                    key={row.id}
-                    onClick={() => onRowClick?.(row.original)}
-                    aria-selected={selection ? ticked : undefined}
-                    className={cn(
-                      'group border-b border-line last:border-b-0',
-                      onRowClick &&
-                        'cursor-pointer transition-colors duration-100 hover:bg-row-hover',
-                      ticked && 'bg-row-hover',
-                    )}
-                  >
-                    {row.getVisibleCells().map((cell, i) => (
-                      <td
-                        key={cell.id}
-                        className={cn(
-                          'py-3 whitespace-nowrap tabular',
-                          cellX,
-                          sticky &&
-                            i === 0 &&
-                            cn(
-                              'sticky left-0 z-10 bg-sheet group-hover:bg-row-hover',
-                              ticked && 'bg-row-hover',
-                            ),
-                        )}
-                      >
-                        {i === 0 && selection ? (
-                          <span className="inline-flex items-center gap-1.5">
-                            {rowBox(row.original)}
-                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                        >
+                          <span className="inline-flex items-center gap-1">
+                            {selection && i === 0 && pageIds.length > 0 && (
+                              <span {...stop} className="-my-2 mr-1.5 -ml-2 inline-flex p-2">
+                                <Checkbox
+                                  label="Выбрать все на странице"
+                                  hideLabel
+                                  checked={pickedOnPage === pageIds.length}
+                                  indeterminate={pickedOnPage > 0 && pickedOnPage < pageIds.length}
+                                  onChange={(e) => togglePage(e.target.checked)}
+                                />
+                              </span>
+                            )}
+                            {flexRender(h.column.columnDef.header, h.getContext())}
+                            {canSort &&
+                              (sorted === 'asc' ? (
+                                <ArrowUp size={12} className="text-brand-dark" />
+                              ) : sorted === 'desc' ? (
+                                <ArrowDown size={12} className="text-brand-dark" />
+                              ) : (
+                                <ChevronsUpDown size={12} className="opacity-40" />
+                              ))}
                           </span>
-                        ) : (
-                          flexRender(cell.column.columnDef.cell, cell.getContext())
-                        )}
-                      </td>
-                    ))}
+                        </th>
+                      )
+                    })}
                   </tr>
-                )
-              })}
-              {!rows.length && (
-                <tr>
-                  <td colSpan={columns.length} className="px-5 py-10 text-center text-ink-muted">
-                    По запросу ничего не найдено
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-        {/* Scroll cue: fades the clipped edge so a cut column never looks like the last one. */}
-        {overflow.scrollable && !overflow.atEnd && (
-          <div
-            className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-sheet via-sheet/80 to-transparent"
-            aria-hidden
-          >
-            <ChevronRight
-              size={16}
-              className="absolute top-1/2 right-1.5 -translate-y-1/2 text-ink-muted"
-            />
+                ))}
+              </thead>
+              <tbody>
+                {rows.map((row) => {
+                  const ticked = !!selection?.selected.has(selection.rowId(row.original))
+                  return (
+                    <tr
+                      key={row.id}
+                      onClick={() => onRowClick?.(row.original)}
+                      aria-selected={selection ? ticked : undefined}
+                      className={cn(
+                        'group border-b border-line last:border-b-0',
+                        onRowClick &&
+                          'cursor-pointer transition-colors duration-100 hover:bg-row-hover',
+                        ticked && 'bg-row-hover',
+                      )}
+                    >
+                      {row.getVisibleCells().map((cell, i) => (
+                        <td
+                          key={cell.id}
+                          className={cn(
+                            'py-3 whitespace-nowrap tabular',
+                            cellX,
+                            sticky &&
+                              i === 0 &&
+                              cn(
+                                'sticky left-0 z-10 bg-sheet group-hover:bg-row-hover',
+                                ticked && 'bg-row-hover',
+                              ),
+                          )}
+                        >
+                          {i === 0 && selection ? (
+                            <span className="inline-flex items-center gap-1.5">
+                              {rowBox(row.original)}
+                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                            </span>
+                          ) : (
+                            flexRender(cell.column.columnDef.cell, cell.getContext())
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  )
+                })}
+                {!rows.length && (
+                  <tr>
+                    <td colSpan={columns.length} className="px-5 py-10 text-center text-ink-muted">
+                      По запросу ничего не найдено
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
-        )}
+          {/* Scroll cue: fades the clipped edge so a cut column never looks like the last one. */}
+          {overflow.scrollable && !overflow.atEnd && (
+            <div
+              className="pointer-events-none absolute inset-y-0 right-0 w-16 bg-gradient-to-l from-sheet via-sheet/80 to-transparent"
+              aria-hidden
+            >
+              <ChevronRight
+                size={16}
+                className="absolute top-1/2 right-1.5 -translate-y-1/2 text-ink-muted"
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       {showPagination && (

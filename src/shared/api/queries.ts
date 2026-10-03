@@ -1,6 +1,7 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type {
-  Paginated,
+  ProductListQuery,
+  ProductPage,
   Attachment,
   CabinetNotification,
   NotificationPrefs,
@@ -37,9 +38,25 @@ const useScope = () => useSession().branch?.id ?? null
 const scoped = (path: string, branch: string | null) =>
   branch && !LIVE ? `${path}?branch=${encodeURIComponent(branch)}` : path
 
+/** What the registry asks the server for: filters, search, tab, sort and page, all optional. */
+export type ProductPageQuery = Partial<Omit<ProductListQuery, 'branch' | 'client'>>
+
+/** The API's largest page: lookups and exports take every hose in one go. */
+const ALL = 5000
+
+const productsUrl = (query: ProductPageQuery, branch: string | null) => {
+  const params = new URLSearchParams()
+  for (const [key, value] of Object.entries(query))
+    if (value !== undefined && value !== '') params.set(key, String(value))
+  if (branch && !LIVE) params.set('branch', branch)
+  return `/products?${params}`
+}
+
 export const keys = {
   dashboard: (branch: string | null) => ['dashboard', branch] as const,
   products: (branch: string | null) => ['products', branch] as const,
+  productPage: (branch: string | null, query: ProductPageQuery) =>
+    ['products', 'page', branch, query] as const,
   product: (id: string) => ['products', id] as const,
   productHistory: (id: string) => ['products', id, 'history'] as const,
   productAttachments: (id: string) => ['products', id, 'attachments'] as const,
@@ -73,17 +90,30 @@ export const useDashboard = () => {
   })
 }
 
+/** Every hose the user may see, for lookups: ⌘K search, the scanner, pickers. */
 export const useProducts = () => {
   const branch = useScope()
   return useQuery({
     queryKey: keys.products(branch),
-    // Live: the API pages; one big page until the registry pages on the server.
-    // The branch switcher still lists mock branches, so it does not narrow live data.
-    queryFn: async () =>
-      LIVE
-        ? (await api.get<Paginated<Product>>('/products?limit=5000')).items
-        : api.get<Product[]>(scoped('/products', branch)),
+    queryFn: async () => (await api.get<ProductPage>(productsUrl({ limit: ALL }, branch))).items,
   })
+}
+
+/** One page of the registry, filtered, searched and sorted on the server; the last page stays up while the next loads. */
+export const useProductPage = (query: ProductPageQuery) => {
+  const branch = useScope()
+  return useQuery({
+    queryKey: keys.productPage(branch, query),
+    queryFn: () => api.get<ProductPage>(productsUrl(query, branch)),
+    placeholderData: keepPreviousData,
+  })
+}
+
+/** Every row of a registry query, in its order: what «Экспорт» writes. */
+export const useProductRows = (query: ProductPageQuery) => {
+  const branch = useScope()
+  return async () =>
+    (await api.get<ProductPage>(productsUrl({ ...query, page: 1, limit: ALL }, branch))).items
 }
 
 export const useProduct = (id: string) =>

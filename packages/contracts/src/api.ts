@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import type { Product } from './types'
 
 /** A page of a list; `total` counts every match, not just this page. */
 export interface Paginated<T> {
@@ -8,16 +9,27 @@ export interface Paginated<T> {
   limit: number
 }
 
+/** A page of the registry, with the size of both its tabs under the same filters and search. */
+export interface ProductPage extends Paginated<Product> {
+  counts: { active: number; archive: number }
+}
+
+/** Every column of the registry sorts on the server, plus the planned replacement date. */
 export const PRODUCT_SORT_KEYS = [
   'serialNumber',
+  'clientNumber',
   'type',
   'catalogNumber',
+  'manufacturer',
   'shippedAt',
   'installedAt',
   'plannedAt',
   'status',
   'lifecycle',
+  'installPlace',
 ] as const
+
+export type ProductSortKey = (typeof PRODUCT_SORT_KEYS)[number]
 
 /** `GET /products` — the filters of the registry, all optional, all applied on the server. */
 export const ProductListQuery = z.object({
@@ -25,7 +37,7 @@ export const ProductListQuery = z.object({
   limit: z.coerce.number().int().min(1).max(5000).default(50),
   sort: z.enum(PRODUCT_SORT_KEYS).default('serialNumber'),
   dir: z.enum(['asc', 'desc']).default('asc'),
-  /** Free text over serial, catalogue and nomenclature numbers and the name */
+  /** Free text over the hose's numbers (serial, client's, catalogue, nomenclature), its name, machine and place */
   q: z.string().trim().max(100).optional(),
   status: z.enum(['ok', 'warn', 'replace', 'no_warranty']).optional(),
   lifecycle: z

@@ -1,19 +1,25 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import type { ColumnDef } from '@tanstack/react-table'
+import type { ColumnDef, SortingState } from '@tanstack/react-table'
 import { RefreshCw, SlidersHorizontal } from 'lucide-react'
-import type { Product, ProductLifecycle, ProductStatus } from '@/entities/types'
+import type { Product, ProductLifecycle, ProductSortKey, ProductStatus } from '@/entities/types'
 import { LIFECYCLE_LABEL, STATUS_LABEL } from '@/entities/product'
 import { MAX_REQUEST_POSITIONS } from '@/entities/request/rules'
 import { useSession } from '@/app/session'
-import { useCatalogNumbers, useEquipment, useProducts } from '@/shared/api/queries'
+import {
+  useCatalogNumbers,
+  useEquipment,
+  useProductPage,
+  useProductRows,
+  type ProductPageQuery,
+} from '@/shared/api/queries'
+import { useDebounced } from '@/shared/lib/useDebounced'
 import {
   Button,
   Chip,
   DataTable,
   ExportMenu,
   PageHeader,
-  type DataTableHandle,
   QueryState,
   SearchInput,
   SelectionBar,
@@ -42,19 +48,25 @@ const EXPORT_COLUMNS: ExportColumn<Product>[] = [
   { header: 'Статус в 1С', value: (p) => LIFECYCLE_LABEL[p.lifecycle], width: 16 },
 ]
 
+/**
+ * The registry. The server filters, searches, sorts and pages it, so a client
+ * with tens of thousands of hoses gets the same page as one with a hundred.
+ */
 export function ProductsPage() {
-  const query = useProducts()
   const equipment = useEquipment()
   const catalog = useCatalogNumbers()
   const [params, setParams] = useSearchParams()
-  const [filter, setFilter] = useState('')
+  const [search, setSearch] = useState('')
+  const q = useDebounced(search.trim())
   const [tab, setTab] = useState<Tab>('active')
+  const [sorting, setSorting] = useState<SortingState>([])
+  const [pageSize, setPageSize] = useState(10)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const navigate = useNavigate()
   const { branch } = useSession()
-  const table = useRef<DataTableHandle<Product>>(null)
-  // Hoses ticked for a replacement request; kept across tabs, pages and filters.
-  const [picked, setPicked] = useState<Set<string>>(() => new Set())
+  // Hoses ticked for a replacement request, kept with their data across tabs, pages and
+  // filters: the page a hose was ticked on is gone once the user moves on.
+  const [picked, setPicked] = useState<ReadonlyMap<string, Product>>(() => new Map())
   const [requesting, setRequesting] = useState(false)
 
   const active = useMemo(() => {
@@ -66,24 +78,40 @@ export function ProductsPage() {
     return values
   }, [params])
 
-  const filtered = useMemo(() => {
-    return (query.data ?? []).filter(
-      (p) =>
-        (!active.status || p.status === active.status) &&
-        (!active.lifecycle || p.lifecycle === active.lifecycle) &&
-        (!active.installed || (active.installed === '1') === (p.installedAt !== null)) &&
-        (!active.equipment || p.equipmentId === active.equipment) &&
-        (!active.catalog || p.catalogNumberId === active.catalog),
-    )
-  }, [query.data, active])
-
-  const archived = useMemo(() => filtered.filter((p) => p.lifecycle === 'written_off'), [filtered])
-  const rows = useMemo(() => filtered.filter((p) => p.lifecycle !== 'written_off'), [filtered])
-  const chosen = useMemo(
-    () => (query.data ?? []).filter((p) => picked.has(p.id)),
-    [query.data, picked],
+  // Everything the list depends on but the page: when any of it changes, back to page one.
+  const ask = useMemo<ProductPageQuery>(
+    () => ({
+      ...(active as ProductPageQuery),
+      q: q || undefined,
+      archive: tab === 'archive' ? '1' : '0',
+      limit: pageSize,
+      ...(sorting[0] && {
+        sort: sorting[0].id as ProductSortKey,
+        dir: sorting[0].desc ? 'desc' : 'asc',
+      }),
+    }),
+    [active, q, tab, pageSize, sorting],
   )
+  const askKey = JSON.stringify(ask)
+  const [paging, setPaging] = useState({ key: askKey, index: 0 })
+  // Adjusted while rendering, so clearing a search lands on page one, not on the page before it.
+  if (paging.key !== askKey) setPaging({ key: askKey, index: 0 })
+  const pageIndex = paging.key === askKey ? paging.index : 0
+  const page = useProductPage({ ...ask, page: pageIndex + 1 })
+  const everyRow = useProductRows(ask)
+
+  const selected = useMemo(() => new Set(picked.keys()), [picked])
+  const chosen = useMemo(() => [...picked.values()], [picked])
   const tooMany = chosen.length > MAX_REQUEST_POSITIONS
+  const pick = (ids: Set<string>) =>
+    setPicked((before) => {
+      const next = new Map<string, Product>()
+      for (const id of ids) {
+        const p = before.get(id) ?? page.data?.items.find((x) => x.id === id)
+        if (p) next.set(id, p)
+      }
+      return next
+    })
 
   const chipLabel = (key: FilterKey, value: string) => {
     if (key === 'status') return `Состояние: ${STATUS_LABEL[value as ProductStatus]}`
@@ -126,10 +154,10 @@ export function ProductsPage() {
                 ...FILTER_KEYS.filter((key) => active[key]).map((key) =>
                   chipLabel(key, active[key]!),
                 ),
-                filter.trim() && `Поиск: «${filter.trim()}»`,
+                q && `Поиск: «${q}»`,
               ]}
               columns={EXPORT_COLUMNS}
-              rows={() => table.current?.visibleRows() ?? (tab === 'archive' ? archived : rows)}
+              rows={everyRow}
             />
           </>
         }
@@ -140,22 +168,29 @@ export function ProductsPage() {
         values={active}
         onApply={setParams}
       />
-      <QueryState query={query} skeleton={<TableSkeleton />}>
-        {() => (
+      <QueryState query={page} skeleton={<TableSkeleton />}>
+        {(data) => (
           <DataTable
-            data={tab === 'active' ? rows : archived}
+            data={data.items}
             columns={productColumns as ColumnDef<Product, unknown>[]}
-            globalFilter={filter}
-            handle={table}
             onRowClick={(p) => navigate(`/products/${p.id}`)}
-            pageSize={10}
             stickyFirstColumn
             tools
             hiddenByDefault={['clientNumber', 'manufacturer']}
+            server={{
+              total: data.total,
+              pageIndex,
+              pageSize,
+              sorting,
+              onPageChange: (index) => setPaging({ key: askKey, index }),
+              onPageSizeChange: setPageSize,
+              onSortingChange: setSorting,
+              pending: page.isPlaceholderData,
+            }}
             selection={{
               rowId: (p) => p.id,
-              selected: picked,
-              onChange: setPicked,
+              selected,
+              onChange: pick,
               // A hose still being made has nothing to replace yet.
               canSelect: (p) => p.lifecycle !== 'manufacturing',
               label: (p) => `Выбрать EHS ${p.serialNumber}`,
@@ -165,8 +200,8 @@ export function ProductsPage() {
               <div className="flex flex-wrap items-center gap-4">
                 <Tabs
                   items={[
-                    { key: 'active', label: 'Активные', count: rows.length },
-                    { key: 'archive', label: 'Архив', count: archived.length },
+                    { key: 'active', label: 'Активные', count: data.counts.active },
+                    { key: 'archive', label: 'Архив', count: data.counts.archive },
                   ]}
                   value={tab}
                   onChange={setTab}
@@ -187,8 +222,8 @@ export function ProductsPage() {
             search={
               <SearchInput
                 id="products-search"
-                value={filter}
-                onChange={(e) => setFilter(e.target.value)}
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
                 placeholder="Серийный, каталожный, ваш номер, техника…"
               />
             }
@@ -199,7 +234,7 @@ export function ProductsPage() {
         <SelectionBar
           label="Выбранные изделия"
           count={chosen.length}
-          onClear={() => setPicked(new Set())}
+          onClear={() => setPicked(new Map())}
           note={tooMany ? `В заявке до ${MAX_REQUEST_POSITIONS} изделий` : undefined}
         >
           <Button size="sm" icon={RefreshCw} disabled={tooMany} onClick={() => setRequesting(true)}>
@@ -211,7 +246,7 @@ export function ProductsPage() {
         <RequestForm
           preset={{ kind: 'replace', products: chosen }}
           onClose={() => setRequesting(false)}
-          onCreated={() => setPicked(new Set())}
+          onCreated={() => setPicked(new Map())}
         />
       )}
     </div>

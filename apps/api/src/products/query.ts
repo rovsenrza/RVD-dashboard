@@ -1,4 +1,10 @@
-import type { Paginated, Product, ProductListQuery, StatusRules } from '@rvd/contracts'
+import type {
+  Product,
+  ProductListQuery,
+  ProductPage,
+  ProductSortKey,
+  StatusRules,
+} from '@rvd/contracts'
 import type { Db } from '../db/pool.ts'
 import { PLANNED_AT, STATUS_SQL } from './health.ts'
 
@@ -8,26 +14,41 @@ export interface Clock {
 }
 
 /** Each sort is one or more expressions; the direction applies to every one of them. */
-const ORDER: Record<ProductListQuery['sort'], string[]> = {
+const ORDER: Record<ProductSortKey, string[]> = {
   serialNumber: ['length(serial_number)', 'serial_number'],
+  clientNumber: [`data->>'clientNumber'`],
   type: ['type'],
   catalogNumber: [`data->>'catalogNumber'`],
+  manufacturer: [`data->>'manufacturer'`],
   shippedAt: ['shipped_at'],
   installedAt: ['installed_at'],
   plannedAt: ['planned_at'],
   status: [`array_position(array['replace','warn','no_warranty','ok'], status)`],
   lifecycle: ['lifecycle'],
+  installPlace: [`data->>'installPlace'`],
 }
+
+/** The registry's two tabs: written-off hoses are the archive, the rest are in work. */
+const IN_ARCHIVE = `lifecycle = 'written_off'`
+const IN_WORK = `lifecycle <> 'written_off'`
 
 /** Escapes LIKE wildcards so a typed "%" or "_" searches for itself. */
 const like = (q: string) => `%${q.toLowerCase().replace(/[\\%_]/g, (c) => `\\${c}`)}%`
 
-/** The registry: filtered, sorted and paged in SQL; `status` is derived per row for the given day and rules. */
+const whereOf = (conditions: string[]) =>
+  conditions.length ? `where ${conditions.join(' and ')}` : ''
+
+/**
+ * The registry: filtered, sorted and paged in SQL; `status` is derived per row
+ * for the given day and rules. Every page carries the size of both tabs under
+ * the same filters, counted apart from the page, so a page past the end still
+ * knows the total.
+ */
 export async function listProducts(
   db: Db,
   query: ProductListQuery,
   clock: Clock,
-): Promise<Paginated<Product>> {
+): Promise<ProductPage> {
   const params: unknown[] = [
     clock.today,
     clock.rules.warnRule,
@@ -49,27 +70,37 @@ export async function listProducts(
   if (query.client) add('client_id = ?', query.client)
   if (query.installed === '1') where.push('installed_at is not null')
   if (query.installed === '0') where.push('installed_at is null')
-  if (query.archive === '1') where.push(`lifecycle = 'written_off'`)
-  if (query.archive === '0') where.push(`lifecycle <> 'written_off'`)
+  const tab = query.archive === '1' ? [IN_ARCHIVE] : query.archive === '0' ? [IN_WORK] : []
 
-  params.push(query.limit, (query.page - 1) * query.limit)
-  const dir = query.dir === 'desc' ? 'desc' : 'asc'
-  const { rows } = await db.query<{ product: Product; total: string }>(
-    `with p as (
+  const scope = `with p as (
        select products.*, ${STATUS_SQL} as status, ${PLANNED_AT} as planned_at from products
-     )
-     select data || jsonb_build_object('status', status) as product, count(*) over() as total
-     from p
-     ${where.length ? `where ${where.join(' and ')}` : ''}
-     order by ${ORDER[query.sort].map((e) => `${e} ${dir} nulls last`).join(', ')}, id
-     limit $${params.length - 1} offset $${params.length}`,
-    params,
-  )
+     )`
+  const dir = query.dir === 'desc' ? 'desc' : 'asc'
+  const [page, counts] = await Promise.all([
+    db.query<{ product: Product }>(
+      `${scope}
+       select data || jsonb_build_object('status', status) as product from p
+       ${whereOf([...where, ...tab])}
+       order by ${ORDER[query.sort].map((e) => `${e} ${dir} nulls last`).join(', ')}, id
+       limit $${params.length + 1} offset $${params.length + 2}`,
+      [...params, query.limit, (query.page - 1) * query.limit],
+    ),
+    db.query<{ active: string; archive: string }>(
+      `${scope}
+       select count(*) filter (where ${IN_WORK}) as active,
+              count(*) filter (where ${IN_ARCHIVE}) as archive
+       from p ${whereOf(where)}`,
+      params,
+    ),
+  ])
+  const active = Number(counts.rows[0].active)
+  const archive = Number(counts.rows[0].archive)
   return {
-    items: rows.map((r) => r.product),
-    total: rows.length ? Number(rows[0].total) : 0,
+    items: page.rows.map((r) => r.product),
+    total: query.archive === '1' ? archive : query.archive === '0' ? active : active + archive,
     page: query.page,
     limit: query.limit,
+    counts: { active, archive },
   }
 }
 

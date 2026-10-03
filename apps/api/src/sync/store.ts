@@ -23,8 +23,17 @@ export interface Cache {
 
 const CHUNK = 1000
 
-const searchText = (p: Product) =>
-  [p.serialNumber, p.catalogNumber, p.nomenclatureNumber, p.type]
+/** What the registry's search looks through: the hose's numbers and name, its machine and place. */
+const searchText = (p: Product, garageNumber: string | undefined) =>
+  [
+    p.serialNumber,
+    p.clientNumber,
+    p.catalogNumber,
+    p.nomenclatureNumber,
+    p.type,
+    garageNumber,
+    p.installPlace,
+  ]
     .filter(Boolean)
     .join(' ')
     .toLowerCase()
@@ -38,6 +47,7 @@ export async function storeCache(db: Db, cache: Cache, durationMs: number): Prom
   const rows = cache.products
   const history = cache.history ?? new Map<string, LifecycleRecord[]>()
   const machines = cache.equipment ?? []
+  const garages = new Map(machines.map(({ equipment: e }) => [e.id, e.garageNumber]))
   const client = await db.connect()
   try {
     await client.query('begin')
@@ -81,7 +91,7 @@ export async function storeCache(db: Db, cache: Cache, durationMs: number): Prom
         installed_at: p.installedAt,
         warranty_days: p.warrantyDays,
         service_life_days: p.serviceLifeDays,
-        search: searchText(p),
+        search: searchText(p, p.equipmentId ? garages.get(p.equipmentId) : undefined),
         data: p,
       }))
       await client.query(

@@ -5,7 +5,7 @@ import { buildApp } from '../app.ts'
 import type { Db } from '../db/pool.ts'
 import { storeCache } from '../sync/store.ts'
 import { hasDb, isolatedDb } from '../test/db.ts'
-import { product } from '../test/rows.ts'
+import { machine, product } from '../test/rows.ts'
 
 const TODAY = '2026-09-30'
 
@@ -22,7 +22,13 @@ const rows = [
     clientId: 'k1',
   },
   {
-    product: product({ id: 'p2', serialNumber: '10', installedAt: '2025-09-01', type: '4SH ду25' }),
+    product: product({
+      id: 'p2',
+      serialNumber: '10',
+      installedAt: '2025-09-01',
+      type: '4SH ду25',
+      installPlace: 'Ковш',
+    }),
     clientId: 'k1',
   },
   {
@@ -67,6 +73,7 @@ describe.skipIf(!hasDb)('products in the cache', () => {
             ],
           ],
         ]),
+        equipment: [{ equipment: machine('e1', { garageNumber: 'р414вв154' }), clientId: 'k1' }],
       },
       12,
     )
@@ -84,10 +91,24 @@ describe.skipIf(!hasDb)('products in the cache', () => {
   const get = async (url: string) => (await app.inject(url)).json()
   const ids = (body: { items: Product[] }) => body.items.map((p) => p.id)
 
-  it('pages with the total of all matches', async () => {
+  it('pages with the total of all matches, even past the last page', async () => {
     const body = await get('/products?limit=2&page=2')
     expect(body).toMatchObject({ total: 4, page: 2, limit: 2 })
     expect(body.items).toHaveLength(2)
+    expect(await get('/products?limit=2&page=9')).toMatchObject({ items: [], total: 4 })
+  })
+
+  it('counts both tabs under the same filters and search', async () => {
+    expect(await get('/products?archive=1')).toMatchObject({
+      total: 1,
+      counts: { active: 3, archive: 1 },
+    })
+    expect((await get('/products?archive=1&q=4sh')).counts).toEqual({ active: 1, archive: 0 })
+  })
+
+  it('sorts by every registry column, empty values last either way', async () => {
+    expect(ids(await get('/products?sort=installPlace')).slice(0, 1)).toEqual(['p2'])
+    expect(ids(await get('/products?sort=installPlace&dir=desc')).slice(0, 1)).toEqual(['p2'])
   })
 
   it('sorts serial numbers as numbers, not as text', async () => {
@@ -115,9 +136,11 @@ describe.skipIf(!hasDb)('products in the cache', () => {
     expect(ids(await get('/products?branch=b2'))).toEqual(['p4'])
   })
 
-  it('searches the numbers and the name, and treats wildcards literally', async () => {
+  it('searches the numbers, the name, the machine and the place, and treats wildcards literally', async () => {
     expect(ids(await get('/products?q=02753'))).toEqual(['p1'])
     expect(ids(await get('/products?q=4sh'))).toEqual(['p2'])
+    expect(ids(await get('/products?q=Р414'))).toEqual(['p1'])
+    expect(ids(await get('/products?q=ковш'))).toEqual(['p2'])
     expect(await get('/products?q=%25')).toMatchObject({ total: 0 })
   })
 
@@ -152,7 +175,7 @@ describe.skipIf(!hasDb)('products in the cache', () => {
     expect(state).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ entity: 'products', rows: 4 }),
-        expect.objectContaining({ entity: 'equipment', rows: 0 }),
+        expect.objectContaining({ entity: 'equipment', rows: 1 }),
       ]),
     )
   })

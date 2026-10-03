@@ -1,6 +1,7 @@
 import { http, HttpResponse, passthrough } from 'msw'
 import { LIVE, LIVE_ROUTES } from '@/shared/api/live'
 import type { InstallationPatch, NewRequest, NewSupportMessage } from '@/shared/api/queries'
+import { ProductListQuery } from '@/entities/product/list'
 import { rulesProblem } from '@/entities/product/rules'
 import {
   attachmentsOf,
@@ -32,6 +33,7 @@ import {
   users,
   userView,
 } from './data'
+import { productPage } from './productList'
 import { buildReport } from './reports'
 import { createRequest } from './requests'
 import { sendSupportMessage } from './support'
@@ -70,9 +72,12 @@ export const handlers = [
   http.get(api('/dashboard/summary'), ({ request }) =>
     HttpResponse.json(dashboardSummary(branchOf(request))),
   ),
-  http.get(api('/products'), ({ request }) =>
-    HttpResponse.json(inBranch(products, branchOf(request))),
-  ),
+  // The registry pages on the server; the mock answers the same query the same way.
+  http.get(api('/products'), ({ request }) => {
+    const query = ProductListQuery.safeParse(Object.fromEntries(new URL(request.url).searchParams))
+    if (!query.success) return HttpResponse.json({ error: 'Bad query' }, { status: 400 })
+    return HttpResponse.json(productPage(products, query.data))
+  }),
   http.get(api('/products/:id'), ({ params }) => {
     const p = products.find((x) => x.id === params.id)
     return p ? HttpResponse.json(p) : new HttpResponse(null, { status: 404 })
