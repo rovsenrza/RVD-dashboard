@@ -5,6 +5,13 @@ import type { Db } from './db/pool.ts'
 import { dashboardSummary } from './dashboard/query.ts'
 import { equipmentProducts, getEquipment, listEquipment } from './equipment/query.ts'
 import { productLifetime } from './products/lifetime.ts'
+import {
+  createRequest,
+  listRequests,
+  RequestRejected,
+  type Actor,
+  type RequestInput,
+} from './requests/store.ts'
 import { getProduct, listProducts, type Clock } from './products/query.ts'
 
 export interface AppOptions {
@@ -15,7 +22,17 @@ export interface AppOptions {
   corsOrigins?: string[]
   /** Today and the status rules; the rules will come from the company settings */
   clock?: () => Clock
+  requests?: {
+    /** The 1С client this cabinet stands for, until login decides it per company (Д7) */
+    clientKey?: string
+    /** Called after a request is stored, to send the queue to 1С at once */
+    onCreated?: () => void
+  }
+  /** Who is asking, until login names the user (Д6) */
+  actor?: () => Actor
 }
+
+const DEMO_ACTOR: Actor = { name: 'Пользователь кабинета (демо)', email: null }
 
 const localToday = () => new Date().toLocaleDateString('sv-SE')
 
@@ -77,6 +94,24 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
     app.get('/equipment/:id/replacements', async () => [])
 
     app.get('/dashboard/summary', async () => dashboardSummary(db, clock()))
+
+    // Requests (Д18): taken here, sent to 1С by the outbox, statuses read back at sync.
+    app.get('/requests', async () => listRequests(db, options.requests?.clientKey))
+
+    app.post<{ Body: RequestInput }>('/requests', async (req, reply) => {
+      try {
+        const created = await createRequest(db, req.body ?? ({} as RequestInput), {
+          clientKey: options.requests?.clientKey,
+          actor: (options.actor ?? (() => DEMO_ACTOR))(),
+        })
+        options.requests?.onCreated?.()
+        return reply.code(201).send(created)
+      } catch (error) {
+        if (error instanceof RequestRejected)
+          return reply.code(400).send({ message: error.message })
+        throw error
+      }
+    })
 
     app.get(
       '/sync/status',

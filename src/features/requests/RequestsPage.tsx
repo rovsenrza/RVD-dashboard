@@ -25,7 +25,11 @@ type Tab = 'all' | 'open' | 'done'
 const TAB_LABEL: Record<Tab, string | null> = { all: null, open: 'В работе', done: 'Закрытые' }
 
 const EXPORT_COLUMNS: ExportColumn<ServiceRequest>[] = [
-  { header: '№', value: (r) => r.number, width: 13 },
+  {
+    header: '№',
+    value: (r) => r.number ?? (r.delivery === 'refused' ? 'Не принята 1С' : 'Отправляется в 1С'),
+    width: 16,
+  },
   { header: 'Создана', value: (r) => r.createdAt, type: 'date', width: 11 },
   { header: 'Тип', value: (r) => REQUEST_KIND_LABEL[r.kind], width: 13 },
   {

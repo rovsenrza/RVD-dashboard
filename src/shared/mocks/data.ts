@@ -349,6 +349,9 @@ export const requests: ServiceRequest[] = Array.from({ length: 12 }, (_, i) => {
     shipmentStatus: rand() < 0.4 ? 'shipped' : 'not_shipped',
     createdAt: iso(subDays(NOW, Math.floor(rand() * 60))),
     attachments: [],
+    // The mock is 1С too: every request it takes is delivered at once.
+    delivery: 'delivered',
+    deliveryNote: null,
   }
 })
 
@@ -580,7 +583,7 @@ for (const r of requests) {
   record(
     {
       action: 'request.create',
-      target: { kind: 'request', id: r.id, label: r.number },
+      target: { kind: 'request', id: r.id, label: r.number ?? r.id },
       changes: [
         { field: 'Тип', before: null, after: r.kind === 'replace' ? 'Замена' : 'Изготовление' },
         { field: 'Количество', before: null, after: String(r.quantity) },

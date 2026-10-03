@@ -9,7 +9,8 @@
     "start": "tsx --env-file=../../.env src/server.ts",
     "onec:smoke": "tsx --env-file=../../.env src/onec/smoke.ts",
     "migrate": "tsx --env-file=../../.env src/db/cli.ts",
-    "sync": "tsx --env-file=../../.env src/sync/cli.ts"
+    "sync": "tsx --env-file=../../.env src/sync/cli.ts",
+    "fake-1c": "tsx src/onec/fake-orders.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.3.0",

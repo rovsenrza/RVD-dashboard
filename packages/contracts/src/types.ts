@@ -178,6 +178,13 @@ export type RequestStatus = 'new' | 'in_progress' | 'done' | 'rejected'
 export type ShipmentStatus = 'not_shipped' | 'shipped'
 
 /**
+ * Where a request stands on its way to 1С (Д17): queued in the cabinet (sent
+ * with retries until 1С answers), delivered (1С made the order and gave its
+ * number) or refused by 1С with a reason the client reads.
+ */
+export type RequestDelivery = 'queued' | 'delivered' | 'refused'
+
+/**
  * Тип заявки (заказчик, 2026-10-03): «Замена» — взамен изделий, которые уже
  * есть у компании; «Изготовление» и «Ремонт» — по номерам или по таблице Excel.
  */
@@ -200,8 +207,8 @@ export interface RequestPosition {
  */
 export interface ServiceRequest {
   id: string
-  /** Номер документа в 1С */
-  number: string
+  /** Номер документа в 1С («СВЦБ-…»); null, пока заявка не дошла до 1С */
+  number: string | null
   branchId: string
   productId: string | null
   kind: RequestKind
@@ -212,6 +219,9 @@ export interface ServiceRequest {
   shipmentStatus: ShipmentStatus
   createdAt: string
   attachments: Attachment[]
+  delivery: RequestDelivery
+  /** Why 1С refused it, or what holds it up in the queue — in the client's words */
+  deliveryNote: string | null
 }
 
 /**

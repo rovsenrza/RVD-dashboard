@@ -187,11 +187,18 @@ export function RequestForm({
         quantity: positions.reduce((sum, l) => sum + l.quantity, 0),
         comment: comment.trim() || null,
         attachmentIds: uploads.ids,
+        attachmentNames: uploads.items.flatMap((u) =>
+          u.attachment ? [u.attachment.fileName] : [],
+        ),
         positions,
       },
       {
         onSuccess: (created) => {
-          toast(`Заявка ${created.number} создана`)
+          toast(
+            created.number
+              ? `Заявка ${created.number} создана`
+              : 'Заявка принята — отправляем её в 1С',
+          )
           onCreated?.()
           onClose()
         },

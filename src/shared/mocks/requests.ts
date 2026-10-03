@@ -68,6 +68,8 @@ export function createRequest(raw: NewRequest): ServiceRequest | { error: string
     shipmentStatus: 'not_shipped',
     createdAt: new Date().toISOString().slice(0, 10),
     attachments: claimAttachments(body.attachmentIds, { kind: 'request', id }),
+    delivery: 'delivered',
+    deliveryNote: null,
   }
   requests.unshift(created)
 
@@ -77,7 +79,7 @@ export function createRequest(raw: NewRequest): ServiceRequest | { error: string
   })
   record({
     action: 'request.create',
-    target: { kind: 'request', id: created.id, label: created.number },
+    target: { kind: 'request', id: created.id, label: created.number ?? created.id },
     changes: [
       { field: 'Тип', before: null, after: REQUEST_KIND_LABEL[created.kind] },
       ...(hoses.length ? [{ field: 'Изделия', before: null, after: hoses.join(', ') }] : []),

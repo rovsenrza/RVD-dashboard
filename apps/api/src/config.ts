@@ -10,6 +10,21 @@ const schema = z.object({
   ODATA_USER: z.string().min(1),
   ODATA_PASSWORD: z.string().min(1),
   ODATA_TIMEOUT_MS: z.coerce.number().int().positive().default(30_000),
+  /**
+   * The 1С HTTP service that turns a request into «Заказ клиента»
+   * (docs/1c/request-api.md). Unset: requests wait in the queue.
+   */
+  ONEC_ORDERS_URL: z.url().optional(),
+  /** Its own 1С user, with rights to that service only */
+  ONEC_ORDERS_USER: z.string().optional(),
+  ONEC_ORDERS_PASSWORD: z.string().optional(),
+  /** How often the queue is sent, ms */
+  OUTBOX_INTERVAL_MS: z.coerce.number().int().positive().default(30_000),
+  /**
+   * The 1С client (Клиент_Key) this cabinet stands for, until login ties each
+   * company to its client (Д6–Д7).
+   */
+  CABINET_CLIENT_KEY: z.string().optional(),
 })
 
 export type Config = z.infer<typeof schema>

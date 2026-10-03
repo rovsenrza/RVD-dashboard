@@ -178,10 +178,19 @@ export const useSendSupportMessage = () => {
 /** Fields the client sends; 1С (and the mock) assigns number, statuses and date. */
 export type NewRequest = Omit<
   ServiceRequest,
-  'id' | 'number' | 'status' | 'shipmentStatus' | 'createdAt' | 'attachments'
+  | 'id'
+  | 'number'
+  | 'status'
+  | 'shipmentStatus'
+  | 'createdAt'
+  | 'attachments'
+  | 'delivery'
+  | 'deliveryNote'
 > & {
   /** Drafts uploaded while the form was open; the server binds them to the request. */
   attachmentIds: string[]
+  /** Their names, for the BFF's «Excel instead of lines» check until it stores files (Д25) */
+  attachmentNames?: string[]
 }
 
 export const useCreateRequest = () => {

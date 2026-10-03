@@ -5,6 +5,7 @@ import { isSpreadsheet } from '@/entities/request/rules'
 import { formatDate } from '@/shared/lib/utils'
 import { valueOr } from '@/shared/ui'
 import { AttachmentsButton } from '@/features/attachments/AttachmentStrip'
+import { RequestNumber } from './components/RequestNumber'
 
 const col = createColumnHelper<ServiceRequest>()
 
@@ -13,7 +14,7 @@ export const requestColumns = [
     header: '№',
     cell: (c) => (
       <span className="inline-flex items-center gap-1">
-        <span className="font-medium text-brand-deep">{c.getValue()}</span>
+        <RequestNumber request={c.row.original} />
         <AttachmentsButton files={c.row.original.attachments} />
       </span>
     ),

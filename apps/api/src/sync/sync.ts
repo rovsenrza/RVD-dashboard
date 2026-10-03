@@ -4,11 +4,14 @@ import { toHistory } from '../onec/adapters/history.ts'
 import { toProducts } from '../onec/adapters/product.ts'
 import type { ODataClient } from '../onec/client.ts'
 import { fetchSources } from '../onec/sources.ts'
+import { fetchOrderStates, refreshRequestStatuses } from '../requests/statuses.ts'
 import { storeCache } from './store.ts'
 
 export interface SyncResult {
   products: number
   equipment: number
+  /** Requests whose 1С status or shipment changed */
+  requestUpdates: number
   ms: number
 }
 
@@ -29,5 +32,11 @@ export async function runSync(db: Db, client: ODataClient): Promise<SyncResult> 
     },
     Date.now() - started,
   )
-  return { products: products.length, equipment: equipment.length, ms: Date.now() - started }
+  const requestUpdates = await refreshRequestStatuses(db, (refs) => fetchOrderStates(client, refs))
+  return {
+    products: products.length,
+    equipment: equipment.length,
+    requestUpdates,
+    ms: Date.now() - started,
+  }
 }
