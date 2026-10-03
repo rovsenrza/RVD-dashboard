@@ -1,4 +1,4 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useCallback, useMemo, useState, type FormEvent } from 'react'
 import { ClipboardPaste, Plus, X } from 'lucide-react'
 import { useSession } from '@/app/session'
 import { ProductStatusBadge } from '@/entities/product'
@@ -6,12 +6,7 @@ import { REQUEST_KIND_HINT, REQUEST_KIND_LABEL } from '@/entities/request'
 import { isSpreadsheet, MAX_REQUEST_POSITIONS } from '@/entities/request/rules'
 import type { Product, RequestKind, RequestPosition } from '@/entities/types'
 import { ApiError } from '@/shared/api/client'
-import {
-  useCatalogNumbers,
-  useCreateRequest,
-  useEquipment,
-  useProducts,
-} from '@/shared/api/queries'
+import { useCatalogNumbers, useCreateRequest, useEquipment } from '@/shared/api/queries'
 import {
   Badge,
   Button,
@@ -87,7 +82,6 @@ export function RequestForm({
 }) {
   const catalog = useCatalogNumbers()
   const equipment = useEquipment()
-  const stock = useProducts()
   const create = useCreateRequest()
   const toast = useToast()
   const { branch, branches } = useSession()
@@ -106,17 +100,13 @@ export function RequestForm({
 
   const labelOf = (p: Product) => productLabel(p, equipment.data)
   const machine = preset?.equipmentId
-  const eligible = eligibleFor(kind)
-  const candidates = useMemo(
-    () =>
-      (stock.data ?? [])
-        .filter(eligibleFor(kind))
-        .sort(
-          (a, b) =>
-            Number(b.equipmentId === machine && !!machine) -
-              Number(a.equipmentId === machine && !!machine) || byUrgency(a, b),
-        ),
-    [stock.data, machine, kind],
+  const eligible = useMemo(() => eligibleFor(kind), [kind])
+  // The machine the form is about first, then the hoses most likely to need replacing.
+  const order = useCallback(
+    (a: Product, b: Product) =>
+      Number(b.equipmentId === machine && !!machine) -
+        Number(a.equipmentId === machine && !!machine) || byUrgency(a, b),
+    [machine],
   )
   const taken = useMemo(() => new Set(picked.map((p) => p.id)), [picked])
 
@@ -289,7 +279,9 @@ export function RequestForm({
                 ))}
                 <ProductPicker
                   id={id}
-                  candidates={candidates}
+                  eligible={eligible}
+                  near={machine}
+                  order={order}
                   labelOf={labelOf}
                   taken={taken}
                   disabled={hosesFull}

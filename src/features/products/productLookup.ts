@@ -15,6 +15,9 @@ const code = (v: string) =>
     .toLowerCase()
     .replace(/^(ehs|esm)[\s:№#-]*/, '')
 
+/** What to ask the server for a typed value: «EHS 48703» is looked up as «48703». */
+export const lookupText = (typed: string) => code(typed)
+
 /**
  * The hose a typed value names: a suggestion taken whole, or an exact EHS or
  * internal number. Never a partial match — a picker must not guess.

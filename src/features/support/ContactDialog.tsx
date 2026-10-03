@@ -1,9 +1,9 @@
-import { useMemo, useState, type FormEvent } from 'react'
+import { useCallback, useState, type FormEvent } from 'react'
 import { format } from 'date-fns'
 import { SUPPORT_TOPIC_LABEL } from '@/entities/support'
 import type { Product, SupportTopic } from '@/entities/types'
 import { ApiError } from '@/shared/api/client'
-import { useEquipment, useProducts, useSendSupportMessage } from '@/shared/api/queries'
+import { useEquipment, useSendSupportMessage } from '@/shared/api/queries'
 import { formatDate } from '@/shared/lib/utils'
 import { Button, DatePicker, Dialog, Field, Select, Textarea, useToast } from '@/shared/ui'
 import { ProductPicker, ProductRow } from '@/features/products/components/ProductPicker'
@@ -39,7 +39,6 @@ export function ContactDialog({
 }) {
   const toast = useToast()
   const send = useSendSupportMessage()
-  const products = useProducts()
   const equipment = useEquipment()
 
   const [topic, setTopic] = useState<SupportTopic | ''>(preset?.topic ?? '')
@@ -53,12 +52,9 @@ export function ContactDialog({
   const aboutHose = topic === 'install_date' || topic === 'product'
   const labelOf = (p: Product) => productLabel(p, equipment.data)
   // A date can only be wrong on a hose that is still in service.
-  const candidates = useMemo(
-    () =>
-      (products.data ?? []).filter(
-        (p) => topic !== 'install_date' || p.lifecycle !== 'written_off',
-      ),
-    [products.data, topic],
+  const eligible = useCallback(
+    (p: Product) => topic !== 'install_date' || p.lifecycle !== 'written_off',
+    [topic],
   )
 
   const current = product?.installedAt ?? product?.shippedAt ?? null
@@ -151,7 +147,7 @@ export function ContactDialog({
               {(id) => (
                 <ProductPicker
                   id={id}
-                  candidates={candidates}
+                  eligible={eligible}
                   labelOf={labelOf}
                   required={topic === 'install_date'}
                   invalid={!!miss}

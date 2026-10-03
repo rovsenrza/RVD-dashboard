@@ -2,8 +2,10 @@ import { useEffect, useMemo, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useNavigate } from 'react-router-dom'
 import { Package, ScanLine, Truck } from 'lucide-react'
-import { useEquipment, useProducts } from '@/shared/api/queries'
+import { lookupText } from '@/features/products/productLookup'
+import { useEquipment, useProductSearch } from '@/shared/api/queries'
 import { SearchInput } from '@/shared/ui'
+import { useDebounced } from '@/shared/lib/useDebounced'
 import { cn } from '@/shared/lib/utils'
 
 interface Hit {
@@ -22,31 +24,26 @@ const SCAN_WORDS = ['скан', 'код', 'камер', 'scan', 'qr']
 const MAX_PER_GROUP = 5
 
 /**
- * Client-side match over the full list — fine against mocks, but search moves
- * server-side at Д5: the reference registry holds ~170k hoses.
+ * Hoses come from the server's search — the registry may hold tens of
+ * thousands — as the person pauses; machines from the company's own list,
+ * which stays small.
  */
 function useHits(q: string): Hit[] {
-  const products = useProducts()
+  const needle = q.trim().toLowerCase()
+  const text = lookupText(useDebounced(q, 200))
+  const products = useProductSearch(text.length >= 2 ? { q: text, limit: MAX_PER_GROUP } : {})
   const equipment = useEquipment()
 
   return useMemo(() => {
-    const needle = q.trim().toLowerCase()
     if (needle.length < 2) return []
 
-    const productHits = (products.data ?? [])
-      .filter((p) =>
-        [p.serialNumber, p.clientNumber, p.catalogNumber, p.type].some((v) =>
-          v?.toLowerCase().includes(needle),
-        ),
-      )
-      .slice(0, MAX_PER_GROUP)
-      .map<Hit>((p) => ({
-        id: p.id,
-        to: `/products/${p.id}`,
-        title: `EHS ${p.serialNumber}`,
-        subtitle: [p.type, p.catalogNumber].filter(Boolean).join(' · '),
-        group: 'product',
-      }))
+    const productHits = (products.data ?? []).slice(0, MAX_PER_GROUP).map<Hit>((p) => ({
+      id: p.id,
+      to: `/products/${p.id}`,
+      title: `EHS ${p.serialNumber}`,
+      subtitle: [p.type, p.catalogNumber].filter(Boolean).join(' · '),
+      group: 'product',
+    }))
 
     const equipmentHits = (equipment.data ?? [])
       .filter((e) =>
@@ -64,7 +61,7 @@ function useHits(q: string): Hit[] {
       }))
 
     return [...productHits, ...equipmentHits]
-  }, [q, products.data, equipment.data])
+  }, [needle, products.data, equipment.data])
 }
 
 export function CommandPalette({

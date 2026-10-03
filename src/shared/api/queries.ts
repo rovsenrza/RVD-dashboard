@@ -43,7 +43,7 @@ const scoped = (path: string, branch: string | null) =>
 /** What the registry asks the server for: filters, search, tab, sort and page, all optional. */
 export type ProductPageQuery = Partial<Omit<ProductListQuery, 'branch' | 'client'>>
 
-/** The API's largest page: lookups and exports take every hose in one go. */
+/** The API's largest page: an export takes every matching hose in one go. */
 const ALL = 5000
 
 const productsUrl = (query: ProductPageQuery, branch: string | null) => {
@@ -56,9 +56,10 @@ const productsUrl = (query: ProductPageQuery, branch: string | null) => {
 
 export const keys = {
   dashboard: (branch: string | null) => ['dashboard', branch] as const,
-  products: (branch: string | null) => ['products', branch] as const,
   productPage: (branch: string | null, query: ProductPageQuery) =>
     ['products', 'page', branch, query] as const,
+  productSearch: (branch: string | null, query: ProductPageQuery) =>
+    ['products', 'search', branch, query] as const,
   product: (id: string) => ['products', id] as const,
   productHistory: (id: string) => ['products', id, 'history'] as const,
   productAttachments: (id: string) => ['products', id, 'attachments'] as const,
@@ -92,13 +93,34 @@ export const useDashboard = () => {
   })
 }
 
-/** Every hose the user may see, for lookups: ⌘K search, the scanner, pickers. */
-export const useProducts = () => {
+const findProducts = async (query: ProductPageQuery, branch: string | null) =>
+  (await api.get<ProductPage>(productsUrl(query, branch))).items
+
+/**
+ * Hoses the server finds for a lookup — typed text (`q`) or a machine's hoses
+ * (`equipment`) — for ⌘K and pickers. Nothing holds the whole registry: a
+ * client may have tens of thousands of hoses (Д27).
+ */
+export const useProductSearch = (query: ProductPageQuery) => {
   const branch = useScope()
   return useQuery({
-    queryKey: keys.products(branch),
-    queryFn: async () => (await api.get<ProductPage>(productsUrl({ limit: ALL }, branch))).items,
+    queryKey: keys.productSearch(branch, query),
+    queryFn: () => findProducts(query, branch),
+    enabled: Boolean(query.q || query.equipment),
+    placeholderData: keepPreviousData,
   })
+}
+
+/** The same lookup on demand — a scanned code, a number typed and left — sharing the hook's cache. */
+export const useFindProducts = () => {
+  const branch = useScope()
+  const qc = useQueryClient()
+  return (query: ProductPageQuery) =>
+    qc.fetchQuery({
+      queryKey: keys.productSearch(branch, query),
+      queryFn: () => findProducts(query, branch),
+      staleTime: 30_000,
+    })
 }
 
 /** One page of the registry, filtered, searched and sorted on the server; the last page stays up while the next loads. */

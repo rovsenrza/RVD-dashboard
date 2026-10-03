@@ -1,8 +1,8 @@
 import { useEffect, useEffectEvent, useRef, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useEquipment, useProducts } from '@/shared/api/queries'
+import { useEquipment, useFindProducts } from '@/shared/api/queries'
 import { Button, Dialog, Field, Input } from '@/shared/ui'
-import { matchCode } from './matchCode'
+import { matchCode, normaliseCode } from './matchCode'
 
 type Camera = 'starting' | 'scanning' | 'blocked' | 'missing' | 'insecure' | 'failed'
 
@@ -31,22 +31,34 @@ function cameraProblem(error: unknown): Camera {
  */
 export function ScanDialog({ onClose }: { onClose: () => void }) {
   const navigate = useNavigate()
-  const products = useProducts()
+  const find = useFindProducts()
   const equipment = useEquipment()
   const video = useRef<HTMLVideoElement>(null)
   const [camera, setCamera] = useState<Camera>(() => (cameraAvailable() ? 'starting' : 'insecure'))
   const [typed, setTyped] = useState('')
   const [miss, setMiss] = useState<string | null>(null)
+  const [looking, setLooking] = useState(false)
 
-  const resolve = (code: string) => {
-    const hit = matchCode(code, products.data ?? [], equipment.data ?? [])
-    if (!hit) {
+  // The server finds the hoses a code may name; the match itself stays exact (matchCode).
+  const resolve = async (code: string) => {
+    const wanted = normaliseCode(code)
+    setLooking(true)
+    try {
+      const found = wanted ? await find({ q: wanted, limit: 50 }) : []
+      const hit = matchCode(code, found, equipment.data ?? [])
+      if (!hit) {
+        setMiss(code.trim())
+        return false
+      }
+      onClose()
+      navigate(hit.to)
+      return true
+    } catch {
       setMiss(code.trim())
       return false
+    } finally {
+      setLooking(false)
     }
-    onClose()
-    navigate(hit.to)
-    return true
   }
   // The camera callback outlives renders; this always sees the latest data.
   const onCode = useEffectEvent(resolve)
@@ -68,7 +80,7 @@ export function ScanDialog({ onClose }: { onClose: () => void }) {
             // The same unknown code arrives on every frame; report it once.
             if (!text || text === last) return
             last = text
-            if (onCode(text)) running.stop()
+            void onCode(text).then((opened) => opened && running.stop())
           },
         )
         stop = () => controls.stop()
@@ -86,7 +98,7 @@ export function ScanDialog({ onClose }: { onClose: () => void }) {
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
-    if (typed.trim()) resolve(typed)
+    if (typed.trim()) void resolve(typed)
   }
 
   const live = camera === 'starting' || camera === 'scanning'
@@ -143,8 +155,8 @@ export function ScanDialog({ onClose }: { onClose: () => void }) {
               )}
             </Field>
           </div>
-          <Button type="submit" variant="secondary">
-            Найти
+          <Button type="submit" variant="secondary" disabled={looking}>
+            {looking ? 'Ищем…' : 'Найти'}
           </Button>
         </form>
       </div>
