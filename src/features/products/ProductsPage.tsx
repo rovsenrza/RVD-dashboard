@@ -83,7 +83,7 @@ export function ProductsPage() {
       return `Техника: ${e ? e.garageNumber : value}`
     }
     const c = catalog.data?.find((x) => x.id === value)
-    return `Каталог: ${c ? c.name : value}`
+    return `Каталожный № (OEM): ${c ? c.name : value}`
   }
 
   const removeFilter = (key: FilterKey) => {

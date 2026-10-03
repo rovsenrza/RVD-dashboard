@@ -173,12 +173,17 @@ export const products: Product[] = Array.from({ length: 420 }, (_, i) => {
     settings,
     NOW,
   )
+  const clientNumber = rand() < 0.5 ? `K-${1000 + i}` : null
+  // A separate OEM number used to be drawn here (OEM is the catalogue number);
+  // the draws stay so every hose after this one keeps its seeded values.
+  if (rand() < 0.7) {
+    rand()
+    rand()
+  }
   return {
     id: `p-${i + 1}`,
     serialNumber: String(48700 + i),
-    clientNumber: rand() < 0.5 ? `K-${1000 + i}` : null,
-    oemNumber:
-      rand() < 0.7 ? `${7400 + Math.floor(rand() * 90)}-${Math.floor(rand() * 9000)}` : null,
+    clientNumber,
     catalogNumberId: cat.id,
     catalogNumber: cat.name,
     nomenclatureNumber: `РВД ${cat.name}`,

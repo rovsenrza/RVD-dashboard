@@ -35,7 +35,7 @@ function useHits(q: string): Hit[] {
 
     const productHits = (products.data ?? [])
       .filter((p) =>
-        [p.serialNumber, p.clientNumber, p.oemNumber, p.catalogNumber, p.type].some((v) =>
+        [p.serialNumber, p.clientNumber, p.catalogNumber, p.type].some((v) =>
           v?.toLowerCase().includes(needle),
         ),
       )

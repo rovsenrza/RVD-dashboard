@@ -98,8 +98,10 @@ export interface Product {
   serialNumber: string
   /** Внутренний номер клиента */
   clientNumber: string | null
-  oemNumber: string | null
-  /** Каталожный номер — ссылка на эталонный типоразмер */
+  /**
+   * Каталожный № (OEM) — общепризнанный номер изделия, ссылка на эталонный
+   * типоразмер. OEM и каталожный номер — одно поле (заказчик, 2026-10-03).
+   */
   catalogNumberId: string | null
   catalogNumber: string | null
   nomenclatureNumber: string | null

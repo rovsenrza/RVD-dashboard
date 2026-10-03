@@ -135,7 +135,6 @@ describe('catalogue number', () => {
     expect(p).toMatchObject({
       type: '02753-00613',
       catalogNumber: '02753-00613',
-      oemNumber: '02753-00613',
       catalogNumberId: 'cat-1',
       serviceLifeDays: 730,
       diameter: 20,
@@ -165,7 +164,7 @@ describe('catalogue number', () => {
   })
 
   it('leaves the catalogue fields empty when the item has no catalogue number', () => {
-    expect(one()).toMatchObject({ catalogNumber: null, catalogNumberId: null, oemNumber: null })
+    expect(one()).toMatchObject({ catalogNumber: null, catalogNumberId: null })
   })
 })
 

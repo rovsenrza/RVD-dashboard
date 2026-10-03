@@ -11,7 +11,6 @@ const TODAY = '2026-09-30'
 const product = (over: Partial<Product> & { id: string }): Product => ({
   serialNumber: '1',
   clientNumber: null,
-  oemNumber: null,
   catalogNumberId: null,
   catalogNumber: null,
   nomenclatureNumber: null,

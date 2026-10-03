@@ -27,7 +27,7 @@ export const requestColumns = [
         .join(', '),
     {
       id: 'catalog',
-      header: 'Каталожный №',
+      header: 'Каталожный № (OEM)',
       cell: (c) => valueOr(c.getValue() || null),
     },
   ),

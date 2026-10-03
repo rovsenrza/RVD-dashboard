@@ -33,7 +33,9 @@ export function normaliseCode(raw: string): string {
 
 /**
  * Exact match only: a scan must open one object or say it found nothing,
- * never guess. Hoses first (EHS, internal, OEM number), then machines
+ * never guess. Hoses first (EHS, internal number), then the catalogue (OEM)
+ * number — many hoses share one, so it opens the hose only when it is the
+ * sole one and otherwise the registry filtered by it — then machines
  * (garage, inventory number).
  */
 export function matchCode(
@@ -46,10 +48,17 @@ export function matchCode(
   const same = (v: string | null | undefined) => v?.trim().toLowerCase() === code
 
   const hose =
-    products.find((p) => same(p.serialNumber)) ??
-    products.find((p) => same(p.clientNumber)) ??
-    products.find((p) => same(p.oemNumber))
+    products.find((p) => same(p.serialNumber)) ?? products.find((p) => same(p.clientNumber))
   if (hose) return { to: `/products/${hose.id}`, label: `EHS ${hose.serialNumber}` }
+
+  const sharing = products.filter((p) => same(p.catalogNumber))
+  if (sharing.length === 1)
+    return { to: `/products/${sharing[0].id}`, label: `EHS ${sharing[0].serialNumber}` }
+  if (sharing.length > 1 && sharing[0].catalogNumberId)
+    return {
+      to: `/products?catalog=${encodeURIComponent(sharing[0].catalogNumberId)}`,
+      label: `Каталожный № (OEM) ${sharing[0].catalogNumber}`,
+    }
 
   const machine = equipment.find((e) => same(e.garageNumber) || same(e.inventoryNumber))
   if (machine) return { to: `/equipment/${machine.id}`, label: machine.garageNumber }

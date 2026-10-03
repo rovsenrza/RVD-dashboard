@@ -113,7 +113,7 @@ export function ProductFilters({
           )}
         </Field>
 
-        <Field label="Каталожный номер">
+        <Field label="Каталожный № (OEM)">
           {(id) => (
             <Select
               id={id}

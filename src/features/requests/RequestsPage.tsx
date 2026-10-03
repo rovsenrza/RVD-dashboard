@@ -28,7 +28,7 @@ const EXPORT_COLUMNS: ExportColumn<ServiceRequest>[] = [
   { header: 'Создана', value: (r) => r.createdAt, type: 'date', width: 11 },
   { header: 'Тип', value: (r) => REQUEST_KIND_LABEL[r.kind], width: 13 },
   {
-    header: 'Каталожный №',
+    header: 'Каталожный № (OEM)',
     value: (r) =>
       r.positions
         .map((p) => p.catalogNumber)

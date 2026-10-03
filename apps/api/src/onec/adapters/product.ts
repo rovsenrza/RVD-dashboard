@@ -102,7 +102,6 @@ export function toProducts(src: ProductSources, options: ProductOptions = {}): P
         id: item.Ref_Key,
         serialNumber: displayCode(item.Code),
         clientNumber: null,
-        oemNumber: cat ? orNull(cat.Description) : null,
         catalogNumberId: cat?.Ref_Key ?? null,
         catalogNumber: cat ? orNull(cat.Description) : null,
         nomenclatureNumber: orNull(item.НоменклатурныйНомер),

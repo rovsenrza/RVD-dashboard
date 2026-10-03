@@ -44,7 +44,7 @@ const hoseCells = (p: Product) => ({
 })
 const HOSE_COLUMNS = [
   col('serial', 'EHS №', 'text', 10),
-  col('catalog', 'Каталожный №', 'text', 16),
+  col('catalog', 'Каталожный № (OEM)', 'text', 18),
   col('machine', 'Техника', 'text', 10),
   col('place', 'Место установки', 'text', 20),
 ]

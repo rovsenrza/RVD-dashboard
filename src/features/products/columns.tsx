@@ -12,7 +12,10 @@ export const productColumns = [
     cell: (c) => <span className="font-medium text-brand-deep">{c.getValue()}</span>,
   }),
   col.accessor('clientNumber', { header: 'Ваш №', cell: (c) => valueOr(c.getValue()) }),
-  col.accessor('catalogNumber', { header: 'Каталожный №', cell: (c) => valueOr(c.getValue()) }),
+  col.accessor('catalogNumber', {
+    header: 'Каталожный № (OEM)',
+    cell: (c) => valueOr(c.getValue()),
+  }),
   col.accessor('type', { header: 'Тип' }),
   col.accessor('manufacturer', {
     header: 'Производитель',
