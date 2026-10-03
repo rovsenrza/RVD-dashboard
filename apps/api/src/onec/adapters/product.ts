@@ -28,6 +28,10 @@ const LIFECYCLE: Record<string, ProductLifecycle> = {
   Списан: 'written_off',
 }
 
+/** Whether the cabinet knows a register status; an unknown one (a repair line, say) is an event, not a stage. */
+export const isKnownStatus = (status: string | null | undefined) =>
+  Object.hasOwn(LIFECYCLE, cleanText(status))
+
 export interface ProductSources {
   items: RawItem[]
   statuses: RawStatusRecord[]
@@ -88,13 +92,15 @@ export function toProducts(src: ProductSources, options: ProductOptions = {}): P
     .filter((item) => !item.DeletionMark)
     .map((item): Product => {
       const history = lifecycles.get(item.Ref_Key) ?? []
-      const latest = history.at(-1)
       const cat = isRef(item.КаталожныйНомер_Key)
         ? catalog.get(item.КаталожныйНомер_Key)
         : undefined
       const shippedAt = dateOnly(lastWith(history, 'Отгружен')?.Period)
       const installedAt = dateOnly(lastWith(history, 'ВЭксплуатации')?.Period)
-      const lifecycle = LIFECYCLE[cleanText(latest?.Статус)] ?? 'in_stock'
+      // The stage is the latest status the cabinet knows. A status 1С adds later — the
+      // repair line of its new package, say — records an event and must not move the hose.
+      const stage = [...history].reverse().find((r) => isKnownStatus(r.Статус))
+      const lifecycle = LIFECYCLE[cleanText(stage?.Статус)] ?? 'manufacturing'
       // Every «Выпуск» names a machine, even while the item is still in the warehouse
       // (the order's target); the item sits on it only from shipment on.
       const onMachine = lifecycle === 'shipped' || lifecycle === 'in_operation'

@@ -1,6 +1,6 @@
 import { loadConfig } from '../config.ts'
 import { toEquipment } from './adapters/equipment.ts'
-import { toProducts } from './adapters/product.ts'
+import { isKnownStatus, toProducts } from './adapters/product.ts'
 import { ODataClient } from './client.ts'
 import { fetchSources } from './sources.ts'
 
@@ -33,6 +33,14 @@ const tally = <T>(rows: T[], key: (r: T) => string | null) => {
   return out
 }
 console.log('products', products.length)
+// A new status in 1С (the repair package) shows up here before anyone notices it on screen.
+console.log(
+  'register statuses the cabinet does not know',
+  tally(
+    src.statuses.filter((r) => !isKnownStatus(r.Статус)),
+    (r) => r.Статус,
+  ),
+)
 console.log(
   'lifecycle',
   tally(products, (p) => p.lifecycle),

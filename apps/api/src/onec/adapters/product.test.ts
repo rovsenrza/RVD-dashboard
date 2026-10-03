@@ -138,6 +138,18 @@ describe('dates and lifecycle come from the statuses register', () => {
     expect(one()).toMatchObject({ manufacturedAt: null, shippedAt: null, installedAt: null })
   })
 
+  it('keeps the stage and the machine when 1С records a status the cabinet does not know yet', () => {
+    // The 1С repair package will write a repair line into the status history of a hose.
+    const p = one({
+      statuses: [
+        statusRecord({ Recorder: 'a', Period: '2026-06-01T09:00:00', Статус: 'Отгружен' }),
+        statusRecord({ Recorder: 'r', Period: '2026-09-10T09:00:00', Статус: 'Ремонт' }),
+      ],
+      releases: [release({ Ref_Key: 'a', ГаражныйНомер_Key: 'eq-1' })],
+    })
+    expect(p).toMatchObject({ lifecycle: 'shipped', shippedAt: '2026-06-01', equipmentId: 'eq-1' })
+  })
+
   it('maps the empty status to manufacturing, and a machine missing from the catalogue to none', () => {
     expect(one({ statuses: [statusRecord({ Статус: '' })] }).lifecycle).toBe('manufacturing')
     const p = one({
