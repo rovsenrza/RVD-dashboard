@@ -1,9 +1,12 @@
 import type { ReactNode } from 'react'
-import { Navigate, useLocation } from 'react-router-dom'
+import { Navigate, Outlet, useLocation } from 'react-router-dom'
 import { useSession } from './session'
 
-/** Sends a signed-out visitor to /login and brings them back to where they were after. */
-export function RequireAuth({ children }: { children: ReactNode }) {
+/**
+ * Sends a signed-out visitor to /login and brings them back to where they were after.
+ * Wraps its children, or, as a layout route, the route nested under it.
+ */
+export function RequireAuth({ children }: { children?: ReactNode }) {
   const { ready, authenticated } = useSession()
   const location = useLocation()
   // A live cabinet first asks whether the sign-in still holds; no flash of the login page meanwhile.
@@ -11,5 +14,5 @@ export function RequireAuth({ children }: { children: ReactNode }) {
   if (!authenticated) {
     return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />
   }
-  return children
+  return children ?? <Outlet />
 }
