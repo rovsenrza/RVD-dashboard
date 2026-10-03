@@ -12,23 +12,21 @@ export interface Sources extends ProductSources {
  * the adapters as they are, so a wrong assumption shows up in one place.
  */
 export async function fetchSources(client: ODataClient): Promise<Sources> {
-  const [items, releases, catalogNumbers, components, equipment, clients, brands, types] =
+  const [items, statuses, releases, catalogNumbers, components, equipment, clients, brands, types] =
     await Promise.all([
       client.all('Catalog_Изделия', { pageSize: 500 }),
-      client.all('Document_Выпуск', {
+      client.all('InformationRegister_СтатусыИзделий_RecordType', {
         select: [
-          'Ref_Key',
-          'Number',
-          'Date',
-          'Posted',
-          'DeletionMark',
+          'Period',
+          'Recorder',
+          'Recorder_Type',
+          'LineNumber',
+          'Active',
           'Изделие_Key',
-          'ГаражныйНомер_Key',
-          'Клиент_Key',
-          'Филиал_Key',
           'Статус',
         ],
       }),
+      client.all('Document_Выпуск', { select: ['Ref_Key', 'ГаражныйНомер_Key'] }),
       client.all('Catalog_КаталожныеНомера'),
       client.all('Catalog_Комплектующие'),
       client.all('Catalog_Техника'),
@@ -38,6 +36,7 @@ export async function fetchSources(client: ODataClient): Promise<Sources> {
     ])
   return {
     items,
+    statuses,
     releases,
     catalogNumbers,
     components,

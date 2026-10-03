@@ -25,18 +25,37 @@ export interface RawItem {
   Комплектующие: RawIndicatorLine[]
 }
 
-/** «Выпуск»: one document per status change of one item. */
+/**
+ * One record of the statuses register (`InformationRegister_СтатусыИзделий`):
+ * the item's lifecycle as 1С itself keeps it. The 1С developer's rule
+ * (2026-10-03): build the lifecycle from here, never from the documents —
+ * «Выпуск» changed shape over the years, «Заказ» used to set statuses too, and
+ * a document's header may still say «НаСкладе» while it has recorded a later
+ * «Отгружен».
+ */
+export interface RawStatusRecord {
+  /** When the status took effect */
+  Period: string
+  /** The document that recorded it */
+  Recorder: string
+  /** `StandardODATA.Document_Выпуск` or `StandardODATA.Document_ЗаказыКлиента` */
+  Recorder_Type: string
+  /** Order within one document's records, as text: "1", "2" */
+  LineNumber: string
+  Active: boolean
+  Изделие_Key: string
+  Статус: string
+}
+
+/**
+ * «Выпуск», read only for its machine: the register keeps no garage number,
+ * so a hose sits on the machine named by the document that recorded its
+ * status. Its own status, date and branch are not used (the branch is not
+ * even filled in the working base).
+ */
 export interface RawRelease {
   Ref_Key: string
-  Number: string
-  Date: string
-  Posted: boolean
-  DeletionMark: boolean
-  Изделие_Key: string
   ГаражныйНомер_Key: string
-  Клиент_Key: string
-  Филиал_Key: string
-  Статус: string
 }
 
 export interface RawCatalogNumber {

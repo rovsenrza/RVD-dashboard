@@ -6,6 +6,7 @@ import {
   type RawEquipment,
   type RawItem,
   type RawRelease,
+  type RawStatusRecord,
 } from '../raw.ts'
 
 /** Synthetic rows shaped like the live 1С ones (no customer data). */
@@ -27,17 +28,22 @@ export const item = (over: Partial<RawItem> = {}): RawItem => ({
   ...over,
 })
 
+/** One record of the statuses register, written by «Выпуск» `doc-1` unless told otherwise. */
+export const statusRecord = (over: Partial<RawStatusRecord> = {}): RawStatusRecord => ({
+  Period: '2026-01-10T09:00:00',
+  Recorder: 'doc-1',
+  Recorder_Type: 'StandardODATA.Document_Выпуск',
+  LineNumber: '1',
+  Active: true,
+  Изделие_Key: 'item-1',
+  Статус: 'НаСкладе',
+  ...over,
+})
+
+/** «Выпуск» as the adapters read it: only the machine it names. */
 export const release = (over: Partial<RawRelease> = {}): RawRelease => ({
   Ref_Key: 'doc-1',
-  Number: '000000001',
-  Date: '2026-01-10T09:00:00',
-  Posted: true,
-  DeletionMark: false,
-  Изделие_Key: 'item-1',
   ГаражныйНомер_Key: ZERO_GUID,
-  Клиент_Key: 'client-1',
-  Филиал_Key: 'branch-1',
-  Статус: 'НаСкладе',
   ...over,
 })
 

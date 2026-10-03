@@ -20,6 +20,7 @@ const started = Date.now()
 const src = await fetchSources(client)
 console.log(`read in ${((Date.now() - started) / 1000).toFixed(1)}s:`, {
   items: src.items.length,
+  statusRecords: src.statuses.length,
   releases: src.releases.length,
   catalogNumbers: src.catalogNumbers.length,
   equipment: src.equipment.length,

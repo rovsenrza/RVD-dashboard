@@ -1,40 +1,41 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
-import { clients, equipment, item, release } from '../__fixtures__/builders.ts'
+import { clients, equipment, item, release, statusRecord } from '../__fixtures__/builders.ts'
 import { toEquipment } from './equipment.ts'
 import { toProducts } from './product.ts'
 
 const TODAY = new Date('2026-09-30T12:00:00')
 
-const installedOn = (id: string, machine: string, date: string) => [
-  release({
-    Ref_Key: `${id}-i`,
-    Изделие_Key: id,
-    Статус: 'ВЭксплуатации',
-    Date: date,
-    ГаражныйНомер_Key: machine,
-  }),
-]
+/** The register's record of a hose going onto a machine, and the «Выпуск» that names the machine. */
+const onMachine = (id: string, status: string, machine: string, date: string) => ({
+  statuses: [
+    statusRecord({ Recorder: `${id}-${status}`, Изделие_Key: id, Статус: status, Period: date }),
+  ],
+  releases: [release({ Ref_Key: `${id}-${status}`, ГаражныйНомер_Key: machine })],
+})
 
 describe('toEquipment', () => {
   const build = () => {
     const items = [item({ Ref_Key: 'h1' }), item({ Ref_Key: 'h2' }), item({ Ref_Key: 'h3' })]
-    const releases = [
-      ...installedOn('h1', 'eq-1', '2026-08-01T00:00:00'), // ok
-      ...installedOn('h2', 'eq-1', '2025-09-01T00:00:00'), // overdue
-      ...installedOn('h3', 'eq-1', '2026-08-10T00:00:00'),
-      release({
-        Ref_Key: 'h3-w',
-        Number: '9',
-        Изделие_Key: 'h3',
-        Статус: 'Списан',
-        Date: '2026-09-01T00:00:00',
-        ГаражныйНомер_Key: 'eq-1',
-      }),
+    const steps = [
+      onMachine('h1', 'ВЭксплуатации', 'eq-1', '2026-08-01T00:00:00'), // ok
+      onMachine('h2', 'ВЭксплуатации', 'eq-1', '2025-09-01T00:00:00'), // overdue
+      onMachine('h3', 'ВЭксплуатации', 'eq-1', '2026-08-10T00:00:00'),
+      onMachine('h3', 'Списан', 'eq-1', '2026-09-01T00:00:00'),
     ]
+    const statuses = steps.flatMap((s) => s.statuses)
+    const releases = steps.flatMap((s) => s.releases)
     const equipmentRows = [equipment(), equipment({ Ref_Key: 'eq-2', DeletionMark: true })]
     const products = toProducts(
-      { items, releases, catalogNumbers: [], components: [], equipment: equipmentRows, clients },
+      {
+        items,
+        statuses,
+        releases,
+        catalogNumbers: [],
+        components: [],
+        equipment: equipmentRows,
+        clients,
+      },
       { today: TODAY },
     )
     return toEquipment({

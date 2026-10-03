@@ -12,11 +12,12 @@ import type {
   RawEquipment,
   RawItem,
   RawRelease,
+  RawStatusRecord,
 } from '../raw.ts'
 import { toComposition } from './catalog.ts'
 import { byKey, cleanText, dateOnly, displayCode, isRef, orNull, wholeNumber } from './common.ts'
 
-/** «Выпуск».Статус → the cabinet's lifecycle. An empty status is a document that only created the item. */
+/** The register's «Статус» → the cabinet's lifecycle. An empty status is the record that only created the item. */
 const LIFECYCLE: Record<string, ProductLifecycle> = {
   '': 'manufacturing',
   НаОформлении: 'manufacturing',
@@ -29,6 +30,7 @@ const LIFECYCLE: Record<string, ProductLifecycle> = {
 
 export interface ProductSources {
   items: RawItem[]
+  statuses: RawStatusRecord[]
   releases: RawRelease[]
   catalogNumbers: RawCatalogNumber[]
   components: RawComponent[]
@@ -41,28 +43,36 @@ export interface ProductOptions {
   today?: Date
 }
 
-/** Posted release documents of each item, oldest first; equal dates fall back to the document number. */
-function releasesByItem(releases: RawRelease[]): Map<string, RawRelease[]> {
-  const grouped = new Map<string, RawRelease[]>()
-  for (const r of releases) {
-    if (!r.Posted || r.DeletionMark) continue
+/**
+ * Each item's active status records, oldest first. Records of one moment keep
+ * the order their document wrote them in (its line number).
+ */
+function statusesByItem(records: RawStatusRecord[]): Map<string, RawStatusRecord[]> {
+  const grouped = new Map<string, RawStatusRecord[]>()
+  for (const r of records) {
+    if (!r.Active) continue
     const list = grouped.get(r.Изделие_Key) ?? []
     list.push(r)
     grouped.set(r.Изделие_Key, list)
   }
   for (const list of grouped.values()) {
-    list.sort((a, b) => a.Date.localeCompare(b.Date) || a.Number.localeCompare(b.Number))
+    list.sort(
+      (a, b) =>
+        a.Period.localeCompare(b.Period) || Number(a.LineNumber || 0) - Number(b.LineNumber || 0),
+    )
   }
   return grouped
 }
 
-const lastWith = (docs: RawRelease[], status: string) =>
-  [...docs].reverse().find((d) => d.Статус === status)
+const lastWith = (records: RawStatusRecord[], status: string) =>
+  [...records].reverse().find((r) => r.Статус === status)
 
 /**
- * 1С keeps no dates on the item itself: shipment and installation are the dates
- * of its «Отгружен» and «ВЭксплуатации» release documents, the machine is the
- * latest document's garage number, health is computed here (docs/1c/mapping.md).
+ * 1С keeps no dates on the item itself: shipment and installation are when the
+ * statuses register recorded «Отгружен» and «ВЭксплуатации», the stage is its
+ * latest record, the machine is the garage number on the «Выпуск» that
+ * recorded the item's status (newest first), health is computed here
+ * (docs/1c/mapping.md).
  */
 export function toProducts(src: ProductSources, options: ProductOptions = {}): Product[] {
   const rules = options.rules ?? DEFAULT_RULES
@@ -71,26 +81,30 @@ export function toProducts(src: ProductSources, options: ProductOptions = {}): P
   const components = byKey(src.components, (c) => c.Ref_Key)
   const equipment = byKey(src.equipment, (e) => e.Ref_Key)
   const clients = byKey(src.clients, (c) => c.Ref_Key)
-  const docs = releasesByItem(src.releases)
+  const releases = byKey(src.releases, (r) => r.Ref_Key)
+  const lifecycles = statusesByItem(src.statuses)
 
   return src.items
     .filter((item) => !item.DeletionMark)
     .map((item): Product => {
-      const history = docs.get(item.Ref_Key) ?? []
+      const history = lifecycles.get(item.Ref_Key) ?? []
       const latest = history.at(-1)
       const cat = isRef(item.КаталожныйНомер_Key)
         ? catalog.get(item.КаталожныйНомер_Key)
         : undefined
-      const shippedAt = dateOnly(lastWith(history, 'Отгружен')?.Date)
-      const installedAt = dateOnly(lastWith(history, 'ВЭксплуатации')?.Date)
+      const shippedAt = dateOnly(lastWith(history, 'Отгружен')?.Period)
+      const installedAt = dateOnly(lastWith(history, 'ВЭксплуатации')?.Period)
       const lifecycle = LIFECYCLE[cleanText(latest?.Статус)] ?? 'in_stock'
-      // Every document names a machine, even while the item is still in the warehouse
+      // Every «Выпуск» names a machine, even while the item is still in the warehouse
       // (the order's target); the item sits on it only from shipment on.
       const onMachine = lifecycle === 'shipped' || lifecycle === 'in_operation'
-      const machine =
-        onMachine && latest && isRef(latest.ГаражныйНомер_Key)
-          ? equipment.get(latest.ГаражныйНомер_Key)
-          : undefined
+      const garage = onMachine
+        ? [...history]
+            .reverse()
+            .map((r) => releases.get(r.Recorder)?.ГаражныйНомер_Key)
+            .find((key) => key !== undefined && isRef(key))
+        : undefined
+      const machine = garage ? equipment.get(garage) : undefined
       const lines = item.Комплектующие?.length ? item.Комплектующие : (cat?.Комплектующие ?? [])
 
       const serviceLifeDays =
@@ -112,7 +126,7 @@ export function toProducts(src: ProductSources, options: ProductOptions = {}): P
         braidCount:
           wholeNumber(item.КоличествоОплетокНавивок) || wholeNumber(cat?.КоличествоОплетокНавивок),
         composition: toComposition(lines, components),
-        manufacturedAt: dateOnly(history[0]?.Date),
+        manufacturedAt: dateOnly(history[0]?.Period),
         shippedAt,
         installedAt,
         warrantyDays,
