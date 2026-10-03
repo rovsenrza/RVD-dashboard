@@ -31,6 +31,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/shared/lib/utils'
 import { Button } from './Button'
+import { Checkbox } from './Checkbox'
 import { Input } from './Input'
 import { Menu } from './Menu'
 import { EmptyState } from './States'
@@ -51,6 +52,27 @@ declare module '@tanstack/react-table' {
 export interface DataTableHandle<T> {
   /** Filtered by the search and sorted by the user's column, before pagination. */
   visibleRows: () => T[]
+}
+
+/**
+ * Rows the user may tick for a bulk action. The box rides in the key column's
+ * cell (so pinning and the column chooser are untouched) and leads the phone
+ * row card; ticking never opens the row.
+ */
+export interface TableSelection<T> {
+  rowId: (row: T) => string
+  selected: ReadonlySet<string>
+  onChange: (next: Set<string>) => void
+  /** Rows that cannot take part get no box */
+  canSelect?: (row: T) => boolean
+  /** The box's accessible name, e.g. «Выбрать EHS 48703» */
+  label: (row: T) => string
+}
+
+/** Keeps a tick from also clicking (or Enter-opening) the row around it. */
+const stop = {
+  onClick: (e: { stopPropagation: () => void }) => e.stopPropagation(),
+  onKeyDown: (e: { stopPropagation: () => void }) => e.stopPropagation(),
 }
 
 export interface DataTableProps<T> {
@@ -74,6 +96,8 @@ export interface DataTableProps<T> {
   hiddenByDefault?: string[]
   /** For exports: «what I see» is the search and sort applied here, not the page's data. */
   handle?: Ref<DataTableHandle<T>>
+  /** Tick boxes for a bulk action; see TableSelection. */
+  selection?: TableSelection<T>
 }
 
 const PAGE_SIZES = [10, 20, 50]
@@ -92,6 +116,7 @@ export function DataTable<T>({
   tools = false,
   hiddenByDefault = [],
   handle,
+  selection,
 }: DataTableProps<T>) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() =>
@@ -120,6 +145,41 @@ export function DataTable<T>({
   const pageCount = table.getPageCount() || 1
   const showPagination = total > 0 && (!embedded || total > size)
   const overflow = useOverflowX()
+
+  // «All on this page»: the header box ticks or clears every selectable row in view.
+  const pageIds = selection
+    ? rows
+        .filter((r) => selection.canSelect?.(r.original) ?? true)
+        .map((r) => selection.rowId(r.original))
+    : []
+  const pickedOnPage = pageIds.filter((id) => selection?.selected.has(id)).length
+  const toggle = (id: string, on: boolean) => {
+    if (!selection) return
+    const next = new Set(selection.selected)
+    if (on) next.add(id)
+    else next.delete(id)
+    selection.onChange(next)
+  }
+  const togglePage = (on: boolean) => {
+    if (!selection) return
+    const next = new Set(selection.selected)
+    for (const id of pageIds) {
+      if (on) next.add(id)
+      else next.delete(id)
+    }
+    selection.onChange(next)
+  }
+  const rowBox = (row: T) =>
+    selection && (selection.canSelect?.(row) ?? true) ? (
+      <span {...stop} className="-my-2 -ml-2 inline-flex p-2">
+        <Checkbox
+          label={selection.label(row)}
+          hideLabel
+          checked={selection.selected.has(selection.rowId(row))}
+          onChange={(e) => toggle(selection.rowId(row), e.target.checked)}
+        />
+      </span>
+    ) : null
 
   // With filters on screen an empty result keeps the table, so the filters stay reachable.
   if (!data.length && !toolbar && !search) return <EmptyState title={emptyTitle} inset={embedded} />
@@ -174,7 +234,12 @@ export function DataTable<T>({
         </div>
       )}
 
-      <RowCards rows={rows} onRowClick={onRowClick} className={embedded ? 'px-0' : 'px-5'} />
+      <RowCards
+        rows={rows}
+        onRowClick={onRowClick}
+        box={selection && rowBox}
+        className={embedded ? 'px-0' : 'px-5'}
+      />
       <div className="relative max-sm:hidden">
         <div ref={overflow.ref} className="overflow-x-auto">
           <table className="w-full text-sm">
@@ -203,6 +268,17 @@ export function DataTable<T>({
                         )}
                       >
                         <span className="inline-flex items-center gap-1">
+                          {selection && i === 0 && pageIds.length > 0 && (
+                            <span {...stop} className="-my-2 mr-1.5 -ml-2 inline-flex p-2">
+                              <Checkbox
+                                label="Выбрать все на странице"
+                                hideLabel
+                                checked={pickedOnPage === pageIds.length}
+                                indeterminate={pickedOnPage > 0 && pickedOnPage < pageIds.length}
+                                onChange={(e) => togglePage(e.target.checked)}
+                              />
+                            </span>
+                          )}
                           {flexRender(h.column.columnDef.header, h.getContext())}
                           {canSort &&
                             (sorted === 'asc' ? (
@@ -220,30 +296,47 @@ export function DataTable<T>({
               ))}
             </thead>
             <tbody>
-              {rows.map((row) => (
-                <tr
-                  key={row.id}
-                  onClick={() => onRowClick?.(row.original)}
-                  className={cn(
-                    'group border-b border-line last:border-b-0',
-                    onRowClick &&
-                      'cursor-pointer transition-colors duration-100 hover:bg-row-hover',
-                  )}
-                >
-                  {row.getVisibleCells().map((cell, i) => (
-                    <td
-                      key={cell.id}
-                      className={cn(
-                        'py-3 whitespace-nowrap tabular',
-                        cellX,
-                        sticky && i === 0 && 'sticky left-0 z-10 bg-sheet group-hover:bg-row-hover',
-                      )}
-                    >
-                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    </td>
-                  ))}
-                </tr>
-              ))}
+              {rows.map((row) => {
+                const ticked = !!selection?.selected.has(selection.rowId(row.original))
+                return (
+                  <tr
+                    key={row.id}
+                    onClick={() => onRowClick?.(row.original)}
+                    aria-selected={selection ? ticked : undefined}
+                    className={cn(
+                      'group border-b border-line last:border-b-0',
+                      onRowClick &&
+                        'cursor-pointer transition-colors duration-100 hover:bg-row-hover',
+                      ticked && 'bg-row-hover',
+                    )}
+                  >
+                    {row.getVisibleCells().map((cell, i) => (
+                      <td
+                        key={cell.id}
+                        className={cn(
+                          'py-3 whitespace-nowrap tabular',
+                          cellX,
+                          sticky &&
+                            i === 0 &&
+                            cn(
+                              'sticky left-0 z-10 bg-sheet group-hover:bg-row-hover',
+                              ticked && 'bg-row-hover',
+                            ),
+                        )}
+                      >
+                        {i === 0 && selection ? (
+                          <span className="inline-flex items-center gap-1.5">
+                            {rowBox(row.original)}
+                            {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                          </span>
+                        ) : (
+                          flexRender(cell.column.columnDef.cell, cell.getContext())
+                        )}
+                      </td>
+                    ))}
+                  </tr>
+                )
+              })}
               {!rows.length && (
                 <tr>
                   <td colSpan={columns.length} className="px-5 py-10 text-center text-ink-muted">
@@ -443,10 +536,13 @@ const headerText = (c: AnyCell) =>
 function RowCards<T>({
   rows,
   onRowClick,
+  box,
   className,
 }: {
   rows: { id: string; original: T; getVisibleCells: () => Cell<T, unknown>[] }[]
   onRowClick?: (row: T) => void
+  /** The tick box that leads the card when the table selects */
+  box?: (row: T) => ReactNode
   className: string
 }) {
   if (!rows.length)
@@ -478,7 +574,10 @@ function RowCards<T>({
             )}
           >
             <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0 text-sm">{title && renderCell(title)}</div>
+              <div className="flex min-w-0 items-start gap-1.5 text-sm">
+                {box?.(row.original)}
+                {title && renderCell(title)}
+              </div>
               {aside.length > 0 && (
                 <div className="flex shrink-0 items-center gap-2 text-label">
                   {aside.map((c) => (

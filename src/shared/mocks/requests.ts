@@ -1,9 +1,27 @@
 import { REQUEST_KIND_LABEL } from '@/entities/request'
 import { requestProblem } from '@/entities/request/rules'
-import type { ServiceRequest } from '@/entities/types'
+import type { Product, RequestPosition, ServiceRequest } from '@/entities/types'
+import { LIVE_PRODUCTS } from '@/shared/api/live'
 import type { NewRequest } from '@/shared/api/queries'
 import { claimAttachments, storedFile } from './attachments'
 import { filesChange, products, record, requests } from './data'
+
+/**
+ * Hybrid mode: the hoses come from the BFF, which does not take requests yet,
+ * so the mock cannot look them up — it takes a replacement line as the form
+ * sent it.
+ */
+const asSent = (line: RequestPosition | undefined): Product | undefined =>
+  line?.productId
+    ? ({
+        id: line.productId,
+        serialNumber: line.productId,
+        lifecycle: 'in_operation',
+        catalogNumberId: line.catalogNumberId,
+        catalogNumber: line.catalogNumber,
+        equipmentId: line.equipmentId,
+      } as Product)
+    : undefined
 
 /**
  * Takes a request the way the BFF will: checked by the shared rule, a
@@ -17,7 +35,9 @@ export function createRequest(raw: NewRequest): ServiceRequest | { error: string
     const s = storedFile(id)
     return s && !s.owner ? [s.meta] : []
   })
-  const productOf = (id: string) => products.find((p) => p.id === id)
+  const productOf = (id: string) =>
+    products.find((p) => p.id === id) ??
+    (LIVE_PRODUCTS ? asSent(body.positions.find((l) => l.productId === id)) : undefined)
   const problem = requestProblem(body, { productOf, fileNames: drafts.map((f) => f.fileName) })
   if (problem) return { error: problem }
 

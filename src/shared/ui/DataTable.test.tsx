@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { fireEvent, render, screen, within } from '@testing-library/react'
 import type { ColumnDef } from '@tanstack/react-table'
 import { DataTable } from './DataTable'
@@ -92,5 +93,70 @@ describe('DescriptionList', () => {
     expect(screen.getByText('Гаражный №').tagName).toBe('DT')
     expect(screen.getByText('НТ04').tagName).toBe('DD')
     expect(screen.getByText('Инвентарный №').nextElementSibling?.textContent).toBe('—')
+  })
+})
+
+describe('DataTable selection', () => {
+  interface Hose {
+    id: string
+    ehs: string
+    made: boolean
+  }
+  const hoses: Hose[] = Array.from({ length: 12 }, (_, i) => ({
+    id: `h${i + 1}`,
+    ehs: String(48700 + i),
+    made: i !== 2,
+  }))
+  const hoseColumns: ColumnDef<Hose, unknown>[] = [{ accessorKey: 'ehs', header: 'EHS №' }]
+
+  function Picking({ onRowClick = () => {} }: { onRowClick?: (h: Hose) => void }) {
+    const [picked, setPicked] = useState<Set<string>>(() => new Set())
+    return (
+      <>
+        <output data-testid="picked">{[...picked].sort().join(',')}</output>
+        <DataTable
+          data={hoses}
+          columns={hoseColumns}
+          pageSize={5}
+          onRowClick={onRowClick}
+          selection={{
+            rowId: (h) => h.id,
+            selected: picked,
+            onChange: setPicked,
+            canSelect: (h) => h.made,
+            label: (h) => `Выбрать EHS ${h.ehs}`,
+          }}
+        />
+      </>
+    )
+  }
+  const picked = () => screen.getByTestId('picked').textContent
+
+  it('ticks a row without opening it', () => {
+    const onRowClick = vi.fn()
+    render(<Picking onRowClick={onRowClick} />)
+    // Phones and desktop both render the row; the first box is the phone card's.
+    fireEvent.click(screen.getAllByLabelText('Выбрать EHS 48701')[0])
+    expect(picked()).toBe('h2')
+    expect(onRowClick).not.toHaveBeenCalled()
+  })
+
+  it('ticks every selectable row on the page from the header, and clears them again', () => {
+    render(<Picking />)
+    const all = screen.getByLabelText('Выбрать все на странице')
+    fireEvent.click(all)
+    // Five rows on the page, one of them still being made: four ticked.
+    expect(picked()).toBe('h1,h2,h4,h5')
+    fireEvent.click(all)
+    expect(picked()).toBe('')
+  })
+
+  it('offers no box for a row that cannot be selected, and marks a partial page', () => {
+    render(<Picking />)
+    expect(screen.queryAllByLabelText('Выбрать EHS 48702')).toHaveLength(0)
+    fireEvent.click(screen.getAllByLabelText('Выбрать EHS 48700')[0])
+    expect(
+      (screen.getByLabelText('Выбрать все на странице') as HTMLInputElement).indeterminate,
+    ).toBe(true)
   })
 })

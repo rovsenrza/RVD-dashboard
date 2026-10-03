@@ -3,7 +3,12 @@ export { Button } from './Button'
 export { Card } from './Card'
 export { Checkbox } from './Checkbox'
 export { Chip } from './Chip'
-export { DataTable, type DataTableHandle, type DataTableProps } from './DataTable'
+export {
+  DataTable,
+  type DataTableHandle,
+  type DataTableProps,
+  type TableSelection,
+} from './DataTable'
 export { DatePicker } from './DatePicker'
 export { DescriptionList } from './DescriptionList'
 export { Dialog } from './Dialog'
@@ -15,6 +20,7 @@ export { Input, Kbd, SearchInput } from './Input'
 export { KpiCard, KpiStrip } from './KpiCard'
 export { Menu, type MenuItem } from './Menu'
 export { SegmentedControl, type SegmentedOption } from './SegmentedControl'
+export { SelectionBar } from './SelectionBar'
 export { SimpleTable, type SimpleColumn } from './SimpleTable'
 export { Select, type SelectOption } from './Select'
 export { ToastProvider, useToast } from './Toast'

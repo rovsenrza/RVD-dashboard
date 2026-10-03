@@ -1,9 +1,10 @@
 import { useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { ColumnDef } from '@tanstack/react-table'
-import { SlidersHorizontal } from 'lucide-react'
+import { RefreshCw, SlidersHorizontal } from 'lucide-react'
 import type { Product, ProductLifecycle, ProductStatus } from '@/entities/types'
 import { LIFECYCLE_LABEL, STATUS_LABEL } from '@/entities/product'
+import { MAX_REQUEST_POSITIONS } from '@/entities/request/rules'
 import { useSession } from '@/app/session'
 import { useCatalogNumbers, useEquipment, useProducts } from '@/shared/api/queries'
 import {
@@ -15,10 +16,12 @@ import {
   type DataTableHandle,
   QueryState,
   SearchInput,
+  SelectionBar,
   Tabs,
   TableSkeleton,
 } from '@/shared/ui'
 import type { ExportColumn } from '@/shared/lib/export'
+import { RequestForm } from '@/features/requests/components/RequestForm'
 import { productColumns } from './columns'
 import { ProductFilters } from './components/ProductFilters'
 import { FILTER_KEYS, type FilterKey, type FilterValues } from './filters'
@@ -50,6 +53,9 @@ export function ProductsPage() {
   const navigate = useNavigate()
   const { branch } = useSession()
   const table = useRef<DataTableHandle<Product>>(null)
+  // Hoses ticked for a replacement request; kept across tabs, pages and filters.
+  const [picked, setPicked] = useState<Set<string>>(() => new Set())
+  const [requesting, setRequesting] = useState(false)
 
   const active = useMemo(() => {
     const values: FilterValues = {}
@@ -73,6 +79,11 @@ export function ProductsPage() {
 
   const archived = useMemo(() => filtered.filter((p) => p.lifecycle === 'written_off'), [filtered])
   const rows = useMemo(() => filtered.filter((p) => p.lifecycle !== 'written_off'), [filtered])
+  const chosen = useMemo(
+    () => (query.data ?? []).filter((p) => picked.has(p.id)),
+    [query.data, picked],
+  )
+  const tooMany = chosen.length > MAX_REQUEST_POSITIONS
 
   const chipLabel = (key: FilterKey, value: string) => {
     if (key === 'status') return `Состояние: ${STATUS_LABEL[value as ProductStatus]}`
@@ -141,6 +152,14 @@ export function ProductsPage() {
             stickyFirstColumn
             tools
             hiddenByDefault={['clientNumber', 'manufacturer']}
+            selection={{
+              rowId: (p) => p.id,
+              selected: picked,
+              onChange: setPicked,
+              // A hose still being made has nothing to replace yet.
+              canSelect: (p) => p.lifecycle !== 'manufacturing',
+              label: (p) => `Выбрать EHS ${p.serialNumber}`,
+            }}
             emptyTitle={tab === 'archive' ? 'В архиве пока ничего нет' : 'Изделий пока нет'}
             toolbar={
               <div className="flex flex-wrap items-center gap-4">
@@ -176,6 +195,25 @@ export function ProductsPage() {
           />
         )}
       </QueryState>
+      {chosen.length > 0 && (
+        <SelectionBar
+          label="Выбранные изделия"
+          count={chosen.length}
+          onClear={() => setPicked(new Set())}
+          note={tooMany ? `В заявке до ${MAX_REQUEST_POSITIONS} изделий` : undefined}
+        >
+          <Button size="sm" icon={RefreshCw} disabled={tooMany} onClick={() => setRequesting(true)}>
+            Заявка на замену
+          </Button>
+        </SelectionBar>
+      )}
+      {requesting && (
+        <RequestForm
+          preset={{ kind: 'replace', products: chosen }}
+          onClose={() => setRequesting(false)}
+          onCreated={() => setPicked(new Set())}
+        />
+      )}
     </div>
   )
 }

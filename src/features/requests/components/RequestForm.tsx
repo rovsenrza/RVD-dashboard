@@ -71,7 +71,16 @@ export interface RequestPreset {
  * catalogue numbers typed, suggested or pasted, or none at all when an Excel
  * file carries them. Ten lines at most.
  */
-export function RequestForm({ preset, onClose }: { preset?: RequestPreset; onClose: () => void }) {
+export function RequestForm({
+  preset,
+  onClose,
+  onCreated,
+}: {
+  preset?: RequestPreset
+  onClose: () => void
+  /** After the server took the request, before the form closes */
+  onCreated?: () => void
+}) {
   const catalog = useCatalogNumbers()
   const equipment = useEquipment()
   const stock = useProducts()
@@ -170,6 +179,7 @@ export function RequestForm({ preset, onClose }: { preset?: RequestPreset; onClo
       {
         onSuccess: (created) => {
           toast(`Заявка ${created.number} создана`)
+          onCreated?.()
           onClose()
         },
         onError: (err) =>
