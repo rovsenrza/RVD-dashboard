@@ -11,7 +11,8 @@
     "migrate": "tsx --env-file=../../.env src/db/cli.ts",
     "sync": "tsx --env-file=../../.env src/sync/cli.ts",
     "fake-1c": "tsx src/onec/fake-orders.ts",
-    "user:add": "tsx --env-file=../../.env src/auth/cli.ts"
+    "user:add": "tsx --env-file=../../.env src/auth/cli.ts",
+    "perf": "tsx --env-file=../../.env src/perf/bench.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.3.0",

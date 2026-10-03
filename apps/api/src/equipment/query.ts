@@ -12,9 +12,11 @@ export const ruleParams = (clock: Clock) => [
 
 /**
  * What sits on each machine for the given day and rules — the same status rule
- * as the registry; written-off hoses no longer count.
+ * as the registry; written-off hoses no longer count. `only` narrows the hoses
+ * counted to the ones asked about (a client's, one machine's): counting the
+ * whole cache for every list grew with every client added (Д27).
  */
-const ON_MACHINE = `on_machine as (
+const onMachine = (only: string) => `on_machine as (
   select equipment_id,
     count(*)::int as hose_count,
     count(*) filter (where status = 'ok')::int as ok,
@@ -24,7 +26,7 @@ const ON_MACHINE = `on_machine as (
     to_char(min(planned_at), 'YYYY-MM-DD') as next_planned
   from (
     select equipment_id, ${STATUS_SQL} as status, ${PLANNED_AT} as planned_at
-    from products where equipment_id is not null and lifecycle <> 'written_off'
+    from products where equipment_id is not null and lifecycle <> 'written_off' and ${only}
   ) p
   group by equipment_id
 )`
@@ -39,7 +41,7 @@ const MACHINE = `e.data || jsonb_build_object(
 /** «Моя техника»: the client's machines with their hoses counted for today. */
 export async function listEquipment(db: Db, clock: Clock, client?: string): Promise<Equipment[]> {
   const { rows } = await db.query<{ machine: Equipment }>(
-    `with ${ON_MACHINE}
+    `with ${onMachine('($5::text is null or client_id = $5)')}
      select ${MACHINE} as machine
      from equipment e left join on_machine m on m.equipment_id = e.id
      where ($5::text is null or e.client_id = $5)
@@ -56,7 +58,7 @@ export async function getEquipment(
   client?: string,
 ): Promise<Equipment | null> {
   const { rows } = await db.query<{ machine: Equipment }>(
-    `with ${ON_MACHINE}
+    `with ${onMachine('equipment_id = $5')}
      select ${MACHINE} as machine
      from equipment e left join on_machine m on m.equipment_id = e.id
      where e.id = $5 and ($6::text is null or e.client_id = $6)`,
