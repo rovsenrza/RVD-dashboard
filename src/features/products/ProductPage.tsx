@@ -83,7 +83,14 @@ export function ProductPage() {
           )}
           {contact && <ContactDialog preset={contact} onClose={() => setContact(null)} />}
           <div className="grid items-start gap-5 lg:grid-cols-2">
-            <ProductLifetime productId={p.id} />
+            <ProductLifetime
+              productId={p.id}
+              onAskDate={
+                p.lifecycle === 'written_off'
+                  ? undefined
+                  : () => setContact({ topic: 'install_date', product: p })
+              }
+            />
             <div className="grid gap-5">
               <ProductDetails
                 product={p}

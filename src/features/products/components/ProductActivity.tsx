@@ -1,9 +1,6 @@
 import { useSearchParams } from 'react-router-dom'
-import {
-  useProductComments,
-  useProductDocuments,
-  useProductReplacements,
-} from '@/shared/api/queries'
+import { historySteps } from '@/entities/product'
+import { useProductComments, useProductHistory, useProductReplacements } from '@/shared/api/queries'
 import { Card, Tabs } from '@/shared/ui'
 import { ProductReplacements } from '@/features/replacements/components/ProductReplacements'
 import { ProductComments } from './ProductComments'
@@ -20,7 +17,7 @@ type Tab = (typeof TABS)[number]
 export function ProductActivity({ productId }: { productId: string }) {
   const [params, setParams] = useSearchParams()
   const tab: Tab = TABS.find((t) => t === params.get('tab')) ?? 'lifecycle'
-  const docs = useProductDocuments(productId)
+  const history = useProductHistory(productId)
   const swaps = useProductReplacements(productId)
   const comments = useProductComments(productId)
 
@@ -34,7 +31,11 @@ export function ProductActivity({ productId }: { productId: string }) {
     <Card padded={false}>
       <Tabs
         items={[
-          { key: 'lifecycle', label: 'История ЖЦ', count: docs.data?.length },
+          {
+            key: 'lifecycle',
+            label: 'История ЖЦ',
+            count: history.data && historySteps(history.data).length,
+          },
           { key: 'replacements', label: 'Замены', count: swaps.data?.length },
           { key: 'comments', label: 'Комментарии', count: comments.data?.length },
         ]}

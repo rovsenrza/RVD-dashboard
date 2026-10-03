@@ -32,6 +32,10 @@ const LIFECYCLE: Record<string, ProductLifecycle> = {
 export const isKnownStatus = (status: string | null | undefined) =>
   Object.hasOwn(LIFECYCLE, cleanText(status))
 
+/** The stage a register status means, or null for one the cabinet does not know. */
+export const stageOf = (status: string | null | undefined): ProductLifecycle | null =>
+  isKnownStatus(status) ? LIFECYCLE[cleanText(status)] : null
+
 export interface ProductSources {
   items: RawItem[]
   statuses: RawStatusRecord[]
@@ -51,7 +55,7 @@ export interface ProductOptions {
  * Each item's active status records, oldest first. Records of one moment keep
  * the order their document wrote them in (its line number).
  */
-function statusesByItem(records: RawStatusRecord[]): Map<string, RawStatusRecord[]> {
+export function statusesByItem(records: RawStatusRecord[]): Map<string, RawStatusRecord[]> {
   const grouped = new Map<string, RawStatusRecord[]>()
   for (const r of records) {
     if (!r.Active) continue

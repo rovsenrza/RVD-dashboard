@@ -50,12 +50,21 @@ export interface RawStatusRecord {
 /**
  * «Выпуск», read only for its machine: the register keeps no garage number,
  * so a hose sits on the machine named by the document that recorded its
- * status. Its own status, date and branch are not used (the branch is not
- * even filled in the working base).
+ * status; the history names it by number. Its own status, date and branch are
+ * not used (the branch is not even filled in the working base).
  */
 export interface RawRelease {
   Ref_Key: string
+  /** Zero-padded: "000000123" */
+  Number: string
   ГаражныйНомер_Key: string
+}
+
+/** «Заказ клиента», read for its number: before «Выпуск» took over, orders set statuses too. */
+export interface RawOrder {
+  Ref_Key: string
+  /** "СВЦБ-002157" */
+  Number: string
 }
 
 export interface RawCatalogNumber {

@@ -40,9 +40,10 @@ export const statusRecord = (over: Partial<RawStatusRecord> = {}): RawStatusReco
   ...over,
 })
 
-/** «Выпуск» as the adapters read it: only the machine it names. */
+/** «Выпуск» as the adapters read it: its number and the machine it names. */
 export const release = (over: Partial<RawRelease> = {}): RawRelease => ({
   Ref_Key: 'doc-1',
+  Number: '000000001',
   ГаражныйНомер_Key: ZERO_GUID,
   ...over,
 })

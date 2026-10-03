@@ -24,7 +24,7 @@ import {
   modelStats,
   products,
   record,
-  releaseDocuments,
+  lifecycleRecords,
   replacements,
   requests,
   settings,
@@ -145,9 +145,10 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 })
   }),
 
-  http.get(api('/products/:id/documents'), ({ params }) =>
-    HttpResponse.json(releaseDocuments.filter((d) => d.productId === params.id)),
-  ),
+  http.get(api('/products/:id/history'), ({ params }) => {
+    if (LIVE_PRODUCTS) return passthrough()
+    return HttpResponse.json(lifecycleRecords.filter((r) => r.productId === params.id))
+  }),
   http.get(api('/equipment'), ({ request }) =>
     HttpResponse.json(inBranch(equipment, branchOf(request))),
   ),

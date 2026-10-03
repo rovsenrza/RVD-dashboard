@@ -72,7 +72,27 @@ describe.skipIf(!hasDb)('products in the cache', () => {
 
   beforeAll(async () => {
     ;({ db, drop } = await isolatedDb())
-    await storeProducts(db, rows, 12)
+    await storeProducts(
+      db,
+      rows,
+      12,
+      new Map([
+        [
+          'p1',
+          [
+            {
+              id: 'p1:0',
+              productId: 'p1',
+              at: '2026-08-18T10:00:00',
+              lifecycle: 'shipped',
+              status: 'Отгружен',
+              document: { kind: 'release', number: '124' },
+              author: null,
+            },
+          ],
+        ],
+      ]),
+    )
     app = buildApp({
       logLevel: 'silent',
       db,
@@ -140,6 +160,14 @@ describe.skipIf(!hasDb)('products in the cache', () => {
     expect(life.phases.at(-1)).toEqual({ status: 'replace', from: '2027-08-01', to: null })
     expect(await get('/products/p4/lifetime')).toBeNull()
     expect((await app.inject('/products/nope/lifetime')).statusCode).toBe(404)
+  })
+
+  it('serves the register history of a hose, an empty one, and 404 for an unknown hose', async () => {
+    expect(await get('/products/p1/history')).toMatchObject([
+      { status: 'Отгружен', document: { kind: 'release', number: '124' } },
+    ])
+    expect(await get('/products/p2/history')).toEqual([])
+    expect((await app.inject('/products/nope/history')).statusCode).toBe(404)
   })
 
   it('records the sync', async () => {

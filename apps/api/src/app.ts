@@ -48,6 +48,18 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
       return reply.type('application/json').send(JSON.stringify(productLifetime(product, c.rules)))
     })
 
+    // «История ЖЦ»: the hose's lines in 1С's statuses register, as the last sync stored them.
+    app.get<{ Params: { id: string } }>('/products/:id/history', async (req, reply) => {
+      const { rows } = await db.query<{ records: unknown[] | null }>(
+        `select h.records from products p
+           left join product_history h on h.product_id = p.id
+          where p.id = $1`,
+        [req.params.id],
+      )
+      if (!rows.length) return reply.code(404).send({ error: 'Not found' })
+      return rows[0].records ?? []
+    })
+
     app.get(
       '/sync/status',
       async () =>

@@ -1,4 +1,4 @@
-import type { Product } from '@rvd/contracts'
+import type { LifecycleRecord, Product } from '@rvd/contracts'
 import type { Db } from '../db/pool.ts'
 
 /** What the cache filters by but the contract does not carry: who owns the item. */
@@ -16,18 +16,29 @@ const searchText = (p: Product) =>
     .toLowerCase()
 
 /**
- * Replaces the whole products table in one transaction, so a reader never sees
- * a half-synced cache. Incremental sync (Д26) will replace this with a diff.
+ * Replaces the whole products table and the hoses' histories in one
+ * transaction, so a reader never sees a half-synced cache or a hose whose
+ * history disagrees with it. Incremental sync (Д26) will replace this with a diff.
  */
 export async function storeProducts(
   db: Db,
   rows: StoredProduct[],
   durationMs: number,
+  history: ReadonlyMap<string, LifecycleRecord[]> = new Map(),
 ): Promise<void> {
   const client = await db.connect()
   try {
     await client.query('begin')
     await client.query('delete from products')
+    await client.query('delete from product_history')
+    const histories = [...history].map(([product_id, records]) => ({ product_id, records }))
+    for (let i = 0; i < histories.length; i += CHUNK) {
+      await client.query(
+        `insert into product_history
+           select * from jsonb_to_recordset($1::jsonb) as r(product_id text, records jsonb)`,
+        [JSON.stringify(histories.slice(i, i + CHUNK))],
+      )
+    }
     for (let i = 0; i < rows.length; i += CHUNK) {
       const chunk = rows.slice(i, i + CHUNK).map(({ product: p, clientId }) => ({
         id: p.id,

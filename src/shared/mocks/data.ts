@@ -15,7 +15,7 @@ import type {
   Product,
   ProductLifecycle,
   ProductStatus,
-  ReleaseDocument,
+  LifecycleRecord,
   Replacement,
   ServiceRequest,
 } from '@/entities/types'
@@ -291,8 +291,19 @@ const LIFECYCLE_CHAIN: ProductLifecycle[] = [
   'written_off',
 ]
 
+// The status names 1С's register shows for each stage.
+const STATUS_TEXT: Record<Product['lifecycle'], string> = {
+  manufacturing: 'Изготавливается',
+  in_stock: 'На складе',
+  shipped: 'Отгружен',
+  in_operation: 'В эксплуатации',
+  needs_replacement: 'Требует замены',
+  written_off: 'Списан',
+}
+
 let documentNumber = 0
-export const releaseDocuments: ReleaseDocument[] = products.flatMap((p) => {
+/** Each hose's lines in the statuses register, as the BFF serves them from 1С. */
+export const lifecycleRecords: LifecycleRecord[] = products.flatMap((p) => {
   const reached = LIFECYCLE_CHAIN.indexOf(p.lifecycle)
   const start = new Date(p.manufacturedAt ?? p.shippedAt ?? Date.now())
   // A hose retired on a planned swap never passed through «требует замены».
@@ -300,13 +311,13 @@ export const releaseDocuments: ReleaseDocument[] = products.flatMap((p) => {
     (step) => step !== 'needs_replacement' || p.status === 'replace',
   )
   return passed.map((lifecycle, step) => ({
-    id: `doc-${p.id}-${step}`,
-    number: `ВЫП-${String(++documentNumber).padStart(6, '0')}`,
-    date: iso(addDays(start, step * 5)),
+    id: `${p.id}:${step}`,
     productId: p.id,
+    at: `${iso(addDays(start, step * 5))}T09:00:00`,
     lifecycle,
+    status: STATUS_TEXT[lifecycle],
+    document: { kind: 'release' as const, number: String(++documentNumber) },
     author: AUTHORS[step % AUTHORS.length],
-    requestId: null,
   }))
 })
 

@@ -4,7 +4,7 @@ import type { LifetimePhase, ProductLifetime as Lifetime, ProductStatus } from '
 import { STATUS_COLOR } from '@/entities/product'
 import { useProductLifetime } from '@/shared/api/queries'
 import { cn, formatDate } from '@/shared/lib/utils'
-import { Card, EmptyState, QueryState, Skeleton, Tooltip } from '@/shared/ui'
+import { Button, Card, EmptyState, QueryState, Skeleton, Tooltip } from '@/shared/ui'
 
 /** Phase names as a life stage, not as the badge on the hose today. */
 const PHASE_LABEL: Record<ProductStatus, string> = {
@@ -31,20 +31,27 @@ const range = (p: LifetimePhase) =>
  * marker is today, or the day it came off the machine. Colour is never alone:
  * the legend names each phase with its dates and marks the current one.
  */
-export function ProductLifetime({ productId }: { productId: string }) {
+/** `onAskDate`: the installation date is the supplier's — the client asks the specialist to correct it. */
+export function ProductLifetime({
+  productId,
+  onAskDate,
+}: {
+  productId: string
+  onAskDate?: () => void
+}) {
   const query = useProductLifetime(productId)
   return (
     <Card title="Срок службы" className="lg:col-span-2">
       <QueryState query={query} skeleton={<Skeleton className="h-28 w-full" />}>
         {(life) =>
           life ? (
-            <Timeline life={life} />
+            <Timeline life={life} onAskDate={onAskDate} />
           ) : (
             <EmptyState
               inset
               icon={CalendarClock}
-              title="Изделие не установлено"
-              description="Срок службы начнётся с даты установки — её можно указать в «Изменить»."
+              title="Срок службы не считается"
+              description="Для него нужны дата отгрузки или установки и срок эксплуатации — их ведёт поставщик в 1С."
             />
           )
         }
@@ -53,7 +60,7 @@ export function ProductLifetime({ productId }: { productId: string }) {
   )
 }
 
-function Timeline({ life }: { life: Lifetime }) {
+function Timeline({ life, onAskDate }: { life: Lifetime; onAskDate?: () => void }) {
   const now = life.endedAt ?? today()
   const lifeDays = days(life.startedAt, life.plannedAt)
   // Room after the planned date for the «пора менять» stretch, or up to today when overdue.
@@ -151,8 +158,17 @@ function Timeline({ life }: { life: Lifetime }) {
 
       {life.basis === 'shipped' && (
         <p className="mt-4 text-label text-ink-muted">
-          Дата установки не указана — срок считается от отгрузки {formatDate(life.startedAt)}.
-          Укажите установку в «Изменить», и срок пересчитается.
+          Дата установки не указана — срок считается от отгрузки {formatDate(life.startedAt)}. Если
+          изделие поставили в другой день, её исправит поставщик
+          {onAskDate && (
+            <>
+              :{' '}
+              <Button variant="link" size="inline" onClick={onAskDate}>
+                попросить исправить
+              </Button>
+            </>
+          )}
+          .
         </p>
       )}
     </div>

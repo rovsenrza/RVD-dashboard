@@ -132,18 +132,24 @@ export interface Product {
 }
 
 /**
- * Документ выпуска — каждая смена статуса изделия в 1С оформляется
- * отдельным документом; из них складывается история ЖЦ на карточке.
+ * One line of a hose's history as 1С's statuses register keeps it — the
+ * source of truth for its lifecycle (the 1С developer, 2026-10-03: build
+ * everything from the register, not from the documents). A repair of the hose
+ * arrives here too, as a status the cabinet may not know yet.
  */
-export interface ReleaseDocument {
+export interface LifecycleRecord {
   id: string
-  number: string
-  date: string
   productId: string
-  /** Статус, который документ присвоил изделию */
-  lifecycle: ProductLifecycle
-  author: string
-  requestId: string | null
+  /** When the status took effect: ISO date-time, as 1С keeps it */
+  at: string
+  /** The cabinet's stage; null for a status it does not know (a repair line, say) */
+  lifecycle: ProductLifecycle | null
+  /** The status in words, as 1С names it: «На оформлении», «Отгружен», «Создано» */
+  status: string
+  /** The document that recorded it, with its number when 1С gives one */
+  document: { kind: 'release' | 'order' | 'other'; number: string | null }
+  /** Who recorded it, when known; the register does not say */
+  author: string | null
 }
 
 /** A journal row: ids for navigation plus the numbers a person reads them by. */

@@ -17,7 +17,7 @@ import type {
   DashboardSummary,
   Equipment,
   Product,
-  ReleaseDocument,
+  LifecycleRecord,
   Replacement,
   ServiceRequest,
   SupportMessage,
@@ -39,7 +39,7 @@ export const keys = {
   dashboard: (branch: string | null) => ['dashboard', branch] as const,
   products: (branch: string | null) => ['products', branch] as const,
   product: (id: string) => ['products', id] as const,
-  productDocuments: (id: string) => ['products', id, 'documents'] as const,
+  productHistory: (id: string) => ['products', id, 'history'] as const,
   productAttachments: (id: string) => ['products', id, 'attachments'] as const,
   productLifetime: (id: string) => ['products', id, 'lifetime'] as const,
   productDocumentation: (id: string) => ['products', id, 'documentation'] as const,
@@ -87,10 +87,11 @@ export const useProducts = () => {
 export const useProduct = (id: string) =>
   useQuery({ queryKey: keys.product(id), queryFn: () => api.get<Product>(`/products/${id}`) })
 
-export const useProductDocuments = (id: string) =>
+/** «История ЖЦ»: the hose's lines in 1С's statuses register, oldest first. */
+export const useProductHistory = (id: string) =>
   useQuery({
-    queryKey: keys.productDocuments(id),
-    queryFn: () => api.get<ReleaseDocument[]>(`/products/${id}/documents`),
+    queryKey: keys.productHistory(id),
+    queryFn: () => api.get<LifecycleRecord[]>(`/products/${id}/history`),
   })
 
 export const useEquipment = () => {
