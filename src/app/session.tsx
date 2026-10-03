@@ -149,13 +149,10 @@ function LiveSessionProvider({ children }: { children: ReactNode }) {
       if (alive) setState({ ready: true, me: null })
     }
     authToken.onExpired(out)
-    api
-      .post<SignedIn>('/auth/refresh', {})
-      .then((me) => {
-        authToken.set(me.accessToken)
-        if (alive) setState({ ready: true, me })
-      })
-      .catch(() => alive && setState({ ready: true, me: null }))
+    // Shared with any renewal in flight: a second mount (React's dev double run) asks no second time.
+    void authToken.restore().then((me) => {
+      if (alive) setState({ ready: true, me })
+    })
     return () => {
       alive = false
       authToken.onExpired(null)

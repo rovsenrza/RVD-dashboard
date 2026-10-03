@@ -78,13 +78,18 @@ type IdentityRow = Identity & { active: boolean; password_hash: string }
 const identityOf = ({ active: _a, password_hash: _p, ...identity }: IdentityRow): Identity =>
   identity
 
-async function openSession(db: Db, userId: string, now: Date): Promise<string> {
+async function openSession(
+  db: Pick<Db, 'query'>,
+  userId: string,
+  now: Date,
+): Promise<{ id: string; token: string }> {
+  const id = randomUUID()
   const token = randomBytes(32).toString('base64url')
   await db.query(
     `insert into sessions (id, user_id, token_hash, expires_at) values ($1, $2, $3, $4)`,
-    [randomUUID(), userId, hashToken(token), new Date(now.getTime() + REFRESH_DAYS * 86_400_000)],
+    [id, userId, hashToken(token), new Date(now.getTime() + REFRESH_DAYS * 86_400_000)],
   )
-  return token
+  return { id, token }
 }
 
 /** A matching active user gets an access token and a refresh token; anything else gets null. */
@@ -107,32 +112,68 @@ export async function login(
   return {
     identity,
     accessToken: issueAccess(identity, secret, now),
-    refreshToken: await openSession(db, row.userId, now),
+    refreshToken: (await openSession(db, row.userId, now)).token,
   }
 }
 
-/** Trades a live refresh token for a new pair; the old one is spent. */
+/** How long a just-replaced refresh token still answers a request that raced its rotation. */
+const RACE_SECONDS = 30
+
+/**
+ * Trades a live refresh token for a new pair; the old one is spent. The claim
+ * locks the session's row until its successor is stored, so of two requests
+ * with one token (two tabs restoring at once, a reload during a renewal) the
+ * first rotates it and the other waits, then gets an access token and no
+ * refresh token: the browser keeps the successor the first one set.
+ */
 export async function refresh(
   db: Db,
   secret: string,
   token: string,
   now = new Date(),
-): Promise<{ identity: Identity; accessToken: string; refreshToken: string } | null> {
-  const { rows } = await db.query<IdentityRow & { session_id: string }>(
-    `${IDENTITY.replace('from users u', ', s.id as session_id from sessions s join users u on u.id = s.user_id')}
-     where s.token_hash = $1 and s.revoked_at is null and s.expires_at > $2`,
-    [hashToken(token), now],
-  )
-  const row = rows[0]
-  if (!row || !row.active) return null
-  await db.query('update sessions set revoked_at = $2 where id = $1', [row.session_id, now])
-  const { session_id: _s, ...rest } = row
-  const identity = identityOf(rest)
-  return {
-    identity,
-    accessToken: issueAccess(identity, secret, now),
-    refreshToken: await openSession(db, row.userId, now),
+): Promise<{ identity: Identity; accessToken: string; refreshToken: string | null } | null> {
+  const hash = hashToken(token)
+  const client = await db.connect()
+  let userId: string | undefined
+  let refreshToken: string | null = null
+  try {
+    await client.query('begin')
+    const claimed = await client.query<{ id: string; user_id: string }>(
+      `update sessions s set revoked_at = $2
+        where s.token_hash = $1 and s.revoked_at is null and s.expires_at > $2
+          and exists (select 1 from users u where u.id = s.user_id and u.active)
+        returning s.id, s.user_id`,
+      [hash, now],
+    )
+    if (claimed.rows.length) {
+      const { id, user_id } = claimed.rows[0]
+      const successor = await openSession(client, user_id, now)
+      await client.query('update sessions set replaced_by = $2 where id = $1', [id, successor.id])
+      userId = user_id
+      refreshToken = successor.token
+    } else {
+      const raced = await client.query<{ user_id: string }>(
+        `select s.user_id from sessions s
+           join sessions next on next.id = s.replaced_by
+           join users u on u.id = s.user_id
+          where s.token_hash = $1 and s.revoked_at > $3 and u.active
+            and next.revoked_at is null and next.expires_at > $2`,
+        [hash, now, new Date(now.getTime() - RACE_SECONDS * 1000)],
+      )
+      userId = raced.rows[0]?.user_id
+    }
+    await client.query('commit')
+  } catch (error) {
+    await client.query('rollback')
+    throw error
+  } finally {
+    client.release()
   }
+  if (!userId) return null
+  const { rows } = await db.query<IdentityRow>(`${IDENTITY} where u.id = $1`, [userId])
+  if (!rows[0]) return null
+  const identity = identityOf(rows[0])
+  return { identity, accessToken: issueAccess(identity, secret, now), refreshToken }
 }
 
 export async function logout(db: Db, token: string, now = new Date()): Promise<void> {

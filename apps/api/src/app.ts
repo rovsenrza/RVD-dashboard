@@ -133,7 +133,8 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
         setRefresh(reply, null)
         return reply.code(401).send({ message: 'Требуется вход' })
       }
-      setRefresh(reply, result.refreshToken)
+      // A request that raced a rotation gets no new token: the cookie the winner set stays.
+      if (result.refreshToken) setRefresh(reply, result.refreshToken)
       return signedIn(result.identity, result.accessToken)
     })
 

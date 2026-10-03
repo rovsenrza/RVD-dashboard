@@ -1,3 +1,5 @@
+import type { SignedIn } from '@/entities/types'
+
 /**
  * Thin fetch wrapper. When 1C integration lands, only this file and the
  * adapters in ./adapters change — feature hooks keep the same signatures.
@@ -15,34 +17,38 @@ export class ApiError extends Error {
 /**
  * Sign-in (Д6): the short access token lives here, in memory only; the long
  * refresh token is an httpOnly cookie the browser sends to /auth/refresh.
- * When the access token runs out mid-session, one refresh renews it for every
- * waiting request — two at once would spend the same refresh token twice.
+ * One refresh at a time serves the whole page — restoring the session on load
+ * and renewing it mid-session alike: two at once would spend the same refresh
+ * token twice.
  */
 let accessToken: string | null = null
-let renewing: Promise<boolean> | null = null
+let renewing: Promise<SignedIn | null> | null = null
 let expired: (() => void) | null = null
+
+const renew = () =>
+  (renewing ??= fetch(`${BASE_URL}/auth/refresh`, { method: 'POST' })
+    .then(async (res) => {
+      if (!res.ok) return null
+      const me = (await res.json()) as SignedIn
+      accessToken = me.accessToken
+      return me
+    })
+    .catch(() => null)
+    .finally(() => {
+      renewing = null
+    }))
 
 export const authToken = {
   set: (token: string | null) => {
     accessToken = token || null
   },
+  /** The session the refresh cookie holds (a reload, a new tab), or null when there is none. */
+  restore: renew,
   /** Called when the session cannot be renewed: the cabinet goes back to the sign-in page. */
   onExpired: (callback: (() => void) | null) => {
     expired = callback
   },
 }
-
-const renew = () =>
-  (renewing ??= fetch(`${BASE_URL}/auth/refresh`, { method: 'POST' })
-    .then(async (res) => {
-      if (!res.ok) return false
-      accessToken = ((await res.json()) as { accessToken: string }).accessToken
-      return true
-    })
-    .catch(() => false)
-    .finally(() => {
-      renewing = null
-    }))
 
 /** `url` is final: API paths get the base URL added by the callers below. */
 async function send(url: string, init?: RequestInit, again = true): Promise<Response> {

@@ -5,10 +5,10 @@ import { buildApp } from '../app.ts'
 import type { Db } from '../db/pool.ts'
 import { storeCache } from '../sync/store.ts'
 import { hasDb, isolatedDb } from '../test/db.ts'
-import { product } from '../test/rows.ts'
+import { machine, product } from '../test/rows.ts'
 import { signJwt, verifyJwt } from './jwt.ts'
 import { hashPassword, verifyPassword } from './password.ts'
-import { addUser } from './service.ts'
+import { addUser, refresh as renewSession } from './service.ts'
 
 const SECRET = 'a-test-secret-that-is-long-enough-1234567890'
 
@@ -30,22 +30,6 @@ describe('passwords and tokens', () => {
     expect(verifyJwt(`${h}.${forged}.${s}`, SECRET)).toBeNull()
     expect(verifyJwt(token, SECRET, (exp + 1) * 1000)).toBeNull()
   })
-})
-
-const machine = (id: string): Equipment => ({
-  id,
-  branchId: 'b1',
-  type: '',
-  brand: '',
-  model: '',
-  garageNumber: id,
-  factoryNumber: null,
-  inventoryNumber: null,
-  department: null,
-  hoseCount: 0,
-  lastRepairDate: null,
-  nextPlannedReplacement: null,
-  statusBreakdown: { ok: 0, warn: 0, replace: 0, no_warranty: 0 },
 })
 
 describe.skipIf(!hasDb)('sign-in and one company’s data', () => {
@@ -137,19 +121,45 @@ describe.skipIf(!hasDb)('sign-in and one company’s data', () => {
     })
   })
 
+  const refresh = (cookie: string) =>
+    app.inject({ method: 'POST', url: '/auth/refresh', headers: { cookie } })
+
   it('trades a refresh token once, and none after sign-out', async () => {
     const first = cookieOf(await signIn('ivanov@example.ru', 'верный-пароль-1'))
-    const refresh = (cookie: string) =>
-      app.inject({ method: 'POST', url: '/auth/refresh', headers: { cookie } })
 
     const renewed = await refresh(first)
     expect(renewed.statusCode).toBe(200)
     expect(renewed.json().accessToken).toBeTruthy()
     const second = cookieOf(renewed)
     expect(second).not.toBe(first)
-    expect((await refresh(first)).statusCode).toBe(401) // spent
+
+    // Spent a moment ago: still answered, without a new token, while its successor lives.
+    const raced = await refresh(first)
+    expect(raced.statusCode).toBe(200)
+    expect(raced.json().accessToken).toBeTruthy()
+    expect(raced.headers['set-cookie']).toBeUndefined()
 
     await app.inject({ method: 'POST', url: '/auth/logout', headers: { cookie: second } })
     expect((await refresh(second)).statusCode).toBe(401)
+    expect((await refresh(first)).statusCode).toBe(401) // its successor is signed out
+  })
+
+  it('lets two requests with one token both through, and rotates it once', async () => {
+    const cookie = cookieOf(await signIn('ivanov@example.ru', 'верный-пароль-1'))
+    const answers = await Promise.all([refresh(cookie), refresh(cookie), refresh(cookie)])
+    expect(answers.map((a) => a.statusCode)).toEqual([200, 200, 200])
+    expect(answers.filter((a) => a.headers['set-cookie'])).toHaveLength(1)
+  })
+
+  it('stops answering a spent token after a few seconds', async () => {
+    const token = cookieOf(await signIn('ivanov@example.ru', 'верный-пароль-1')).split('=')[1]
+    const now = new Date()
+    expect(await renewSession(db, SECRET, token, now)).toMatchObject({
+      refreshToken: expect.any(String),
+    })
+    expect(await renewSession(db, SECRET, token, new Date(now.getTime() + 5_000))).toMatchObject({
+      refreshToken: null,
+    })
+    expect(await renewSession(db, SECRET, token, new Date(now.getTime() + 60_000))).toBeNull()
   })
 })
