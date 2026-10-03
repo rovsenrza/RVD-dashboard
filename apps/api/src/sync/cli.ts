@@ -15,5 +15,7 @@ const client = new ODataClient({
   log: (e) => e.status !== 200 && console.warn('1С', e),
 })
 const result = await runSync(db, client)
-console.log(`synced ${result.products} products in ${(result.ms / 1000).toFixed(1)}s`)
+console.log(
+  `synced ${result.products} products and ${result.equipment} machines in ${(result.ms / 1000).toFixed(1)}s`,
+)
 await db.end()

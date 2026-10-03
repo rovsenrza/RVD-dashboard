@@ -7,7 +7,7 @@ import {
   type StatusRules,
 } from '@rvd/contracts'
 import type { RawClient, RawEquipment, RawNamed } from '../raw.ts'
-import { byKey, cleanText, isRef, orNull } from './common.ts'
+import { byKey, cleanText, isPlaceholderMachine, isRef, orNull } from './common.ts'
 
 export interface EquipmentSources {
   equipment: RawEquipment[]
@@ -40,7 +40,7 @@ export function toEquipment(src: EquipmentSources): Equipment[] {
   }
 
   return src.equipment
-    .filter((e) => !e.DeletionMark)
+    .filter((e) => !e.DeletionMark && !isPlaceholderMachine(e))
     .map((e): Equipment => {
       const hoses = onMachine.get(e.Ref_Key) ?? []
       const breakdown = emptyBreakdown()
@@ -56,7 +56,8 @@ export function toEquipment(src: EquipmentSources): Equipment[] {
         brand: isRef(e.Марка_Key) ? cleanText(brands.get(e.Марка_Key)?.Description) : '',
         // The model catalogue is not published yet; the garage number names the machine meanwhile.
         model: '',
-        garageNumber: cleanText(e.ГаражныйНомер),
+        // 9 machines have no garage number in 1С; their full name stands in, so none is blank.
+        garageNumber: cleanText(e.ГаражныйНомер) || cleanText(e.Description),
         factoryNumber: null,
         inventoryNumber: orNull(e.ИнвентарныйНомер),
         department: null,

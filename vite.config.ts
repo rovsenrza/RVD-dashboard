@@ -13,12 +13,12 @@ export default defineConfig(({ mode }) => {
     },
     server: {
       port: 5173,
-      // Hybrid mode (VITE_LIVE_PRODUCTS): the mocks let /api/products through and the
-      // dev server forwards it to apps/api, so the browser never needs CORS.
+      // Hybrid mode (VITE_LIVE_API): the mocks let the routes apps/api serves through
+      // (src/shared/api/live.ts) and the dev server forwards them, so the browser never needs CORS.
       proxy:
-        env.VITE_LIVE_PRODUCTS === 'true'
+        env.VITE_LIVE_API === 'true' || env.VITE_LIVE_PRODUCTS === 'true'
           ? {
-              '/api/products': {
+              '/api': {
                 target: env.VITE_LIVE_API_URL || 'http://localhost:3001',
                 rewrite: (p: string) => p.replace(/^\/api/, ''),
               },

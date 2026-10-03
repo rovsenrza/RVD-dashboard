@@ -15,7 +15,16 @@ import type {
   RawStatusRecord,
 } from '../raw.ts'
 import { toComposition } from './catalog.ts'
-import { byKey, cleanText, dateOnly, displayCode, isRef, orNull, wholeNumber } from './common.ts'
+import {
+  byKey,
+  cleanText,
+  dateOnly,
+  displayCode,
+  isPlaceholderMachine,
+  isRef,
+  orNull,
+  wholeNumber,
+} from './common.ts'
 
 /** The register's «Статус» → the cabinet's lifecycle. An empty status is the record that only created the item. */
 const LIFECYCLE: Record<string, ProductLifecycle> = {
@@ -87,7 +96,11 @@ export function toProducts(src: ProductSources, options: ProductOptions = {}): P
   const today = options.today ?? new Date()
   const catalog = byKey(src.catalogNumbers, (c) => c.Ref_Key)
   const components = byKey(src.components, (c) => c.Ref_Key)
-  const equipment = byKey(src.equipment, (e) => e.Ref_Key)
+  // A hose «on» the «Без привязки» placeholder sits on no machine.
+  const equipment = byKey(
+    src.equipment.filter((e) => !isPlaceholderMachine(e)),
+    (e) => e.Ref_Key,
+  )
   const clients = byKey(src.clients, (c) => c.Ref_Key)
   const releases = byKey(src.releases, (r) => r.Ref_Key)
   const lifecycles = statusesByItem(src.statuses)

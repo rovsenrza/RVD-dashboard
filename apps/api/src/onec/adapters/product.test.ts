@@ -134,6 +134,18 @@ describe('dates and lifecycle come from the statuses register', () => {
     ).toBe('eq-1')
   })
 
+  it('puts no hose on the «Без привязки к технике» placeholder', () => {
+    const p = one({
+      statuses: [statusRecord({ Статус: 'Отгружен' })],
+      releases: [release({ ГаражныйНомер_Key: 'stub' })],
+      equipment: [
+        equipment(),
+        equipment({ Ref_Key: 'stub', Description: 'Без привязки к технике' }),
+      ],
+    })
+    expect(p).toMatchObject({ lifecycle: 'shipped', equipmentId: null })
+  })
+
   it('has no dates for an item 1С never released', () => {
     expect(one()).toMatchObject({ manufacturedAt: null, shippedAt: null, installedAt: null })
   })

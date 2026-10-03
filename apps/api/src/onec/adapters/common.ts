@@ -7,6 +7,16 @@ export function cleanText(value: string | null | undefined): string {
 
 export const orNull = (value: string | null | undefined) => cleanText(value) || null
 
+/**
+ * «Без привязки к технике» / «Без привязки»: the per-client placeholder 1С hangs
+ * unassigned hoses on (60 of 661 «machines» in the working base). It is no
+ * machine — a hose on it sits on none, and it is not listed as equipment.
+ * Records that name a machine after the words («без привязки Камаз 0321», 9 of
+ * them) stay machines until the 1С developer says what they mean.
+ */
+export const isPlaceholderMachine = (machine: { Description: string }) =>
+  /^без привязки( к технике)?$/i.test(cleanText(machine.Description))
+
 /** A whole number from 1С text such as "365" or "4  "; blank or junk is 0. */
 export function wholeNumber(value: string | number | null | undefined): number {
   const n = Number.parseInt(String(value ?? '').trim(), 10)

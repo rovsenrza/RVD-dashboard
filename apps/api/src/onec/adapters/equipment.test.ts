@@ -69,4 +69,26 @@ describe('toEquipment', () => {
   it('reports the earliest planned replacement', () => {
     expect(build()[0].nextPlannedReplacement).toBe('2026-09-01')
   })
+
+  it('leaves out the «Без привязки» placeholders and names a machine without a garage number', () => {
+    const machines = toEquipment({
+      equipment: [
+        equipment({ Ref_Key: 'stub', Description: 'Без привязки к технике', ГаражныйНомер: '' }),
+        equipment({ Ref_Key: 'eq-9', Description: 'Экскаватор Lovol FP215W ', ГаражныйНомер: '' }),
+        equipment({
+          Ref_Key: 'eq-8',
+          Description: 'без привязки Камаз 0321',
+          ГаражныйНомер: '0321',
+        }),
+      ],
+      brands: [],
+      types: [],
+      clients,
+      products: [],
+    })
+    expect(machines.map((m) => [m.id, m.garageNumber])).toEqual([
+      ['eq-9', 'Экскаватор Lovol FP215W'],
+      ['eq-8', '0321'],
+    ])
+  })
 })

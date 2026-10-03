@@ -1,5 +1,5 @@
 import { http, HttpResponse, passthrough } from 'msw'
-import { LIVE_PRODUCTS } from '@/shared/api/live'
+import { LIVE, LIVE_ROUTES } from '@/shared/api/live'
 import type { InstallationPatch, NewRequest, NewSupportMessage } from '@/shared/api/queries'
 import { rulesProblem } from '@/entities/product/rules'
 import {
@@ -60,15 +60,20 @@ const newestFirst = <T extends { date: string }>(rows: T[]) =>
 const inBranch = <T extends { branchId: string }>(rows: T[], branch: string | null) =>
   branch ? rows.filter((r) => r.branchId === branch) : rows
 
+// Hybrid mode: what the real API serves goes to it, ahead of any mock below.
+const live = LIVE
+  ? LIVE_ROUTES.map(([method, path]) => http[method](api(path), () => passthrough()))
+  : []
+
 export const handlers = [
+  ...live,
   http.get(api('/dashboard/summary'), ({ request }) =>
     HttpResponse.json(dashboardSummary(branchOf(request))),
   ),
   http.get(api('/products'), ({ request }) =>
-    LIVE_PRODUCTS ? passthrough() : HttpResponse.json(inBranch(products, branchOf(request))),
+    HttpResponse.json(inBranch(products, branchOf(request))),
   ),
   http.get(api('/products/:id'), ({ params }) => {
-    if (LIVE_PRODUCTS) return passthrough()
     const p = products.find((x) => x.id === params.id)
     return p ? HttpResponse.json(p) : new HttpResponse(null, { status: 404 })
   }),
@@ -100,7 +105,6 @@ export const handlers = [
       : HttpResponse.json(result, { status: 201 })
   }),
   http.get(api('/products/:id/lifetime'), ({ params }) => {
-    if (LIVE_PRODUCTS) return passthrough()
     const p = products.find((x) => x.id === params.id)
     return p ? HttpResponse.json(productLifetime(p)) : new HttpResponse(null, { status: 404 })
   }),
@@ -145,10 +149,9 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 })
   }),
 
-  http.get(api('/products/:id/history'), ({ params }) => {
-    if (LIVE_PRODUCTS) return passthrough()
-    return HttpResponse.json(lifecycleRecords.filter((r) => r.productId === params.id))
-  }),
+  http.get(api('/products/:id/history'), ({ params }) =>
+    HttpResponse.json(lifecycleRecords.filter((r) => r.productId === params.id)),
+  ),
   http.get(api('/equipment'), ({ request }) =>
     HttpResponse.json(inBranch(equipment, branchOf(request))),
   ),

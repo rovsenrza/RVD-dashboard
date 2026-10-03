@@ -3,36 +3,11 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 import { DEFAULT_RULES, statusOf, type Product, type StatusRules } from '@rvd/contracts'
 import { buildApp } from '../app.ts'
 import type { Db } from '../db/pool.ts'
-import { storeProducts } from '../sync/store.ts'
+import { storeCache } from '../sync/store.ts'
 import { hasDb, isolatedDb } from '../test/db.ts'
+import { product } from '../test/rows.ts'
 
 const TODAY = '2026-09-30'
-
-const product = (over: Partial<Product> & { id: string }): Product => ({
-  serialNumber: '1',
-  clientNumber: null,
-  catalogNumberId: null,
-  catalogNumber: null,
-  nomenclatureNumber: null,
-  type: '2SC ду10',
-  manufacturer: '',
-  specs: '',
-  diameter: 10,
-  braidCount: 2,
-  composition: [],
-  manufacturedAt: null,
-  shippedAt: null,
-  installedAt: null,
-  warrantyDays: 180,
-  serviceLifeDays: 365,
-  status: 'ok',
-  lifecycle: 'in_operation',
-  replacedProductId: null,
-  equipmentId: null,
-  installPlace: null,
-  branchId: 'b1',
-  ...over,
-})
 
 const rows = [
   {
@@ -72,26 +47,28 @@ describe.skipIf(!hasDb)('products in the cache', () => {
 
   beforeAll(async () => {
     ;({ db, drop } = await isolatedDb())
-    await storeProducts(
+    await storeCache(
       db,
-      rows,
-      12,
-      new Map([
-        [
-          'p1',
+      {
+        products: rows,
+        history: new Map([
           [
-            {
-              id: 'p1:0',
-              productId: 'p1',
-              at: '2026-08-18T10:00:00',
-              lifecycle: 'shipped',
-              status: 'Отгружен',
-              document: { kind: 'release', number: '124' },
-              author: null,
-            },
+            'p1',
+            [
+              {
+                id: 'p1:0',
+                productId: 'p1',
+                at: '2026-08-18T10:00:00',
+                lifecycle: 'shipped',
+                status: 'Отгружен',
+                document: { kind: 'release', number: '124' },
+                author: null,
+              },
+            ],
           ],
-        ],
-      ]),
+        ]),
+      },
+      12,
     )
     app = buildApp({
       logLevel: 'silent',
@@ -172,7 +149,12 @@ describe.skipIf(!hasDb)('products in the cache', () => {
 
   it('records the sync', async () => {
     const state = await get('/sync/status')
-    expect(state).toMatchObject([{ entity: 'products', rows: 4 }])
+    expect(state).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ entity: 'products', rows: 4 }),
+        expect.objectContaining({ entity: 'equipment', rows: 0 }),
+      ]),
+    )
   })
 
   it('answers exactly as the TypeScript rule for every combination', async () => {
@@ -204,7 +186,7 @@ describe.skipIf(!hasDb)('products in the cache', () => {
       }),
       clientId: 'k',
     }))
-    await storeProducts(db, synthetic, 1)
+    await storeCache(db, { products: synthetic }, 1)
     for (const rules of rulesList) {
       const check = buildApp({ logLevel: 'silent', db, clock: () => ({ today: TODAY, rules }) })
       const body = await (await check.inject('/products?limit=5000&sort=serialNumber')).json()

@@ -1,7 +1,7 @@
 import { REQUEST_KIND_LABEL } from '@/entities/request'
 import { requestProblem } from '@/entities/request/rules'
 import type { Product, RequestPosition, ServiceRequest } from '@/entities/types'
-import { LIVE_PRODUCTS } from '@/shared/api/live'
+import { LIVE } from '@/shared/api/live'
 import type { NewRequest } from '@/shared/api/queries'
 import { claimAttachments, storedFile } from './attachments'
 import { filesChange, products, record, requests } from './data'
@@ -37,7 +37,7 @@ export function createRequest(raw: NewRequest): ServiceRequest | { error: string
   })
   const productOf = (id: string) =>
     products.find((p) => p.id === id) ??
-    (LIVE_PRODUCTS ? asSent(body.positions.find((l) => l.productId === id)) : undefined)
+    (LIVE ? asSent(body.positions.find((l) => l.productId === id)) : undefined)
   const problem = requestProblem(body, { productOf, fileNames: drafts.map((f) => f.fileName) })
   if (problem) return { error: problem }
 

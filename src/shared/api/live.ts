@@ -1,6 +1,23 @@
 /**
- * Hybrid mode (Д5): everything stays on the mocks except the hose registry,
- * which is read from the real API (VITE_API_BASE_URL) — 1С data in the browser
- * before the rest of the BFF exists. `VITE_LIVE_PRODUCTS=true` turns it on.
+ * Hybrid mode: the routes the real API (apps/api) already answers come from
+ * it — 1С data through its cache — and everything else stays on the mocks.
+ * `VITE_LIVE_API=true` turns it on; `VITE_LIVE_PRODUCTS` is its older name.
  */
-export const LIVE_PRODUCTS = import.meta.env.VITE_LIVE_PRODUCTS === 'true'
+export const LIVE =
+  import.meta.env.VITE_LIVE_API === 'true' || import.meta.env.VITE_LIVE_PRODUCTS === 'true'
+
+/**
+ * What apps/api serves. In live mode the mocks let exactly these through and
+ * the dev server forwards them; a route joins this list when the BFF has it.
+ */
+export const LIVE_ROUTES = [
+  ['get', '/products'],
+  ['get', '/products/:id'],
+  ['get', '/products/:id/lifetime'],
+  ['get', '/products/:id/history'],
+  ['get', '/equipment'],
+  ['get', '/equipment/:id'],
+  ['get', '/equipment/:id/products'],
+  ['get', '/equipment/:id/replacements'],
+  ['get', '/dashboard/summary'],
+] as const

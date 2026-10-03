@@ -24,7 +24,7 @@ import type {
 } from '@/entities/types'
 import { useSession } from '@/app/session'
 import { api } from './client'
-import { LIVE_PRODUCTS } from './live'
+import { LIVE } from './live'
 
 /**
  * Branch scope travels as a query parameter, the way the BFF will receive it
@@ -32,8 +32,10 @@ import { LIVE_PRODUCTS } from './live'
  */
 const useScope = () => useSession().branch?.id ?? null
 
+// Live data is not narrowed by the header's branch yet: those branches are the mock's,
+// and per-company access arrives with login (Д7).
 const scoped = (path: string, branch: string | null) =>
-  branch ? `${path}?branch=${encodeURIComponent(branch)}` : path
+  branch && !LIVE ? `${path}?branch=${encodeURIComponent(branch)}` : path
 
 export const keys = {
   dashboard: (branch: string | null) => ['dashboard', branch] as const,
@@ -78,7 +80,7 @@ export const useProducts = () => {
     // Live: the API pages; one big page until the registry pages on the server.
     // The branch switcher still lists mock branches, so it does not narrow live data.
     queryFn: async () =>
-      LIVE_PRODUCTS
+      LIVE
         ? (await api.get<Paginated<Product>>('/products?limit=5000')).items
         : api.get<Product[]>(scoped('/products', branch)),
   })

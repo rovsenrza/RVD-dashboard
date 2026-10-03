@@ -17,3 +17,6 @@ export const STATUS_SQL = `case
   when $1::date >= ${WARN_FROM} then 'warn'
   when $1::date >= ${WARRANTY_UNTIL} then 'no_warranty'
   else 'ok' end`
+
+/** The same rule for another day, e.g. `statusAt("($1::date - 30)")` for a month ago. */
+export const statusAt = (day: string) => STATUS_SQL.replaceAll('$1::date', day)

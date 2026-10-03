@@ -2,6 +2,8 @@ import cors from '@fastify/cors'
 import Fastify, { type FastifyInstance } from 'fastify'
 import { DEFAULT_RULES, ProductListQuery } from '@rvd/contracts'
 import type { Db } from './db/pool.ts'
+import { dashboardSummary } from './dashboard/query.ts'
+import { equipmentProducts, getEquipment, listEquipment } from './equipment/query.ts'
 import { productLifetime } from './products/lifetime.ts'
 import { getProduct, listProducts, type Clock } from './products/query.ts'
 
@@ -59,6 +61,22 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
       if (!rows.length) return reply.code(404).send({ error: 'Not found' })
       return rows[0].records ?? []
     })
+
+    app.get('/equipment', async () => listEquipment(db, clock()))
+
+    app.get<{ Params: { id: string } }>('/equipment/:id', async (req, reply) => {
+      const machine = await getEquipment(db, req.params.id, clock())
+      return machine ?? reply.code(404).send({ error: 'Not found' })
+    })
+
+    app.get<{ Params: { id: string } }>('/equipment/:id/products', async (req) =>
+      equipmentProducts(db, req.params.id, clock()),
+    )
+
+    // Replacements come from 1С with Д16; until then a machine has none to show.
+    app.get('/equipment/:id/replacements', async () => [])
+
+    app.get('/dashboard/summary', async () => dashboardSummary(db, clock()))
 
     app.get(
       '/sync/status',
