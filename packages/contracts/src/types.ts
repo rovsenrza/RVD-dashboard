@@ -480,4 +480,6 @@ export interface SignedIn {
   accessToken: string
   user: { id: string; name: string; email: string; role: UserRole }
   company: { id: string; name: string }
+  /** Signed in with a password the administrator gave: the cabinet opens once it is replaced. */
+  mustChangePassword: boolean
 }

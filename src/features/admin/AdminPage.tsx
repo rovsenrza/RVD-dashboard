@@ -18,15 +18,22 @@ const TABS: { key: Tab; label: string }[] = [
 ]
 
 export function AdminPage() {
-  const { user } = useSession()
+  const { user, demo } = useSession()
   const [params, setParams] = useSearchParams()
-  const tab = TABS.find((t) => t.key === params.get('tab'))?.key ?? 'users'
+  // A live cabinet keeps its users on the server; branches, settings, import and the journal
+  // still run on the demo's data there, so they join as the server takes each over.
+  const tabs = demo ? TABS : TABS.filter((t) => t.key === 'users')
+  const tab = tabs.find((t) => t.key === params.get('tab'))?.key ?? 'users'
 
   return (
     <>
       <PageHeader
         title="Администрирование"
-        description="Кто работает в кабинете, филиалы компании, общие настройки и журнал действий"
+        description={
+          demo
+            ? 'Кто работает в кабинете, филиалы компании, общие настройки и журнал действий'
+            : 'Кто работает в кабинете и с какой ролью'
+        }
       />
       {user.role !== 'admin' ? (
         <Card>
@@ -34,17 +41,23 @@ export function AdminPage() {
             inset
             icon={ShieldCheck}
             title="Раздел для администратора"
-            description="Пользователей и настройки кабинета ведёт администратор компании. В демо роль меняется в меню пользователя."
+            description={`Пользователей и настройки кабинета ведёт администратор компании.${
+              demo ? ' В демо роль меняется в меню пользователя.' : ''
+            }`}
           />
         </Card>
       ) : (
         <>
-          <Tabs
-            className="mb-5"
-            items={TABS}
-            value={tab}
-            onChange={(next) => setParams(next === 'users' ? {} : { tab: next }, { replace: true })}
-          />
+          {tabs.length > 1 && (
+            <Tabs
+              className="mb-5"
+              items={tabs}
+              value={tab}
+              onChange={(next) =>
+                setParams(next === 'users' ? {} : { tab: next }, { replace: true })
+              }
+            />
+          )}
           {tab === 'users' && <UsersTab />}
           {tab === 'branches' && <BranchesTab />}
           {tab === 'settings' && <SettingsTab />}

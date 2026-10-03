@@ -26,6 +26,10 @@ export interface Session {
   /** Rejects with the server's reason (an ApiError) when the pair does not match */
   signIn: (email: string, password: string) => Promise<void>
   signOut: () => void
+  /** Signed in with an administrator's one-time password: the cabinet asks for a new one first */
+  mustChangePassword: boolean
+  /** Replaces the signed-in person's password; rejects with the server's reason (an ApiError) */
+  changePassword: (current: string, next: string) => Promise<void>
 }
 
 const AUTH_KEY = 'rvd.session'
@@ -119,6 +123,11 @@ function MockSessionProvider({ children }: { children: ReactNode }) {
         writeAuth(false)
         setAuthenticated(false)
       },
+      mustChangePassword: false,
+      // The demo checks the new password by the real rule and keeps nothing.
+      changePassword: async (current, next) => {
+        await api.post('/auth/password', { current, next })
+      },
     }),
     [authenticated, branchId, role],
   )
@@ -184,6 +193,13 @@ function LiveSessionProvider({ children }: { children: ReactNode }) {
         authToken.set(null)
         queries.clear()
         setState({ ready: true, me: null })
+      },
+      mustChangePassword: state.me?.mustChangePassword ?? false,
+      // Every other sign-in ends on the server; this one goes on with the fresh tokens.
+      changePassword: async (current, next) => {
+        const me = await api.post<SignedIn>('/auth/password', { current, next })
+        authToken.set(me.accessToken)
+        setState({ ready: true, me })
       },
     }),
     [state, queries],

@@ -5,6 +5,7 @@ import {
   ChevronDown,
   Lock,
   Headset,
+  KeyRound,
   LogOut,
   Menu as MenuIcon,
   Monitor,
@@ -29,6 +30,7 @@ import {
   type SegmentedOption,
 } from '@/shared/ui'
 import { cn } from '@/shared/lib/utils'
+import { ChangePasswordDialog } from '@/features/auth/ChangePasswordDialog'
 import { ScanDialog } from '@/features/scan/ScanDialog'
 import { ContactDialog } from '@/features/support/ContactDialog'
 import { CommandPalette } from './CommandPalette'
@@ -44,6 +46,7 @@ export function Header({ onMenu }: { onMenu: () => void }) {
   const [searchOpen, setSearchOpen] = useState(false)
   const [scanOpen, setScanOpen] = useState(false)
   const [contactOpen, setContactOpen] = useState(false)
+  const [passwordOpen, setPasswordOpen] = useState(false)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -115,7 +118,8 @@ export function Header({ onMenu }: { onMenu: () => void }) {
         </Button>
         {contactOpen && <ContactDialog onClose={() => setContactOpen(false)} />}
         <NotificationsPanel />
-        <UserMenu onContact={() => setContactOpen(true)} />
+        <UserMenu onContact={() => setContactOpen(true)} onPassword={() => setPasswordOpen(true)} />
+        {passwordOpen && <ChangePasswordDialog onClose={() => setPasswordOpen(false)} />}
       </div>
     </header>
   )
@@ -203,7 +207,7 @@ function GlobalSearch({ className, onOpen }: { className?: string; onOpen: () =>
   )
 }
 
-function UserMenu({ onContact }: { onContact: () => void }) {
+function UserMenu({ onContact, onPassword }: { onContact: () => void; onPassword: () => void }) {
   const { user, demo, signOut, setRole } = useSession()
   const navigate = useNavigate()
   const [theme, setTheme] = useThemePreference()
@@ -257,6 +261,7 @@ function UserMenu({ onContact }: { onContact: () => void }) {
       items={[
         { label: 'Профиль', icon: UserRound, separator: true },
         { label: 'Настройки уведомлений', icon: Settings },
+        { label: 'Сменить пароль', icon: KeyRound, onSelect: onPassword },
         { label: 'Связаться со специалистом', icon: Headset, onSelect: onContact },
         {
           label: 'Выйти',

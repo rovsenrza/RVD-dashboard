@@ -3,6 +3,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom'
 import { useSession } from '@/app/session'
 import { ApiError } from '@/shared/api/client'
 import { Button, Field, Input } from '@/shared/ui'
+import { AuthFrame } from './AuthFrame'
 
 export function LoginPage() {
   const { ready, authenticated, signIn } = useSession()
@@ -36,61 +37,42 @@ export function LoginPage() {
   }
 
   return (
-    <main className="flex min-h-full items-center justify-center px-4 py-10">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 flex items-center gap-3">
-          <span className="grid size-9 place-items-center rounded-lg bg-brand">
-            <span className="size-3.5 rounded-full border-[3px] border-on-brand" />
-          </span>
-          <span className="leading-none">
-            <span className="block text-heading font-semibold tracking-[-0.01em]">РВД Кабинет</span>
-            <span className="mt-1 block text-micro font-normal tracking-wide text-ink-muted uppercase">
-              личный кабинет
-            </span>
-          </span>
-        </div>
-
-        <div className="sheet p-6">
-          <h1 className="text-heading font-semibold tracking-[-0.01em]">Вход</h1>
-          <p className="mt-1 mb-5 text-ui text-ink-muted">Доступ выдаёт ваш поставщик РВД.</p>
-
-          <form onSubmit={submit} className="grid gap-4">
-            <Field label="Электронная почта">
-              {(id) => (
-                <Input
-                  id={id}
-                  type="email"
-                  autoComplete="username"
-                  autoFocus
-                  required
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="ivanov@company.ru"
-                />
-              )}
-            </Field>
-            <Field label="Пароль" error={error ?? undefined}>
-              {(id) => (
-                <Input
-                  id={id}
-                  type="password"
-                  autoComplete="current-password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                />
-              )}
-            </Field>
-            <Button type="submit" disabled={pending} className="mt-1 w-full">
-              {pending ? 'Входим…' : 'Войти'}
-            </Button>
-          </form>
-        </div>
-
-        <p className="mt-6 text-center text-label text-ink-muted">
-          Нет доступа? Обратитесь к вашему специалисту поставщика.
-        </p>
-      </div>
-    </main>
+    <AuthFrame
+      title="Вход"
+      lead="Доступ выдаёт ваш поставщик РВД."
+      footer="Нет доступа? Обратитесь к вашему специалисту поставщика."
+    >
+      <form onSubmit={submit} className="grid gap-4">
+        <Field label="Электронная почта">
+          {(id) => (
+            <Input
+              id={id}
+              type="email"
+              autoComplete="username"
+              autoFocus
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="ivanov@company.ru"
+            />
+          )}
+        </Field>
+        <Field label="Пароль" error={error ?? undefined}>
+          {(id) => (
+            <Input
+              id={id}
+              type="password"
+              autoComplete="current-password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          )}
+        </Field>
+        <Button type="submit" disabled={pending} className="mt-1 w-full">
+          {pending ? 'Входим…' : 'Войти'}
+        </Button>
+      </form>
+    </AuthFrame>
   )
 }

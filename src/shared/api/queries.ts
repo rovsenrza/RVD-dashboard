@@ -1,7 +1,9 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type {
+  PasswordDelivery,
   ProductListQuery,
   ProductPage,
+  UserCreated,
   Attachment,
   CabinetNotification,
   NotificationPrefs,
@@ -242,16 +244,23 @@ export const useUsers = () =>
 /** What the administrator edits; id, activity and last login belong to the server. */
 export type UserDraft = Pick<CabinetUser, 'name' | 'email' | 'role' | 'branchIds'>
 
+/**
+ * Adds a user (no `id`) or changes one. A new user comes back with how they
+ * get in: an invitation by e-mail, or a one-time password to pass on.
+ */
 export const useSaveUser = () => {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: ({
+    mutationFn: async ({
       id,
       ...patch
-    }: Partial<UserDraft & Pick<CabinetUser, 'active'>> & { id?: string }) =>
+    }: Partial<UserDraft & Pick<CabinetUser, 'active'>> & { id?: string }): Promise<{
+      user: CabinetUser
+      delivery?: PasswordDelivery
+    }> =>
       id
-        ? api.patch<CabinetUser>(`/admin/users/${id}`, patch)
-        : api.post<CabinetUser>('/admin/users', patch),
+        ? { user: await api.patch<CabinetUser>(`/admin/users/${id}`, patch) }
+        : api.post<UserCreated>('/admin/users', patch),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: keys.users })
       qc.invalidateQueries({ queryKey: keys.branches })
@@ -263,8 +272,7 @@ export const useSaveUser = () => {
 export const useResetPassword = () => {
   const qc = useQueryClient()
   return useMutation({
-    mutationFn: (id: string) =>
-      api.post<{ sentTo: string }>(`/admin/users/${id}/reset-password`, {}),
+    mutationFn: (id: string) => api.post<PasswordDelivery>(`/admin/users/${id}/reset-password`, {}),
     onSuccess: () => qc.invalidateQueries({ queryKey: keys.audit }),
   })
 }

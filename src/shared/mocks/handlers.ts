@@ -1,8 +1,10 @@
 import { http, HttpResponse, passthrough } from 'msw'
 import { LIVE, LIVE_ROUTES } from '@/shared/api/live'
 import type { InstallationPatch, NewRequest, NewSupportMessage } from '@/shared/api/queries'
+import type { PasswordChange, PasswordDelivery, UserCreated } from '@/entities/types'
 import { ProductListQuery } from '@/entities/product/list'
 import { rulesProblem } from '@/entities/product/rules'
+import { EMAIL_TAKEN, passwordProblem } from '@/entities/user'
 import {
   attachmentsOf,
   deleteAttachment,
@@ -294,7 +296,7 @@ export const handlers = [
       'id' | 'active' | 'lastLoginAt'
     >
     if (users.some((u) => u.email.toLowerCase() === body.email.toLowerCase()))
-      return HttpResponse.json({ message: 'Пользователь с такой почтой уже есть' }, { status: 409 })
+      return HttpResponse.json({ message: EMAIL_TAKEN }, { status: 409 })
     const created = { ...body, id: `u-${users.length + 1}`, active: true, lastLoginAt: null }
     users.push(created)
     record({
@@ -302,7 +304,12 @@ export const handlers = [
       target: { kind: 'user', id: created.id, label: created.name },
       changes: diff({}, userView(created)),
     })
-    return HttpResponse.json(created, { status: 201 })
+    // The demo shows the cabinet with mail: the invitation goes to the new user's address.
+    const answer: UserCreated = {
+      user: created,
+      delivery: { kind: 'email', sentTo: created.email },
+    }
+    return HttpResponse.json(answer, { status: 201 })
   }),
   http.patch(api('/admin/users/:id'), async ({ params, request }) => {
     const user = users.find((u) => u.id === params.id)
@@ -312,7 +319,7 @@ export const handlers = [
       patch.email &&
       users.some((u) => u.id !== user.id && u.email.toLowerCase() === patch.email!.toLowerCase())
     )
-      return HttpResponse.json({ message: 'Пользователь с такой почтой уже есть' }, { status: 409 })
+      return HttpResponse.json({ message: EMAIL_TAKEN }, { status: 409 })
     const before = userView(user)
     Object.assign(user, patch)
     const changes = diff(before, userView(user))
@@ -333,7 +340,17 @@ export const handlers = [
       target: { kind: 'user', id: user.id, label: user.name },
       changes: [],
     })
-    return HttpResponse.json({ sentTo: user.email })
+    const delivery: PasswordDelivery = { kind: 'email', sentTo: user.email }
+    return HttpResponse.json(delivery)
+  }),
+  // One's own password: the demo checks the new one by the real rule and keeps nothing.
+  http.post(api('/auth/password'), async ({ request }) => {
+    const { current, next } = (await request.json()) as PasswordChange
+    if (!current) return HttpResponse.json({ message: 'Введите текущий пароль' }, { status: 400 })
+    const problem =
+      passwordProblem(next) ?? (next === current ? 'Новый пароль совпадает с текущим' : null)
+    if (problem) return HttpResponse.json({ message: problem }, { status: 400 })
+    return new HttpResponse(null, { status: 204 })
   }),
   http.get(api('/admin/branches'), () => HttpResponse.json(branchSummaries())),
   http.get(api('/admin/settings'), () => HttpResponse.json(settings)),

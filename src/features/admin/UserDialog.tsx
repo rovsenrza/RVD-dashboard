@@ -1,62 +1,88 @@
 import { useState, type FormEvent } from 'react'
 import { KeyRound, UserX, UserCheck } from 'lucide-react'
-import type { CabinetUser, UserRole } from '@/entities/types'
-import { ROLE_LABEL, ROLE_ORDER, ROLE_SCOPE, isBranchBound } from '@/entities/user'
+import type { CabinetUser, PasswordDelivery, UserRole } from '@/entities/types'
+import { EMAIL_TAKEN, ROLE_LABEL, ROLE_ORDER, ROLE_SCOPE, isBranchBound } from '@/entities/user'
 import { useSession } from '@/app/session'
 import { ApiError } from '@/shared/api/client'
 import { useResetPassword, useSaveUser } from '@/shared/api/queries'
 import { Button, Checkbox, Dialog, Field, Input, Select, useToast } from '@/shared/ui'
+import { PasswordHandover } from './PasswordHandover'
 
-/** Creates a user (`user` null) or edits one; access and password actions only for an existing user. */
+/**
+ * Creates a user (`user` null) or edits one; access and password actions only for an existing user.
+ * A live cabinet has no mail yet: a new or reset password comes back once, for the administrator to
+ * pass on, and the dialog turns into that hand-over.
+ */
 export function UserDialog({ user, onClose }: { user: CabinetUser | null; onClose: () => void }) {
   const session = useSession()
   const toast = useToast()
   const save = useSaveUser()
   const reset = useResetPassword()
+  // 1С keeps no branches of the client yet: then everyone works across the whole company.
+  const firstBranch = session.branches[0]?.id
   const [name, setName] = useState(user?.name ?? '')
   const [email, setEmail] = useState(user?.email ?? '')
-  const [role, setRole] = useState<UserRole>(user?.role ?? 'mechanic')
+  const [role, setRole] = useState<UserRole>(user?.role ?? (firstBranch ? 'mechanic' : 'engineer'))
   // «All branches» is its own choice, so unticking the last branch never flips into it.
   const [everywhere, setEverywhere] = useState(
     !!user && !isBranchBound(user.role) && user.branchIds.length === 0,
   )
   const [branchIds, setBranchIds] = useState<string[]>(
-    user?.branchIds.length ? user.branchIds : [session.branches[0].id],
+    user?.branchIds.length ? user.branchIds : firstBranch ? [firstBranch] : [],
   )
   const [emailError, setEmailError] = useState<string>()
+  const [handover, setHandover] = useState<{ email: string; password: string } | null>(null)
 
   const bound = isBranchBound(role)
   const isSelf = user?.id === session.user.id
+  // A mechanic is defined by their branch: without branches the role has nothing to hold on to.
+  const roles = ROLE_ORDER.filter((r) => firstBranch || !isBranchBound(r) || user?.role === r)
 
   const changeRole = (next: UserRole) => {
     setRole(next)
     // A mechanic works in exactly one branch; keep the first one they had.
-    if (isBranchBound(next)) setBranchIds([branchIds[0] ?? session.branches[0].id])
+    const keep = branchIds[0] ?? firstBranch
+    if (isBranchBound(next) && keep) setBranchIds([keep])
   }
 
   const toggleBranch = (id: string, on: boolean) =>
     setBranchIds((ids) => (on ? [...ids, id] : ids.filter((x) => x !== id)))
 
   const fail = (error: Error) => {
-    if (error instanceof ApiError && error.status === 409) setEmailError(error.message)
+    if (error instanceof ApiError && error.message === EMAIL_TAKEN) setEmailError(error.message)
+    else if (error instanceof ApiError && error.status < 500) toast(error.message, 'error')
     else toast('Не удалось сохранить, попробуйте ещё раз', 'error')
+  }
+
+  /** The new password went out by mail, or it is shown here, once, to be passed on. */
+  const deliver = (delivery: PasswordDelivery, to: string, mailed: string, then?: () => void) => {
+    if (delivery.kind === 'email') {
+      toast(mailed)
+      then?.()
+    } else setHandover({ email: to, password: delivery.password })
   }
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
-    const scope = bound
-      ? branchIds.slice(0, 1)
-      : everywhere
-        ? []
-        : branchIds.length
-          ? branchIds
-          : [session.branches[0].id]
+    const scope = !firstBranch
+      ? []
+      : bound
+        ? branchIds.slice(0, 1)
+        : everywhere
+          ? []
+          : branchIds.length
+            ? branchIds
+            : [firstBranch]
     save.mutate(
       { id: user?.id, name: name.trim(), email: email.trim(), role, branchIds: scope },
       {
-        onSuccess: () => {
-          toast(user ? 'Изменения сохранены' : 'Пользователь добавлен, приглашение отправлено')
-          onClose()
+        onSuccess: ({ user: saved, delivery }) => {
+          if (delivery)
+            deliver(delivery, saved.email, 'Пользователь добавлен, приглашение отправлено', onClose)
+          else {
+            toast('Изменения сохранены')
+            onClose()
+          }
         },
         onError: fail,
       },
@@ -75,6 +101,23 @@ export function UserDialog({ user, onClose }: { user: CabinetUser | null; onClos
       },
     )
 
+  if (handover)
+    return (
+      <Dialog
+        open
+        onClose={onClose}
+        title={user ? user.name : name.trim()}
+        description="Передайте почту и пароль сотруднику. При первом входе кабинет попросит придумать свой пароль."
+        footer={
+          <Button size="sm" onClick={onClose}>
+            Готово
+          </Button>
+        }
+      >
+        <PasswordHandover email={handover.email} password={handover.password} />
+      </Dialog>
+    )
+
   return (
     <Dialog
       open
@@ -82,8 +125,12 @@ export function UserDialog({ user, onClose }: { user: CabinetUser | null; onClos
       title={user ? user.name : 'Новый пользователь'}
       description={
         user
-          ? 'Роль и филиалы определяют, что человек видит в кабинете.'
-          : 'После сохранения на почту уйдёт приглашение со ссылкой для входа.'
+          ? firstBranch
+            ? 'Роль и филиалы определяют, что человек видит в кабинете.'
+            : 'Роль определяет, что человек видит в кабинете.'
+          : session.demo
+            ? 'После сохранения на почту уйдёт приглашение со ссылкой для входа.'
+            : 'После сохранения покажем пароль для первого входа — его нужно передать сотруднику.'
       }
       footer={
         <>
@@ -104,7 +151,11 @@ export function UserDialog({ user, onClose }: { user: CabinetUser | null; onClos
         </Field>
         <Field
           label="Почта"
-          hint="На неё приходят приглашение и ссылка для смены пароля"
+          hint={
+            session.demo
+              ? 'На неё приходят приглашение и ссылка для смены пароля'
+              : 'С ней сотрудник входит в кабинет'
+          }
           error={emailError}
         >
           {(id) => (
@@ -128,43 +179,44 @@ export function UserDialog({ user, onClose }: { user: CabinetUser | null; onClos
               value={role}
               disabled={isSelf}
               onChange={(e) => changeRole(e.target.value as UserRole)}
-              options={ROLE_ORDER.map((r) => ({ value: r, label: ROLE_LABEL[r] }))}
+              options={roles.map((r) => ({ value: r, label: ROLE_LABEL[r] }))}
             />
           )}
         </Field>
 
-        {bound ? (
-          <Field label="Филиал" hint="Механик видит технику и изделия только своего филиала">
-            {(id) => (
-              <Select
-                id={id}
-                value={branchIds[0]}
-                onChange={(e) => setBranchIds([e.target.value])}
-                options={session.branches.map((b) => ({ value: b.id, label: b.name }))}
-              />
-            )}
-          </Field>
-        ) : (
-          <fieldset className="grid gap-2.5">
-            <legend className="mb-1.5 text-ui font-medium">Филиалы</legend>
-            <Checkbox
-              label="Все филиалы компании"
-              hint="Включая филиалы, которые появятся позже"
-              checked={everywhere}
-              onChange={(e) => setEverywhere(e.target.checked)}
-            />
-            {session.branches.map((b) => (
+        {firstBranch &&
+          (bound ? (
+            <Field label="Филиал" hint="Механик видит технику и изделия только своего филиала">
+              {(id) => (
+                <Select
+                  id={id}
+                  value={branchIds[0]}
+                  onChange={(e) => setBranchIds([e.target.value])}
+                  options={session.branches.map((b) => ({ value: b.id, label: b.name }))}
+                />
+              )}
+            </Field>
+          ) : (
+            <fieldset className="grid gap-2.5">
+              <legend className="mb-1.5 text-ui font-medium">Филиалы</legend>
               <Checkbox
-                key={b.id}
-                label={b.name}
-                className="pl-7"
-                disabled={everywhere}
-                checked={everywhere || branchIds.includes(b.id)}
-                onChange={(e) => toggleBranch(b.id, e.target.checked)}
+                label="Все филиалы компании"
+                hint="Включая филиалы, которые появятся позже"
+                checked={everywhere}
+                onChange={(e) => setEverywhere(e.target.checked)}
               />
-            ))}
-          </fieldset>
-        )}
+              {session.branches.map((b) => (
+                <Checkbox
+                  key={b.id}
+                  label={b.name}
+                  className="pl-7"
+                  disabled={everywhere}
+                  checked={everywhere || branchIds.includes(b.id)}
+                  onChange={(e) => toggleBranch(b.id, e.target.checked)}
+                />
+              ))}
+            </fieldset>
+          ))}
 
         {user && (
           <div className="grid gap-2 border-t border-line pt-4">
@@ -177,9 +229,13 @@ export function UserDialog({ user, onClose }: { user: CabinetUser | null; onClos
                 disabled={reset.isPending || !user.active}
                 onClick={() =>
                   reset.mutate(user.id, {
-                    onSuccess: ({ sentTo }) =>
-                      toast(`Ссылка для нового пароля отправлена на ${sentTo}`),
-                    onError: () => toast('Не удалось отправить ссылку', 'error'),
+                    onSuccess: (delivery) =>
+                      deliver(
+                        delivery,
+                        user.email,
+                        `Ссылка для нового пароля отправлена на ${user.email}`,
+                      ),
+                    onError: () => toast('Не удалось сбросить пароль, попробуйте ещё раз', 'error'),
                   })
                 }
               >

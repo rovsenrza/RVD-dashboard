@@ -1,7 +1,15 @@
 import cors from '@fastify/cors'
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify'
-import { DEFAULT_RULES, ProductListQuery } from '@rvd/contracts'
 import {
+  DEFAULT_RULES,
+  ProductListQuery,
+  type PasswordDelivery,
+  type UserCreated,
+  type UserRole,
+} from '@rvd/contracts'
+import {
+  AuthRejected,
+  changePassword,
   login,
   logout,
   readAccess,
@@ -10,6 +18,7 @@ import {
   signedIn,
   type Identity,
 } from './auth/service.ts'
+import { createUser, listUsers, resetPassword, updateUser, type UserDraft } from './auth/users.ts'
 import type { Db } from './db/pool.ts'
 import { dashboardSummary } from './dashboard/query.ts'
 import { equipmentProducts, getEquipment, listEquipment } from './equipment/query.ts'
@@ -38,10 +47,10 @@ export interface AppOptions {
   /** Today and the status rules; the rules will come from the company settings */
   clock?: () => Clock
   /**
-   * Sign-in (Д6–Д7). With a `secret` every route but `/health` and `/auth/*`
-   * needs an access token, and a company sees only its own 1С client. Without
-   * one sign-in is off: everyone is `demo`, and the data is the configured
-   * client's (`requests.clientKey`) or everyone's.
+   * Sign-in (Д6–Д7). With a `secret` every route but `/health` and getting a
+   * session (login, refresh, logout) needs an access token, and a company sees
+   * only its own 1С client. Without one sign-in is off: everyone is `demo`, and
+   * the data is the configured client's (`requests.clientKey`) or everyone's.
    */
   auth?: { secret?: string; secureCookie?: boolean; demo?: Identity }
   requests?: {
@@ -64,6 +73,7 @@ export const DEMO_IDENTITY: Identity = {
   companyId: 'demo',
   companyName: 'Демо-клиент',
   clientKey: '',
+  mustChangePassword: false,
 }
 
 const cookieOf = (req: FastifyRequest, name: string) =>
@@ -71,6 +81,34 @@ const cookieOf = (req: FastifyRequest, name: string) =>
     .split(';')
     .map((part) => part.trim().split('='))
     .find(([key]) => key === name)?.[1]
+
+/** Routes anyone may call: the health check and getting a session. */
+const OPEN = new Set(['/health', '/auth/login', '/auth/refresh', '/auth/logout'])
+/** All a person signed in with an administrator's one-time password may do until they replace it. */
+const WHILE_TEMPORARY = new Set(['/auth/password', '/me'])
+
+/** The fields an administrator may send for a user, whatever else the body holds. */
+const userFields = (body: unknown): Partial<UserDraft> & { active?: boolean } => {
+  const b = (body ?? {}) as Record<string, unknown>
+  const text = (v: unknown) => (typeof v === 'string' ? v : undefined)
+  return {
+    name: text(b.name),
+    email: text(b.email),
+    role: text(b.role) as UserRole | undefined,
+    active: typeof b.active === 'boolean' ? b.active : undefined,
+  }
+}
+
+/** A refusal the person can act on goes back with its status and message; anything else is a fault. */
+async function answering<T>(reply: FastifyReply, work: () => Promise<T>) {
+  try {
+    return await work()
+  } catch (error) {
+    if (error instanceof AuthRejected)
+      return reply.code(error.status).send({ message: error.message })
+    throw error
+  }
+}
 
 /** The HTTP app without a listener, so tests can drive it with `inject`. */
 export function buildApp(options: AppOptions = {}): FastifyInstance {
@@ -90,10 +128,13 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
       return
     }
     const path = req.url.split('?')[0]
-    if (path === '/health' || path.startsWith('/auth/')) return
+    if (OPEN.has(path)) return
     const header = req.headers.authorization
     req.identity = header?.startsWith('Bearer ') ? readAccess(header.slice(7), secret) : null
     if (!req.identity) return reply.code(401).send({ message: 'Требуется вход' })
+    // The administrator knows a one-time password: no data until the person sets their own.
+    if (req.identity.mustChangePassword && !WHILE_TEMPORARY.has(path))
+      return reply.code(403).send({ message: 'Смените пароль, выданный администратором' })
   })
 
   /** Whose data this request may see: the company's 1С client, or the configured one without sign-in. */
@@ -146,8 +187,65 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
     })
 
     app.get('/me', async (req) => {
-      const { user, company } = signedIn(req.identity ?? demo, '')
-      return { user, company }
+      const { user, company, mustChangePassword } = signedIn(req.identity ?? demo, '')
+      return { user, company, mustChangePassword }
+    })
+
+    // One's own password: every other sign-in ends, this one goes on with fresh tokens.
+    app.post<{ Body: { current?: unknown; next?: unknown } }>(
+      '/auth/password',
+      async (req, reply) => {
+        if (!secret || !req.identity)
+          return reply.code(404).send({ message: 'Вход в этом кабинете выключен' })
+        const identity = req.identity
+        return answering(reply, async () => {
+          const result = await changePassword(db, secret, identity.userId, {
+            current: String(req.body?.current ?? ''),
+            next: String(req.body?.next ?? ''),
+          })
+          setRefresh(reply, result.refreshToken)
+          return signedIn(result.identity, result.accessToken)
+        })
+      },
+    )
+
+    // The company's users (Д6): the administrator's, and only within their own company.
+    void app.register(async (admin) => {
+      admin.addHook('preHandler', async (req, reply) => {
+        if (!secret || req.identity?.role !== 'admin')
+          return reply.code(403).send({ message: 'Раздел для администратора' })
+      })
+      const companyOf = (req: FastifyRequest) => req.identity!.companyId
+
+      admin.get('/admin/users', async (req) => listUsers(db, companyOf(req)))
+
+      admin.post('/admin/users', async (req, reply) =>
+        answering(reply, async () => {
+          const { user, password } = await createUser(
+            db,
+            companyOf(req),
+            userFields(req.body) as UserDraft,
+          )
+          // No mail server yet: the administrator passes the one-time password on.
+          const created: UserCreated = { user, delivery: { kind: 'password', password } }
+          return reply.code(201).send(created)
+        }),
+      )
+
+      admin.patch<{ Params: { id: string } }>('/admin/users/:id', async (req, reply) =>
+        answering(reply, () =>
+          updateUser(db, companyOf(req), req.identity!.userId, req.params.id, userFields(req.body)),
+        ),
+      )
+
+      admin.post<{ Params: { id: string } }>(
+        '/admin/users/:id/reset-password',
+        async (req, reply) =>
+          answering(reply, async (): Promise<PasswordDelivery> => ({
+            kind: 'password',
+            password: await resetPassword(db, companyOf(req), req.params.id),
+          })),
+      )
     })
 
     app.get('/products', async (req, reply) => {

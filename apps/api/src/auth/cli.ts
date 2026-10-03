@@ -1,5 +1,5 @@
 import { parseArgs } from 'node:util'
-import type { UserRole } from '@rvd/contracts'
+import { passwordProblem, USER_ROLES, type UserRole } from '@rvd/contracts'
 import { loadConfig } from '../config.ts'
 import { migrate } from '../db/migrate.ts'
 import { createPool } from '../db/pool.ts'
@@ -11,7 +11,6 @@ import { addUser } from './service.ts'
  *     --name "Иванов Иван" --email ivanov@example.ru --password … --role admin
  * The company is the supplier's client: --client is its Клиент_Key in 1С.
  */
-const ROLES: UserRole[] = ['mechanic', 'engineer', 'manager', 'admin']
 const { values } = parseArgs({
   options: {
     company: { type: 'string' },
@@ -26,9 +25,10 @@ const missing = ['company', 'client', 'name', 'email', 'password'].filter(
   (key) => !values[key as keyof typeof values],
 )
 if (missing.length) throw new Error(`Не хватает: ${missing.map((m) => `--${m}`).join(', ')}`)
-if (!ROLES.includes(values.role as UserRole))
-  throw new Error(`--role — одна из: ${ROLES.join(', ')}`)
-if (values.password!.length < 10) throw new Error('Пароль — не короче 10 символов')
+if (!USER_ROLES.includes(values.role as UserRole))
+  throw new Error(`--role — одна из: ${USER_ROLES.join(', ')}`)
+const weak = passwordProblem(values.password!)
+if (weak) throw new Error(weak)
 
 const db = createPool(loadConfig().DATABASE_URL)
 await migrate(db)

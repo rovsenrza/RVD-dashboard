@@ -1,5 +1,10 @@
 import { createHash, randomBytes, randomUUID } from 'node:crypto'
-import type { SignedIn, UserRole } from '@rvd/contracts'
+import {
+  passwordProblem,
+  WRONG_CURRENT_PASSWORD,
+  type SignedIn,
+  type UserRole,
+} from '@rvd/contracts'
 import type { Db } from '../db/pool.ts'
 import { signJwt, verifyJwt } from './jwt.ts'
 import { hashPassword, verifyPassword } from './password.ts'
@@ -13,6 +18,8 @@ export interface Identity {
   companyId: string
   companyName: string
   clientKey: string
+  /** Signed in with a password the administrator gave; only replacing it is allowed */
+  mustChangePassword: boolean
 }
 
 interface AccessClaims {
@@ -23,8 +30,19 @@ interface AccessClaims {
   cid: string
   cname: string
   ck: string
+  /** Must change the password */
+  mcp?: true
   iat: number
   exp: number
+}
+
+/** A request the person can put right: the message is shown to them as it is. */
+export class AuthRejected extends Error {
+  status: 400 | 401 | 403 | 404 | 409
+  constructor(status: AuthRejected['status'], message: string) {
+    super(message)
+    this.status = status
+  }
 }
 
 const ACCESS_SECONDS = 15 * 60
@@ -42,6 +60,7 @@ export function issueAccess(identity: Identity, secret: string, now = new Date()
     cid: identity.companyId,
     cname: identity.companyName,
     ck: identity.clientKey,
+    ...(identity.mustChangePassword && { mcp: true as const }),
     iat,
     exp: iat + ACCESS_SECONDS,
   }
@@ -59,6 +78,7 @@ export function readAccess(token: string, secret: string, now = Date.now()): Ide
         companyId: c.cid,
         companyName: c.cname,
         clientKey: c.ck,
+        mustChangePassword: c.mcp === true,
       }
     : null
 }
@@ -67,9 +87,11 @@ export const signedIn = (identity: Identity, accessToken: string): SignedIn => (
   accessToken,
   user: { id: identity.userId, name: identity.name, email: identity.email, role: identity.role },
   company: { id: identity.companyId, name: identity.companyName },
+  mustChangePassword: identity.mustChangePassword,
 })
 
 const IDENTITY = `select u.id as "userId", u.name, u.email, u.role, u.active, u.password_hash,
+    u.must_change_password as "mustChangePassword",
     c.id as "companyId", c.name as "companyName", c.onec_client_key as "clientKey"
   from users u join companies c on c.id = u.company_id`
 
@@ -181,6 +203,47 @@ export async function logout(db: Db, token: string, now = new Date()): Promise<v
     'update sessions set revoked_at = $2 where token_hash = $1 and revoked_at is null',
     [hashToken(token), now],
   )
+}
+
+/** Ends every sign-in of a user: a new password, a reset, access switched off. */
+export async function revokeSessions(db: Pick<Db, 'query'>, userId: string, now = new Date()) {
+  await db.query('update sessions set revoked_at = $2 where user_id = $1 and revoked_at is null', [
+    userId,
+    now,
+  ])
+}
+
+/**
+ * The signed-in person replaces their password. Every sign-in made with the
+ * old one ends, and this one goes on with a fresh pair of tokens.
+ */
+export async function changePassword(
+  db: Db,
+  secret: string,
+  userId: string,
+  change: { current: string; next: string },
+  now = new Date(),
+): Promise<{ identity: Identity; accessToken: string; refreshToken: string }> {
+  const { rows } = await db.query<IdentityRow>(`${IDENTITY} where u.id = $1`, [userId])
+  const row = rows[0]
+  if (!row || !row.active) throw new AuthRejected(401, 'Требуется вход')
+  if (!(await verifyPassword(change.current, row.password_hash)))
+    throw new AuthRejected(400, WRONG_CURRENT_PASSWORD)
+  const problem = passwordProblem(change.next)
+  if (problem) throw new AuthRejected(400, problem)
+  if (change.next === change.current)
+    throw new AuthRejected(400, 'Новый пароль совпадает с текущим')
+  await db.query(
+    'update users set password_hash = $2, must_change_password = false where id = $1',
+    [userId, await hashPassword(change.next)],
+  )
+  await revokeSessions(db, userId, now)
+  const identity = { ...identityOf(row), mustChangePassword: false }
+  return {
+    identity,
+    accessToken: issueAccess(identity, secret, now),
+    refreshToken: (await openSession(db, userId, now)).token,
+  }
 }
 
 /** Adds a user, and their company when it is new (by its 1С client). */

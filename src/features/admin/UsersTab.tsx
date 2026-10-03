@@ -45,13 +45,18 @@ export function UsersTab() {
         cell: (c) => <span className="text-ink-secondary">{c.getValue()}</span>,
       }),
       col.accessor((u) => ROLE_LABEL[u.role], { id: 'role', header: 'Роль' }),
-      col.accessor(
-        (u) =>
-          u.branchIds.length
-            ? u.branchIds.map((id) => branchName.get(id) ?? id).join(', ')
-            : 'Все филиалы',
-        { id: 'scope', header: 'Филиалы' },
-      ),
+      // Without branches (1С keeps none for the client yet) everyone works company-wide.
+      ...(branches.length
+        ? [
+            col.accessor(
+              (u) =>
+                u.branchIds.length
+                  ? u.branchIds.map((id) => branchName.get(id) ?? id).join(', ')
+                  : 'Все филиалы',
+              { id: 'scope', header: 'Филиалы' },
+            ),
+          ]
+        : []),
       col.accessor('active', {
         header: 'Доступ',
         meta: { mobile: 'aside' },
