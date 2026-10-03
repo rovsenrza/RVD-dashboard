@@ -41,25 +41,25 @@ export function createRequest(raw: NewRequest): ServiceRequest | { error: string
   const problem = requestProblem(body, { productOf, fileNames: drafts.map((f) => f.fileName) })
   if (problem) return { error: problem }
 
-  const positions =
-    body.kind === 'replace'
-      ? body.positions.map((line) => {
-          const hose = productOf(line.productId!)!
-          return {
-            productId: hose.id,
-            catalogNumberId: hose.catalogNumberId,
-            catalogNumber: hose.catalogNumber,
-            equipmentId: hose.equipmentId,
-            quantity: 1,
-          }
-        })
-      : body.positions.map((line) => ({ ...line, productId: null }))
+  // A line naming a hose (every «Замена» line, a «Ремонт» line for our hose) takes its
+  // number and machine from the hose, never from the client's copy.
+  const positions = body.positions.map((line) => {
+    if (!line.productId) return { ...line, productId: null }
+    const hose = productOf(line.productId)!
+    return {
+      productId: hose.id,
+      catalogNumberId: hose.catalogNumberId,
+      catalogNumber: hose.catalogNumber,
+      equipmentId: hose.equipmentId,
+      quantity: 1,
+    }
+  })
   const id = `req-${requests.length + 1}`
   const created: ServiceRequest = {
     id,
     number: `СВЦБ-${String(5200 + requests.length).padStart(5, '0')}`,
     branchId: body.branchId,
-    productId: body.kind === 'replace' && positions.length === 1 ? positions[0].productId : null,
+    productId: positions.length === 1 ? positions[0].productId : null,
     kind: body.kind,
     positions,
     quantity: positions.reduce((sum, l) => sum + l.quantity, 0),

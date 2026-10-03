@@ -44,6 +44,10 @@ const byUrgency = (a: Product, b: Product) =>
   URGENCY[a.status] - URGENCY[b.status] ||
   a.serialNumber.localeCompare(b.serialNumber)
 
+/** Never a hose still being made; a written-off one can be ordered again, never repaired. */
+const eligibleFor = (kind: RequestKind) => (p: Product) =>
+  p.lifecycle !== 'manufacturing' && (kind !== 'repair' || p.lifecycle !== 'written_off')
+
 let rowSeq = 0
 const blank = (catalogNumber = '', quantity = 1): Row => ({
   key: ++rowSeq,
@@ -102,16 +106,17 @@ export function RequestForm({
 
   const labelOf = (p: Product) => productLabel(p, equipment.data)
   const machine = preset?.equipmentId
+  const eligible = eligibleFor(kind)
   const candidates = useMemo(
     () =>
       (stock.data ?? [])
-        .filter((p) => p.lifecycle !== 'manufacturing')
+        .filter(eligibleFor(kind))
         .sort(
           (a, b) =>
             Number(b.equipmentId === machine && !!machine) -
               Number(a.equipmentId === machine && !!machine) || byUrgency(a, b),
         ),
-    [stock.data, machine],
+    [stock.data, machine, kind],
   )
   const taken = useMemo(() => new Set(picked.map((p) => p.id)), [picked])
 
@@ -121,8 +126,14 @@ export function RequestForm({
   const total = filled.reduce((sum, r) => sum + r.quantity, 0)
   const withExcel = uploads.items.some((u) => u.attachment && isSpreadsheet(u.attachment.fileName))
   const replacing = kind === 'replace'
-  const full = (replacing ? picked.length : rows.length) >= MAX_REQUEST_POSITIONS
-  const ready = replacing ? picked.length > 0 : filled.length > 0 || withExcel
+  // «Замена» names hoses only, «Изготовление» numbers only, «Ремонт» either or both.
+  const withHoses = kind !== 'manufacture'
+  const withRows = kind !== 'replace'
+  // Switching kinds keeps the picks; a kind shows (and sends) only those it may name.
+  const hoses = withHoses ? picked.filter(eligible) : []
+  const hosesFull = hoses.length + (withRows ? filled.length : 0) >= MAX_REQUEST_POSITIONS
+  const rowsFull = hoses.length + rows.length >= MAX_REQUEST_POSITIONS
+  const ready = replacing ? hoses.length > 0 : hoses.length > 0 || filled.length > 0 || withExcel
 
   const patch = (key: number, part: Partial<Row>) =>
     setRows((all) => all.map((r) => (r.key === key ? { ...r, ...part } : r)))
@@ -132,7 +143,7 @@ export function RequestForm({
     const parsed = parsePositions(pasted)
     if (parsed.length === 0) return
     const kept = rows.filter((r) => r.catalogNumber.trim() !== '')
-    const room = Math.max(0, MAX_REQUEST_POSITIONS - kept.length)
+    const room = Math.max(0, MAX_REQUEST_POSITIONS - hoses.length - kept.length)
     setRows([...kept, ...parsed.slice(0, room).map((p) => blank(p.catalogNumber, p.quantity))])
     setLeftOut(Math.max(0, parsed.length - room))
     setPasted('')
@@ -144,32 +155,34 @@ export function RequestForm({
     if (!ready) return
     setError(undefined)
     const eq = equipment.data?.find((x) => x.id === equipmentId)
-    const positions: RequestPosition[] = replacing
-      ? picked.map((p) => ({
-          productId: p.id,
-          catalogNumberId: p.catalogNumberId,
-          catalogNumber: p.catalogNumber,
-          equipmentId: p.equipmentId,
-          quantity: 1,
-        }))
-      : filled.map((r) => {
-          const typed = r.catalogNumber.trim()
-          // A number typed by hand may be absent from the catalogue; it goes as text and the manager resolves it.
-          const hit = known(typed)
-          return {
-            productId: null,
-            catalogNumberId: hit?.id ?? null,
-            catalogNumber: hit?.name ?? typed,
-            equipmentId: eq?.id ?? null,
-            quantity: r.quantity,
-          }
-        })
+    const positions: RequestPosition[] = [
+      ...hoses.map((p) => ({
+        productId: p.id,
+        catalogNumberId: p.catalogNumberId,
+        catalogNumber: p.catalogNumber,
+        equipmentId: p.equipmentId,
+        quantity: 1,
+      })),
+      ...(withRows ? filled : []).map((r) => {
+        const typed = r.catalogNumber.trim()
+        // Text the catalogue does not know — a number or, for a repair, the work — goes
+        // as typed and the manager resolves it.
+        const hit = known(typed)
+        return {
+          productId: null,
+          catalogNumberId: hit?.id ?? null,
+          catalogNumber: hit?.name ?? typed,
+          equipmentId: eq?.id ?? null,
+          quantity: r.quantity,
+        }
+      }),
+    ]
     create.mutate(
       {
         // A replacement belongs where its hoses are; otherwise the chosen machine
         // decides the branch, and without one the branch in scope.
-        branchId: replacing ? picked[0].branchId : (eq?.branchId ?? branch?.id ?? branches[0].id),
-        productId: replacing && picked.length === 1 ? picked[0].id : null,
+        branchId: hoses[0]?.branchId ?? eq?.branchId ?? branch?.id ?? branches[0].id,
+        productId: positions.length === 1 ? positions[0].productId : null,
         kind,
         quantity: positions.reduce((sum, l) => sum + l.quantity, 0),
         comment: comment.trim() || null,
@@ -232,19 +245,25 @@ export function RequestForm({
           <p className="text-label text-ink-muted">{REQUEST_KIND_HINT[kind]}</p>
         </div>
 
-        {replacing ? (
+        {withHoses && (
           <Field
-            label={`Изделия на замену · ${picked.length} из ${MAX_REQUEST_POSITIONS}`}
+            label={
+              replacing
+                ? `Изделия на замену · ${hoses.length} из ${MAX_REQUEST_POSITIONS}`
+                : `Наши изделия в ремонт${hoses.length ? ` · ${hoses.length}` : ''}`
+            }
             hint={
-              full
-                ? `В одной заявке — до ${MAX_REQUEST_POSITIONS} изделий.`
-                : 'Те, что пора менять, в подсказке первыми. Техника — у каждого изделия своя.'
+              hosesFull
+                ? `В одной заявке — до ${MAX_REQUEST_POSITIONS} позиций.`
+                : replacing
+                  ? 'Те, что пора менять, в подсказке первыми. Техника — у каждого изделия своя.'
+                  : 'Если ремонтируем изделие, которое мы поставили, — выберите его. Если нет — опишите работу ниже.'
             }
             error={miss}
           >
             {(id) => (
               <div className="grid gap-1.5">
-                {picked.map((p) => (
+                {hoses.map((p) => (
                   <ProductRow
                     key={p.id}
                     label={labelOf(p)}
@@ -266,23 +285,27 @@ export function RequestForm({
                   candidates={candidates}
                   labelOf={labelOf}
                   taken={taken}
-                  disabled={full}
+                  disabled={hosesFull}
                   invalid={!!miss}
-                  placeholder={picked.length ? 'Добавить ещё: EHS или ваш номер' : undefined}
+                  placeholder={hoses.length ? 'Добавить ещё: EHS или ваш номер' : undefined}
                   onPick={(p) => setPicked((all) => [...all, p])}
                   onMiss={setMiss}
                 />
               </div>
             )}
           </Field>
-        ) : (
+        )}
+
+        {withRows && (
           <>
             <fieldset className="grid gap-2">
               <div className="flex items-baseline justify-between gap-3">
-                <legend className="text-ui font-medium">Каталожные номера (OEM)</legend>
+                <legend className="text-ui font-medium">
+                  {kind === 'repair' ? 'Что отремонтировать' : 'Каталожные номера (OEM)'}
+                </legend>
                 <span className="text-label text-ink-muted tabular">
                   {filled.length > 0
-                    ? `Позиций: ${filled.length} из ${MAX_REQUEST_POSITIONS} · штук: ${total}`
+                    ? `Позиций: ${hoses.length + filled.length} из ${MAX_REQUEST_POSITIONS} · штук: ${hoses.length + total}`
                     : withExcel
                       ? 'Позиции — в таблице Excel'
                       : `До ${MAX_REQUEST_POSITIONS} позиций`}
@@ -296,16 +319,22 @@ export function RequestForm({
 
               {rows.map((row, i) => {
                 const typed = row.catalogNumber.trim()
-                const unknown = typed !== '' && !!catalog.data && !known(typed)
+                // A repair line is free text: only a number for manufacture can be «unknown».
+                const unknown =
+                  kind === 'manufacture' && typed !== '' && !!catalog.data && !known(typed)
                 return (
                   <div key={row.key} className="grid gap-1">
                     <div className="flex items-center gap-2">
                       <Input
                         list={CATALOG_LIST}
-                        aria-label={`Каталожный № (OEM), позиция ${i + 1}`}
+                        aria-label={`${kind === 'repair' ? 'Что отремонтировать' : 'Каталожный № (OEM)'}, позиция ${i + 1}`}
                         value={row.catalogNumber}
                         onChange={(e) => patch(row.key, { catalogNumber: e.target.value })}
-                        placeholder="Например: 07098-010A9"
+                        placeholder={
+                          kind === 'repair'
+                            ? 'Например: 2SC ду10 — течь у муфты'
+                            : 'Например: 07098-010A9'
+                        }
                         autoComplete="off"
                       />
                       <Input
@@ -344,16 +373,16 @@ export function RequestForm({
                   variant="secondary"
                   size="sm"
                   icon={Plus}
-                  disabled={full}
+                  disabled={rowsFull}
                   onClick={() => setRows((all) => [...all, blank()])}
                 >
-                  Добавить номер
+                  {kind === 'repair' ? 'Добавить работу' : 'Добавить номер'}
                 </Button>
                 <Button
                   variant="secondary"
                   size="sm"
                   icon={ClipboardPaste}
-                  disabled={full && filled.length === rows.length}
+                  disabled={rowsFull && filled.length === rows.length}
                   onClick={() => setPasting((v) => !v)}
                   aria-expanded={pasting}
                 >
@@ -364,7 +393,7 @@ export function RequestForm({
               {pasting && (
                 <div className="grid gap-2">
                   <Textarea
-                    aria-label="Список каталожных номеров"
+                    aria-label={kind === 'repair' ? 'Список работ' : 'Список каталожных номеров'}
                     rows={5}
                     value={pasted}
                     onChange={(e) => setPasted(e.target.value)}
@@ -387,16 +416,25 @@ export function RequestForm({
                 </p>
               ) : (
                 filled.length === 0 &&
+                hoses.length === 0 &&
                 !withExcel && (
                   <p className="text-label text-ink-muted">
-                    Можно не вписывать номера, а приложить таблицу Excel ниже — менеджер возьмёт
-                    позиции из неё.
+                    {kind === 'repair'
+                      ? 'Можно не заполнять, а приложить таблицу Excel ниже — менеджер возьмёт позиции из неё.'
+                      : 'Можно не вписывать номера, а приложить таблицу Excel ниже — менеджер возьмёт позиции из неё.'}
                   </p>
                 )
               )}
             </fieldset>
 
-            <Field label="Техника" hint="Одна на всю заявку. Можно оставить без привязки к технике">
+            <Field
+              label="Техника"
+              hint={
+                kind === 'repair'
+                  ? 'Для работ, описанных текстом. У выбранных изделий техника своя'
+                  : 'Одна на всю заявку. Можно оставить без привязки к технике'
+              }
+            >
               {(id) => (
                 <Select
                   id={id}

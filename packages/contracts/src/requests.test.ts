@@ -54,9 +54,30 @@ describe('requestProblem', () => {
   })
 
   it('names a line without a number or with an impossible quantity', () => {
-    expect(requestProblem(draft('repair', [line({ catalogNumber: ' ' })]), ctx())).toMatch(
+    expect(requestProblem(draft('manufacture', [line({ catalogNumber: ' ' })]), ctx())).toMatch(
       /каталожный номер/,
     )
+    expect(requestProblem(draft('repair', [line({ catalogNumber: ' ' })]), ctx())).toMatch(
+      /Опишите, что отремонтировать/,
+    )
     expect(requestProblem(draft('repair', [line({ quantity: 0 })]), ctx())).toMatch(/от 1 до 99/)
+  })
+
+  it('lets a repair name the company’s hoses, describe other work, or both', () => {
+    const hose = line({ productId: 'h1', catalogNumber: null })
+    const work = line({ catalogNumber: '2SC ду10 — течь у муфты', quantity: 2 })
+    expect(requestProblem(draft('repair', [hose]), ctx())).toBeNull()
+    expect(requestProblem(draft('repair', [work]), ctx())).toBeNull()
+    expect(requestProblem(draft('repair', [hose, work]), ctx())).toBeNull()
+  })
+
+  it('sends no written-off or unknown hose to repair, and no hose at all to manufacture', () => {
+    expect(requestProblem(draft('repair', [line({ productId: 'h2' })]), ctx())).toMatch(/списано/)
+    expect(requestProblem(draft('repair', [line({ productId: 'nope' })]), ctx())).toMatch(
+      /только ваши изделия/,
+    )
+    expect(requestProblem(draft('manufacture', [line({ productId: 'h1' })]), ctx())).toMatch(
+      /выберите «Замена»/,
+    )
   })
 })

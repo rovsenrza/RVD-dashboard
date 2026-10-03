@@ -15,10 +15,16 @@ export interface RequestDraft {
 
 /**
  * What is wrong with a request, or null — the one check for the form, the
- * mocks and the BFF. «Замена» names hoses the company already has (made,
- * archive included), never a typed number. «Изготовление» and «Ремонт» take
- * numbers typed or picked, or no lines at all when an Excel file carries them;
- * a number missing from the catalogue goes as text for the manager to resolve.
+ * mocks and the BFF.
+ * - «Замена» names hoses the company already has (made, archive included),
+ *   never a typed number.
+ * - «Ремонт» may name the company's hoses in service — when it is ours being
+ *   repaired, 1С records the repair in its status history — and may describe
+ *   any other work in text (the 1С developer, 2026-10-03: a repair is a service
+ *   and materials, a hose is optional).
+ * - «Изготовление» takes catalogue numbers typed or picked; a number missing
+ *   from the catalogue goes as text for the manager to resolve.
+ * The last two may come with no lines at all when an Excel file carries them.
  */
 export function requestProblem(
   draft: RequestDraft,
@@ -29,24 +35,39 @@ export function requestProblem(
   if (lines.length > MAX_REQUEST_POSITIONS)
     return `В заявке не больше ${MAX_REQUEST_POSITIONS} позиций — остальные приложите таблицей Excel`
 
+  const hoseLines = lines.filter((l) => l.productId)
+  const textLines = lines.filter((l) => !l.productId)
+
   if (draft.kind === 'replace') {
     if (lines.length === 0) return 'Выберите изделия, которые нужно заменить'
-    const seen = new Set<string>()
-    for (const line of lines) {
-      const hose = line.productId ? ctx.productOf(line.productId) : undefined
-      if (!hose) return 'В заявке на замену — только ваши изделия из реестра'
-      if (hose.lifecycle === 'manufacturing')
-        return `Изделие EHS ${hose.serialNumber} ещё изготавливается`
-      if (seen.has(hose.id)) return `Изделие EHS ${hose.serialNumber} указано дважды`
-      seen.add(hose.id)
-    }
-    return null
+    if (textLines.length) return 'В заявке на замену — только ваши изделия из реестра'
   }
+  if (draft.kind === 'manufacture' && hoseLines.length)
+    return 'В заявке на изготовление — номера, а не изделия: чтобы заменить изделие, выберите «Замена»'
+
+  const seen = new Set<string>()
+  for (const line of hoseLines) {
+    const hose = ctx.productOf(line.productId!)
+    if (!hose)
+      return `В заявке на ${draft.kind === 'repair' ? 'ремонт' : 'замену'} — только ваши изделия из реестра`
+    if (hose.lifecycle === 'manufacturing')
+      return `Изделие EHS ${hose.serialNumber} ещё изготавливается`
+    if (draft.kind === 'repair' && hose.lifecycle === 'written_off')
+      return `Изделие EHS ${hose.serialNumber} списано — в ремонт его не отправить`
+    if (seen.has(hose.id)) return `Изделие EHS ${hose.serialNumber} указано дважды`
+    seen.add(hose.id)
+  }
+  if (draft.kind === 'replace') return null
 
   if (lines.length === 0 && !ctx.fileNames.some(isSpreadsheet))
-    return 'Добавьте номера или приложите таблицу Excel'
-  if (lines.some((l) => !l.catalogNumber?.trim())) return 'У позиции не указан каталожный номер'
-  if (lines.some((l) => !Number.isInteger(l.quantity) || l.quantity < 1 || l.quantity > 99))
+    return draft.kind === 'repair'
+      ? 'Выберите изделия, опишите работу или приложите таблицу Excel'
+      : 'Добавьте номера или приложите таблицу Excel'
+  if (textLines.some((l) => !l.catalogNumber?.trim()))
+    return draft.kind === 'repair'
+      ? 'Опишите, что отремонтировать'
+      : 'У позиции не указан каталожный номер'
+  if (textLines.some((l) => !Number.isInteger(l.quantity) || l.quantity < 1 || l.quantity > 99))
     return 'Количество — от 1 до 99'
   return null
 }
