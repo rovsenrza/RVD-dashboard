@@ -415,22 +415,13 @@ export function applySettings(patch: Partial<CabinetSettings>) {
   return settings
 }
 
-const PEOPLE: [string, string][] = [
-  ['Иванов Иван', 'ivanov'],
-  ['Петрова Анна', 'petrova'],
-  ['Сидоров Алексей', 'sidorov'],
-  ['Кузнецова Мария', 'kuznetsova'],
-  ['Смирнов Дмитрий', 'smirnov'],
-  ['Волков Сергей', 'volkov'],
-  ['Морозова Елена', 'morozova'],
-  ['Новиков Андрей', 'novikov'],
-  ['Фёдоров Павел', 'fedorov'],
-  ['Лебедева Ольга', 'lebedeva'],
-  ['Козлов Николай', 'kozlov'],
-  ['Егорова Татьяна', 'egorova'],
+// The demo company's two accounts. u-1 is the signed-in demo user, who reaches the user list only as administrator.
+const PEOPLE: [name: string, login: string, role: CabinetUser['role']][] = [
+  ['Иванов Иван', 'ivanov', 'admin'],
+  ['Петрова Анна', 'petrova', 'engineer'],
 ]
-// u-1 is the signed-in demo user, who reaches the user list only as administrator.
-const ROLE_MIX = ['admin', 'engineer', 'manager', 'mechanic', 'mechanic', 'engineer'] as const
+/** The roles the demo switch can preview. */
+const DEMO_ROLES: readonly string[] = ['admin', 'engineer', 'manager', 'mechanic']
 
 /**
  * The signed-in demo user. The role is the demo switch's (the mock runs in the
@@ -440,25 +431,22 @@ export function currentUser(): CabinetUser {
   let role = users[0].role
   try {
     const picked = globalThis.localStorage?.getItem('rvd.role')
-    if (picked && (ROLE_MIX as readonly string[]).includes(picked)) role = picked as typeof role
+    if (picked && DEMO_ROLES.includes(picked)) role = picked as typeof role
   } catch {
     // No storage (tests, private mode): the seeded role stands.
   }
   return { ...users[0], role }
 }
 
-export const users: CabinetUser[] = PEOPLE.map(([name, login], i) => {
-  const role = ROLE_MIX[i % ROLE_MIX.length]
-  return {
-    id: `u-${i + 1}`,
-    name,
-    email: `${login}@roga-kopyta.ru`,
-    role,
-    branchIds: role === 'mechanic' ? [BRANCHES[i % 2]] : [],
-    active: i !== 9,
-    lastLoginAt: i === 7 ? null : iso(subDays(NOW, Math.floor(rand() * 40))),
-  }
-})
+export const users: CabinetUser[] = PEOPLE.map(([name, login, role], i) => ({
+  id: `u-${i + 1}`,
+  name,
+  email: `${login}@roga-kopyta.ru`,
+  role,
+  branchIds: [],
+  active: true,
+  lastLoginAt: iso(subDays(NOW, Math.floor(rand() * 40))),
+}))
 
 const BRANCH_META: Record<string, Pick<BranchSummary, 'name' | 'code' | 'address'>> = {
   'b-main': {
@@ -595,31 +583,20 @@ for (const r of requests) {
 }
 
 {
-  const admin = users[0]
-  const created = users[users.length - 1]
+  const [admin, engineer] = users
   record(
     {
       action: 'user.create',
-      target: { kind: 'user', id: created.id, label: created.name },
-      changes: diff({}, userView(created)),
+      target: { kind: 'user', id: engineer.id, label: engineer.name },
+      changes: diff({}, userView(engineer)),
     },
     workTime(33),
     admin,
   )
-  for (const u of users.filter((x) => !x.active))
-    record(
-      {
-        action: 'user.deactivate',
-        target: { kind: 'user', id: u.id, label: u.name },
-        changes: [{ field: 'Доступ', before: 'Активен', after: 'Отключён' }],
-      },
-      workTime(12),
-      admin,
-    )
   record(
     {
       action: 'user.password',
-      target: { kind: 'user', id: users[4].id, label: users[4].name },
+      target: { kind: 'user', id: engineer.id, label: engineer.name },
       changes: [],
     },
     workTime(6),

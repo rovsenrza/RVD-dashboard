@@ -34,10 +34,6 @@ describe('mock administration', () => {
       expect(p.status).toBe(statusOf(p, settings))
   })
 
-  it('binds every mechanic to exactly one branch', () => {
-    for (const u of users.filter((x) => x.role === 'mechanic')) expect(u.branchIds).toHaveLength(1)
-  })
-
   it('counts company-wide users in every branch', () => {
     const companyWide = users.filter((u) => u.active && u.branchIds.length === 0).length
     for (const b of branchSummaries()) expect(b.userCount).toBeGreaterThanOrEqual(companyWide)
