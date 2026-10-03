@@ -541,8 +541,15 @@ export function record(
 }
 
 // A deterministic past, so the log reads like a working month rather than an empty page.
-const workTime = (daysAgo: number) =>
-  setMinutes(setHours(subDays(NOW, daysAgo), 8 + Math.floor(rand() * 10)), Math.floor(rand() * 60))
+// A working hour later today than now is still ahead: such an entry lands a minute ago, or
+// it would sit in the future above whatever the person does next.
+const workTime = (daysAgo: number) => {
+  const at = setMinutes(
+    setHours(subDays(NOW, daysAgo), 8 + Math.floor(rand() * 10)),
+    Math.floor(rand() * 60),
+  )
+  return at < NOW ? at : new Date(NOW.getTime() - 60_000)
+}
 const fieldWorkers = users.filter(
   (u) => u.active && (u.role === 'mechanic' || u.role === 'engineer'),
 )
