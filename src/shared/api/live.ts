@@ -24,11 +24,13 @@ export const LIVE_ROUTES = [
   ['get', '/products/:id'],
   ['get', '/products/:id/lifetime'],
   ['get', '/products/:id/history'],
+  ['get', '/products/:id/replacements'],
   ['get', '/equipment'],
   ['get', '/equipment/:id'],
   ['get', '/equipment/:id/products'],
   ['get', '/equipment/:id/replacements'],
   ['get', '/dashboard/summary'],
+  ['get', '/replacements'],
   ['get', '/requests'],
   ['post', '/requests'],
 ] as const

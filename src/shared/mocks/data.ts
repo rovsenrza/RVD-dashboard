@@ -360,7 +360,7 @@ export function dashboardSummary(branch: string | null = null): DashboardSummary
   const scopedProducts = products.filter(
     (p) => p.lifecycle !== 'written_off' && (!branch || p.branchId === branch),
   )
-  const branchEquipment = new Set(
+  const branchEquipment = new Set<string | null>(
     equipment.filter((e) => !branch || e.branchId === branch).map((e) => e.id),
   )
   const scopedReplacements = branch
@@ -650,7 +650,7 @@ export function modelStats(branch: string | null = null): ModelStats[] {
   }
   return [...groups]
     .map(([model, machines]) => {
-      const ids = new Set(machines.map((m) => m.id))
+      const ids = new Set<string | null>(machines.map((m) => m.id))
       const breakdown: ModelStats['breakdown'] = { ok: 0, warn: 0, replace: 0, no_warranty: 0 }
       for (const m of machines)
         for (const k of Object.keys(breakdown) as (keyof typeof breakdown)[])

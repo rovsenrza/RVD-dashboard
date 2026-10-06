@@ -208,7 +208,9 @@ export const handlers = [
     if (!branch) return HttpResponse.json(newestFirst(replacements))
     // A replacement carries no branch of its own — it belongs to the branch of
     // the equipment it happened on.
-    const ours = new Set(equipment.filter((e) => e.branchId === branch).map((e) => e.id))
+    const ours = new Set<string | null>(
+      equipment.filter((e) => e.branchId === branch).map((e) => e.id),
+    )
     return HttpResponse.json(newestFirst(replacements.filter((r) => ours.has(r.equipmentId))))
   }),
   http.get(api('/products/:id/attachments'), ({ params }) =>

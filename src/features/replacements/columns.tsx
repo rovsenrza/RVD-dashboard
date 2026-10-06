@@ -24,12 +24,16 @@ export const replacementColumns = [
     ),
   }),
   col.accessor('newSerialNumber', { header: 'Установлено', cell: (c) => valueOr(c.getValue()) }),
-  col.accessor('garageNumber', { header: 'Техника' }),
-  col.accessor('reason', { header: 'Причина' }),
+  col.accessor('garageNumber', { header: 'Техника', cell: (c) => valueOr(c.getValue()) }),
+  col.accessor('reason', { header: 'Причина', cell: (c) => valueOr(c.getValue()) }),
   col.accessor((r) => r.operatingHours, {
     id: 'usage',
     header: 'Наработка',
     cell: (c) => valueOr(formatUsage(c.row.original)),
   }),
-  col.accessor('performedBy', { header: 'Кто выполнил', meta: { mobile: 'hide' } }),
+  col.accessor('performedBy', {
+    header: 'Кто выполнил',
+    meta: { mobile: 'hide' },
+    cell: (c) => valueOr(c.getValue()),
+  }),
 ]

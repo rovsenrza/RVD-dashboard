@@ -61,10 +61,23 @@ export function ReplacementsPage() {
 
   const machines = useMemo(
     () =>
-      [...new Map((query.data ?? []).map((r) => [r.equipmentId, r.garageNumber]))].sort((a, b) =>
-        a[1].localeCompare(b[1], 'ru'),
-      ),
+      [
+        ...new Map(
+          (query.data ?? []).flatMap((r) =>
+            r.equipmentId ? [[r.equipmentId, r.garageNumber ?? r.equipmentId] as const] : [],
+          ),
+        ),
+      ].sort((a, b) => a[1].localeCompare(b[1], 'ru')),
     [query.data],
+  )
+  // 1С keeps no reason for a swap: offer the reasons the journal holds (and the one a link
+  // asked for); none — no filter.
+  const reasons = useMemo(
+    () =>
+      REPLACEMENT_REASONS.filter(
+        (r) => r === reason || (query.data ?? []).some((swap) => swap.reason === r),
+      ),
+    [query.data, reason],
   )
 
   const rows = useMemo(() => {
@@ -135,14 +148,16 @@ export function ReplacementsPage() {
                   options={machines.map(([id, garage]) => ({ value: id, label: garage }))}
                   className="sm:w-36"
                 />
-                <Select
-                  aria-label="Причина"
-                  value={reason}
-                  onChange={(e) => setParam('reason', e.target.value)}
-                  placeholder="Все причины"
-                  options={REPLACEMENT_REASONS.map((r) => ({ value: r, label: r }))}
-                  className="col-span-2 sm:w-52"
-                />
+                {reasons.length > 0 && (
+                  <Select
+                    aria-label="Причина"
+                    value={reason}
+                    onChange={(e) => setParam('reason', e.target.value)}
+                    placeholder="Все причины"
+                    options={reasons.map((r) => ({ value: r, label: r }))}
+                    className="col-span-2 sm:w-52"
+                  />
+                )}
               </div>
             }
             search={

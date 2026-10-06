@@ -93,13 +93,15 @@ export async function storeCache(db: Db, cache: Cache, durationMs: number): Prom
         service_life_days: p.serviceLifeDays,
         search: searchText(p, p.equipmentId ? garages.get(p.equipmentId) : undefined),
         data: p,
+        replaced_product_id: p.replacedProductId,
       }))
       await client.query(
         `insert into products
            select * from jsonb_to_recordset($1::jsonb) as r(
              id text, client_id text, branch_id text, equipment_id text, catalog_number_id text,
              serial_number text, type text, lifecycle text, shipped_at date, installed_at date,
-             warranty_days int, service_life_days int, search text, data jsonb)`,
+             warranty_days int, service_life_days int, search text, data jsonb,
+             replaced_product_id text)`,
         [JSON.stringify(chunk)],
       )
     }

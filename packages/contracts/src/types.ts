@@ -152,22 +152,28 @@ export interface LifecycleRecord {
   author: string | null
 }
 
-/** A journal row: ids for navigation plus the numbers a person reads them by. */
+/**
+ * A journal row: ids for navigation plus the numbers a person reads them by.
+ * From 1С a swap is a new hose naming the one it replaces (`ЗаменяемоеИзделие_Key`),
+ * dated by the new hose's installation, else shipment; 1С keeps no reason, usage
+ * or performer, so those come back null.
+ */
 export interface Replacement {
   id: string
   oldProductId: string
   oldSerialNumber: string
   newProductId: string | null
   newSerialNumber: string | null
-  equipmentId: string
-  garageNumber: string
+  /** The machine the swap happened on; null when 1С tied neither hose to one */
+  equipmentId: string | null
+  garageNumber: string | null
   date: string
-  reason: string
+  reason: string | null
   /** Наработка at the moment of the swap, in `usageUnit` */
   operatingHours: number | null
   /** Моточасы for most machines, kilometres for trucks */
   usageUnit: 'hours' | 'km'
-  performedBy: string
+  performedBy: string | null
   comment: string | null
   /** Фото снятого рукава, акт — что механик приложил к замене */
   attachments: Attachment[]

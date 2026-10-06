@@ -19,11 +19,13 @@ const hose = (id: string | null, serial: string | null) =>
 function Event({ r, productId }: { r: Replacement; productId: string }) {
   return r.oldProductId === productId ? (
     <>
-      Снято с {r.garageNumber}, вместо него — {hose(r.newProductId, r.newSerialNumber)}
+      Снято{r.garageNumber && ` с ${r.garageNumber}`}, вместо него —{' '}
+      {hose(r.newProductId, r.newSerialNumber)}
     </>
   ) : (
     <>
-      Установлено на {r.garageNumber} вместо {hose(r.oldProductId, r.oldSerialNumber)}
+      Установлено{r.garageNumber && ` на ${r.garageNumber}`} вместо{' '}
+      {hose(r.oldProductId, r.oldSerialNumber)}
     </>
   )
 }
@@ -41,17 +43,19 @@ export function ProductReplacements({ productId }: { productId: string }) {
                 <li key={r.id} className="grid gap-0.5 py-3">
                   <div className="flex items-baseline justify-between gap-3 text-label text-ink-muted">
                     <span>
-                      <span className="tabular">{formatDate(r.date)}</span> · {r.reason}
+                      <span className="tabular">{formatDate(r.date)}</span>
+                      {r.reason && ` · ${r.reason}`}
                     </span>
                     {usage && <span className="tabular">{usage}</span>}
                   </div>
                   <div className="text-ui">
                     <Event r={r} productId={productId} />
                   </div>
-                  <div className="text-label text-ink-muted">
-                    {r.performedBy}
-                    {r.comment && ` · ${r.comment}`}
-                  </div>
+                  {(r.performedBy || r.comment) && (
+                    <div className="text-label text-ink-muted">
+                      {[r.performedBy, r.comment].filter(Boolean).join(' · ')}
+                    </div>
+                  )}
                   <AttachmentStrip files={r.attachments} />
                 </li>
               )

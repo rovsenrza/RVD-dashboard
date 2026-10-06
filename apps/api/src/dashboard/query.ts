@@ -3,6 +3,7 @@ import type { Db } from '../db/pool.ts'
 import { ruleParams } from '../equipment/query.ts'
 import { PLANNED_AT, STATUS_SQL, statusAt } from '../products/health.ts'
 import type { Clock } from '../products/query.ts'
+import { replacementTotals } from '../replacements/query.ts'
 
 interface Totals {
   shipped_total: number
@@ -20,7 +21,8 @@ interface Totals {
  * «Главная» from the cache, by the same status rule as the registry. The
  * deltas compare with 30 days ago: hoses shipped since, and how many were on
  * warranty or due for replacement then (only hoses already in service then).
- * Replacements come from 1С with Д16; until then there are none to count.
+ * Swaps are counted by the journal's rule (`replacements/query.ts`), against
+ * the 30 days before.
  */
 export async function dashboardSummary(
   db: Db,
@@ -66,21 +68,22 @@ export async function dashboardSummary(
      limit 8`,
     params,
   )
+  const swaps = await replacementTotals(db, clock.today, client)
   return {
     shippedTotal: t.shipped_total,
     inOperation: t.in_operation,
     onWarranty: t.ok,
     expiringSoon: t.warn,
     needsReplacement: t.replace,
-    replacementsInPeriod: 0,
+    replacementsInPeriod: swaps.inPeriod,
     deltas: {
       shippedTotal: t.shipped_lately,
-      replacements: 0,
+      replacements: swaps.delta,
       onWarranty: t.ok - t.ok_then,
       needsReplacement: t.replace - t.replace_then,
     },
     statusBreakdown: { ok: t.ok, warn: t.warn, replace: t.replace, no_warranty: t.no_warranty },
-    replacementsByMonth: [],
+    replacementsByMonth: swaps.byMonth,
     upcoming,
   }
 }

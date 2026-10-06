@@ -82,7 +82,7 @@ export function buildReport(id: ReportId, { branch, from, to }: ReportParams): R
     branch ? rows.filter((r) => r.branchId === branch) : rows
   const hoses = inBranch(products)
   const machines = inBranch(equipment)
-  const machineIds = new Set(machines.map((m) => m.id))
+  const machineIds = new Set<string | null>(machines.map((m) => m.id))
   const inPeriod = (date: string) => !period || (date >= period.from && date <= period.to)
   const swaps = replacements.filter((r) => machineIds.has(r.equipmentId) && inPeriod(r.date))
 
@@ -247,7 +247,7 @@ export function buildReport(id: ReportId, { branch, from, to }: ReportParams): R
         .filter((b) => !branch || b.id === branch)
         .map((b) => {
           const own = equipment.filter((e) => e.branchId === b.id)
-          const ids = new Set(own.map((e) => e.id))
+          const ids = new Set<string | null>(own.map((e) => e.id))
           const on = products.filter((p) => p.branchId === b.id && installed(p))
           return {
             branch: b.name,

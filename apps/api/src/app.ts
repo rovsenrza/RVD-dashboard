@@ -24,6 +24,7 @@ import { dashboardSummary } from './dashboard/query.ts'
 import { equipmentProducts, getEquipment, listEquipment } from './equipment/query.ts'
 import { productLifetime } from './products/lifetime.ts'
 import { getProduct, listProducts, type Clock } from './products/query.ts'
+import { listReplacements } from './replacements/query.ts'
 import {
   createRequest,
   listRequests,
@@ -293,8 +294,16 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
       equipmentProducts(db, req.params.id, clock(), clientOf(req)),
     )
 
-    // Replacements come from 1С with Д16; until then a machine has none to show.
-    app.get('/equipment/:id/replacements', async () => [])
+    // «История замен» (Д16): swaps 1С recorded, read from the hose that names the one it replaced.
+    app.get('/replacements', async (req) => listReplacements(db, { client: clientOf(req) }))
+
+    app.get<{ Params: { id: string } }>('/products/:id/replacements', async (req) =>
+      listReplacements(db, { client: clientOf(req), product: req.params.id }),
+    )
+
+    app.get<{ Params: { id: string } }>('/equipment/:id/replacements', async (req) =>
+      listReplacements(db, { client: clientOf(req), equipment: req.params.id }),
+    )
 
     app.get('/dashboard/summary', async (req) => dashboardSummary(db, clock(), clientOf(req)))
 
