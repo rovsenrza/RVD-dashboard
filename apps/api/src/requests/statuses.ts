@@ -49,7 +49,10 @@ export async function refreshRequestStatuses(
     const status = requestStatusFrom1C(s.СтатусЗаказа)
     const shipment = s.Отгрузка === 'Отгружен' ? 'shipped' : 'not_shipped'
     const result = await db.query(
-      `update requests set status = coalesce($2, status), shipment_status = $3
+      // A close is stamped once, when the sync first sees it (the «заявка выполнена» notice).
+      `update requests set status = coalesce($2, status), shipment_status = $3,
+         closed_at = case when coalesce($2, status) in ('done', 'rejected')
+                          then coalesce(closed_at, now()) end
        where onec_ref = $1 and (status is distinct from coalesce($2, status) or shipment_status <> $3)`,
       [s.Ref_Key, status, shipment],
     )

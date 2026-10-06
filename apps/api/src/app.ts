@@ -3,6 +3,7 @@ import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest }
 import {
   auditChanges,
   DEFAULT_RULES,
+  DEFAULT_SETTINGS,
   ProductListQuery,
   requestChanges,
   settingsPatch,
@@ -14,6 +15,13 @@ import {
 } from '@rvd/contracts'
 import { hoseLabels, listAudit, recordAudit, type AuditNote } from './admin/audit.ts'
 import { companySettings, saveSettings } from './admin/settings.ts'
+import {
+  listNotifications,
+  markRead,
+  notificationPrefs,
+  saveNotificationPrefs,
+  type Prefs,
+} from './notifications/query.ts'
 import {
   AuthRejected,
   changePassword,
@@ -387,6 +395,57 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
     app.get('/dashboard/summary', async (req) =>
       dashboardSummary(db, await clockOf(req), clientOf(req)),
     )
+
+    // Notifications (Д19): worked out per person from the cache, the company's lead days and
+    // their own choice; only reads and the choice are stored.
+    const personOf = (req: FastifyRequest) => (secret && req.identity ? req.identity : null)
+    const notices = async (req: FastifyRequest) => {
+      const person = personOf(req)
+      const settings = person ? await companySettings(db, person.companyId) : DEFAULT_SETTINGS
+      const prefs = await notificationPrefs(db, person?.userId ?? null)
+      return listNotifications(db, clock().today, {
+        userId: person?.userId ?? null,
+        client: clientOf(req),
+        leadDays: settings.leadDays,
+        kinds: prefs.kinds,
+      })
+    }
+    const prefsView = async (req: FastifyRequest, prefs: Prefs) => {
+      const person = personOf(req)
+      const settings = person ? await companySettings(db, person.companyId) : DEFAULT_SETTINGS
+      return { ...prefs, address: (person ?? demo).email, companyEmail: settings.channels.email }
+    }
+
+    app.get('/notifications', async (req) => notices(req))
+
+    app.post<{ Body: { ids?: unknown } }>('/notifications/read', async (req) => {
+      const person = personOf(req)
+      const list = await notices(req)
+      const asked = Array.isArray(req.body?.ids)
+        ? new Set(req.body.ids.filter((id): id is string => typeof id === 'string'))
+        : null
+      // No ids — «Прочитать все»: everything this person sees now.
+      const ids = list.filter((n) => !n.read && (!asked || asked.has(n.id))).map((n) => n.id)
+      if (person && ids.length) await markRead(db, person.userId, ids)
+      const done = new Set(person ? ids : [])
+      return { unread: list.filter((n) => !n.read && !done.has(n.id)).length }
+    })
+
+    app.get('/me/notification-prefs', async (req) =>
+      prefsView(req, await notificationPrefs(db, personOf(req)?.userId ?? null)),
+    )
+
+    app.patch<{ Body: Partial<Prefs> }>('/me/notification-prefs', async (req, reply) => {
+      const person = personOf(req)
+      if (!person) return reply.code(404).send({ message: 'Вход в этом кабинете выключен' })
+      const body = req.body ?? {}
+      return answering(reply, async () =>
+        prefsView(
+          req,
+          await saveNotificationPrefs(db, person.userId, { kinds: body.kinds, email: body.email }),
+        ),
+      )
+    })
 
     // Requests (Д18): taken here, sent to 1С by the outbox, statuses read back at sync.
     app.get('/requests', async (req) => listRequests(db, clientOf(req)))

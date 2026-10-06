@@ -8,12 +8,15 @@ export const notificationTarget = (n: CabinetNotification) =>
 /** «1 новое», «3 новых». */
 export const unreadText = (n: number) => `${n} ${plural(n, 'новое', 'новых', 'новых')}`
 
-export const NOTIFICATION_KINDS: NotificationKind[] = [
-  'overdue',
-  'planned_replacement',
-  'warranty_end',
-  'request_status',
-]
+/** The rules and their wording live in @rvd/contracts, shared with the API. */
+export {
+  DEFAULT_NOTIFICATION_PREFS,
+  hoseNoticeText,
+  hoseNoticeTitle,
+  NOTIFICATION_KINDS,
+  NOTIFICATION_WINDOW_DAYS,
+  requestNoticeText,
+} from '@rvd/contracts'
 
 /** How the preferences and filters name each rule. */
 export const NOTIFICATION_KIND_LABEL: Record<NotificationKind, string> = {

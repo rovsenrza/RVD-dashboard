@@ -150,4 +150,18 @@ describe.skipIf(!hasDb)('requests to 1С', () => {
     const delivered = (await list()).find((r) => r.number === 'СВЦБ-002201')
     expect(delivered).toMatchObject({ status: 'in_progress', shipmentStatus: 'shipped' })
   })
+
+  it('stamps the moment 1С closed the order, for the notice', async () => {
+    const closedAt = async () =>
+      (
+        await db.query<{ closed_at: Date | null }>(
+          "select closed_at from requests where number = 'СВЦБ-002201'",
+        )
+      ).rows[0].closed_at
+    expect(await closedAt()).toBeNull()
+    await refreshRequestStatuses(db, async (refs) =>
+      refs.map((ref) => ({ Ref_Key: ref, СтатусЗаказа: 'Выполнен', Отгрузка: 'Отгружен' })),
+    )
+    expect(await closedAt()).toBeInstanceOf(Date)
+  })
 })

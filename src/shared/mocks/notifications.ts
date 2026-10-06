@@ -1,33 +1,34 @@
-import { addDays, format, formatISO, parseISO, setHours } from 'date-fns'
+import { addDays, formatISO, parseISO, setHours } from 'date-fns'
 import type {
   CabinetNotification,
   NotificationKind,
   NotificationPrefs,
   Product,
 } from '@/entities/types'
-import { plural } from '@/shared/lib/utils'
+import {
+  DEFAULT_NOTIFICATION_PREFS,
+  hoseNoticeText,
+  hoseNoticeTitle,
+  NOTIFICATION_WINDOW_DAYS as WINDOW,
+  requestNoticeText,
+} from '@/entities/notification'
 import { equipment, products, requests, settings, users } from './data'
 import { productLifetime } from './productCard'
 
-/** Days of history the scheduler has already run for. */
-const WINDOW = 30
 /** Older than this the demo treats as read, so the list opens like a working inbox. */
 const FRESH = 2
 
 const day = (d: Date) => formatISO(d, { representation: 'date' })
 const plus = (iso: string, n: number) => day(addDays(parseISO(iso), n))
-const dmy = (iso: string) => format(parseISO(iso), 'dd.MM.yyyy')
-const inDays = (n: number) => `через ${n} ${plural(n, 'день', 'дня', 'дней')}`
 /** The scheduler runs at six in the morning. */
 const morning = (iso: string) => setHours(parseISO(iso), 6).toISOString()
 
 const readIds = new Set<string>()
 
-/** The signed-in user's choice; the BFF keeps one per user. */
-export const prefs: Omit<NotificationPrefs, 'address' | 'companyEmail'> = {
-  kinds: { overdue: true, planned_replacement: true, warranty_end: true, request_status: true },
-  email: true,
-}
+/** The signed-in user's choice; the API keeps one per user. */
+export const prefs: Omit<NotificationPrefs, 'address' | 'companyEmail'> = structuredClone(
+  DEFAULT_NOTIFICATION_PREFS,
+)
 
 export const prefsView = (): NotificationPrefs => ({
   ...prefs,
@@ -39,8 +40,8 @@ export const prefsView = (): NotificationPrefs => ({
 /**
  * The daily scheduler (Д19), replayed over the last 30 days: each morning it
  * checks every hose in service against the rules and the company's lead days,
- * and every request 1С closed. The BFF runs it once a day and stores what it
- * wrote; the mock recomputes, so new lead days in the settings show at once.
+ * and every request 1С closed. The API works the same out from its cache on
+ * each read; both recompute, so new lead days in the settings show at once.
  */
 export function notificationsFor(branch: string | null, today = new Date()): CabinetNotification[] {
   const t = day(today)
@@ -49,13 +50,13 @@ export function notificationsFor(branch: string | null, today = new Date()): Cab
   const list: CabinetNotification[] = []
 
   const hose = (p: Product) =>
-    `EHS ${p.serialNumber}${p.equipmentId ? ` · ${garage.get(p.equipmentId)}` : ''}`
+    hoseNoticeTitle(p.serialNumber, p.equipmentId ? (garage.get(p.equipmentId) ?? null) : null)
 
   for (const p of products) {
     if (!p.installedAt || p.lifecycle === 'written_off') continue
     if (branch && p.branchId !== branch) continue
     const life = productLifetime(p)!
-    const fire = (kind: NotificationKind, due: string, lead: number, message: string) => {
+    const fire = (kind: Exclude<NotificationKind, 'request_status'>, due: string, lead: number) => {
       const on = plus(due, -lead)
       if (on > t || on <= from) return
       list.push({
@@ -63,7 +64,7 @@ export function notificationsFor(branch: string | null, today = new Date()): Cab
         kind,
         lead,
         title: hose(p),
-        message,
+        message: hoseNoticeText(kind, due, lead),
         dueDate: due,
         productId: p.id,
         requestId: null,
@@ -73,25 +74,10 @@ export function notificationsFor(branch: string | null, today = new Date()): Cab
       })
     }
     for (const lead of settings.leadDays) {
-      fire(
-        'warranty_end',
-        life.warrantyUntil,
-        lead,
-        `Гарантия заканчивается ${dmy(life.warrantyUntil)} — ${inDays(lead)}`,
-      )
-      fire(
-        'planned_replacement',
-        life.plannedAt,
-        lead,
-        `Плановая замена ${dmy(life.plannedAt)} — ${inDays(lead)}. Пора заказать рукав`,
-      )
+      fire('warranty_end', life.warrantyUntil, lead)
+      fire('planned_replacement', life.plannedAt, lead)
     }
-    fire(
-      'overdue',
-      life.plannedAt,
-      0,
-      `Срок эксплуатации вышел ${dmy(life.plannedAt)} — рукав пора менять`,
-    )
+    fire('overdue', life.plannedAt, 0)
   }
 
   for (const r of requests) {
@@ -105,7 +91,7 @@ export function notificationsFor(branch: string | null, today = new Date()): Cab
       kind: 'request_status',
       lead: null,
       title: `Заявка ${r.number}`,
-      message: r.status === 'done' ? 'Выполнена в 1С' : 'Отклонена в 1С — уточните у менеджера',
+      message: requestNoticeText(r.status),
       dueDate: null,
       productId: r.productId,
       requestId: r.id,
