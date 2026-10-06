@@ -3,7 +3,7 @@ import { LIVE, LIVE_ROUTES } from '@/shared/api/live'
 import type { InstallationPatch, NewRequest, NewSupportMessage } from '@/shared/api/queries'
 import type { PasswordChange, PasswordDelivery, UserCreated } from '@/entities/types'
 import { ProductListQuery } from '@/entities/product/list'
-import { rulesProblem } from '@/entities/product/rules'
+import { settingsProblem } from '@/entities/settings'
 import { EMAIL_TAKEN, passwordProblem } from '@/entities/user'
 import {
   attachmentsOf,
@@ -358,7 +358,7 @@ export const handlers = [
   http.get(api('/admin/settings'), () => HttpResponse.json(settings)),
   http.patch(api('/admin/settings'), async ({ request }) => {
     const patch = (await request.json()) as Partial<typeof settings>
-    const problem = rulesProblem(patch)
+    const problem = settingsProblem(patch)
     if (problem) return HttpResponse.json({ message: problem }, { status: 422 })
     const before = settingsView(settings)
     applySettings(patch)

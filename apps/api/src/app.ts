@@ -1,12 +1,19 @@
 import cors from '@fastify/cors'
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify'
 import {
+  auditChanges,
   DEFAULT_RULES,
   ProductListQuery,
+  requestChanges,
+  settingsPatch,
+  settingsView,
+  userView,
   type PasswordDelivery,
   type UserCreated,
   type UserRole,
 } from '@rvd/contracts'
+import { hoseLabels, listAudit, recordAudit, type AuditNote } from './admin/audit.ts'
+import { companySettings, saveSettings } from './admin/settings.ts'
 import {
   AuthRejected,
   changePassword,
@@ -18,7 +25,14 @@ import {
   signedIn,
   type Identity,
 } from './auth/service.ts'
-import { createUser, listUsers, resetPassword, updateUser, type UserDraft } from './auth/users.ts'
+import {
+  createUser,
+  getUser,
+  listUsers,
+  resetPassword,
+  updateUser,
+  type UserDraft,
+} from './auth/users.ts'
 import type { Db } from './db/pool.ts'
 import { dashboardSummary } from './dashboard/query.ts'
 import { equipmentProducts, getEquipment, listEquipment } from './equipment/query.ts'
@@ -45,7 +59,7 @@ export interface AppOptions {
   db?: Db
   /** Browser origins allowed to call the API */
   corsOrigins?: string[]
-  /** Today and the status rules; the rules will come from the company settings */
+  /** Today and the default status rules; a signed-in company's own settings override the rules */
   clock?: () => Clock
   /**
    * Sign-in (Д6–Д7). With a `secret` every route but `/health` and getting a
@@ -142,6 +156,19 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
   const clientOf = (req: FastifyRequest): string | undefined =>
     (secret ? req.identity?.clientKey : options.requests?.clientKey) || undefined
 
+  /** Today and the asking company's «Внимание» rule (Д22); without sign-in, the defaults. */
+  const clockOf = async (req: FastifyRequest): Promise<Clock> => {
+    const today = clock()
+    if (!db || !secret || !req.identity) return today
+    const { warnRule, warnPercent, warnDays } = await companySettings(db, req.identity.companyId)
+    return { ...today, rules: { warnRule, warnPercent, warnDays } }
+  }
+
+  /** The action log (Д23) belongs to a signed-in company; a cabinet without sign-in keeps none. */
+  const audit = async (req: FastifyRequest, note: AuditNote) => {
+    if (db && secret && req.identity) await recordAudit(db, req.identity, note)
+  }
+
   const setRefresh = (reply: FastifyReply, token: string | null) =>
     reply.header(
       'set-cookie',
@@ -227,6 +254,11 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
             companyOf(req),
             userFields(req.body) as UserDraft,
           )
+          await audit(req, {
+            action: 'user.create',
+            target: { kind: 'user', id: user.id, label: user.name },
+            changes: auditChanges({}, userView(user)),
+          })
           // No mail server yet: the administrator passes the one-time password on.
           const created: UserCreated = { user, delivery: { kind: 'password', password } }
           return reply.code(201).send(created)
@@ -234,19 +266,66 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
       )
 
       admin.patch<{ Params: { id: string } }>('/admin/users/:id', async (req, reply) =>
-        answering(reply, () =>
-          updateUser(db, companyOf(req), req.identity!.userId, req.params.id, userFields(req.body)),
-        ),
+        answering(reply, async () => {
+          const before = await getUser(db, companyOf(req), req.params.id)
+          const user = await updateUser(
+            db,
+            companyOf(req),
+            req.identity!.userId,
+            req.params.id,
+            userFields(req.body),
+          )
+          const changes = auditChanges(userView(before), userView(user))
+          // Access switched on or off alone reads as its own action, as in the demo.
+          const onlyAccess = changes.length === 1 && changes[0].field === 'Доступ'
+          if (changes.length)
+            await audit(req, {
+              action: onlyAccess
+                ? user.active
+                  ? 'user.activate'
+                  : 'user.deactivate'
+                : 'user.update',
+              target: { kind: 'user', id: user.id, label: user.name },
+              changes,
+            })
+          return user
+        }),
       )
 
       admin.post<{ Params: { id: string } }>(
         '/admin/users/:id/reset-password',
         async (req, reply) =>
-          answering(reply, async (): Promise<PasswordDelivery> => ({
-            kind: 'password',
-            password: await resetPassword(db, companyOf(req), req.params.id),
-          })),
+          answering(reply, async (): Promise<PasswordDelivery> => {
+            const user = await getUser(db, companyOf(req), req.params.id)
+            const password = await resetPassword(db, companyOf(req), req.params.id)
+            await audit(req, {
+              action: 'user.password',
+              target: { kind: 'user', id: user.id, label: user.name },
+              changes: [],
+            })
+            return { kind: 'password', password }
+          }),
       )
+
+      // Company settings (Д22): the «Внимание» rule every status is read by, lead days, channels.
+      admin.get('/admin/settings', async (req) => companySettings(db, companyOf(req)))
+
+      admin.patch('/admin/settings', async (req, reply) =>
+        answering(reply, async () => {
+          const { before, after } = await saveSettings(db, companyOf(req), settingsPatch(req.body))
+          const changes = auditChanges(settingsView(before), settingsView(after))
+          if (changes.length)
+            await audit(req, {
+              action: 'settings.update',
+              target: { kind: 'settings', id: null, label: 'Настройки компании' },
+              changes,
+            })
+          return after
+        }),
+      )
+
+      // The action log (Д23): every change made in the company's cabinet, newest first.
+      admin.get('/admin/audit', async (req) => listAudit(db, companyOf(req)))
     })
 
     app.get('/products', async (req, reply) => {
@@ -255,16 +334,16 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
         return reply.code(400).send({ error: 'Bad query', issues: query.error.issues })
       // Signed in, the company's client wins over whatever the query asks for.
       const client = secret ? clientOf(req) : (query.data.client ?? clientOf(req))
-      return listProducts(db, { ...query.data, client }, clock())
+      return listProducts(db, { ...query.data, client }, await clockOf(req))
     })
 
     app.get<{ Params: { id: string } }>('/products/:id', async (req, reply) => {
-      const product = await getProduct(db, req.params.id, clock(), clientOf(req))
+      const product = await getProduct(db, req.params.id, await clockOf(req), clientOf(req))
       return product ?? reply.code(404).send({ error: 'Not found' })
     })
 
     app.get<{ Params: { id: string } }>('/products/:id/lifetime', async (req, reply) => {
-      const c = clock()
+      const c = await clockOf(req)
       const product = await getProduct(db, req.params.id, c, clientOf(req))
       if (!product) return reply.code(404).send({ error: 'Not found' })
       // A plain `null` is a valid answer: no dates, no timeline.
@@ -283,15 +362,15 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
       return rows[0].records ?? []
     })
 
-    app.get('/equipment', async (req) => listEquipment(db, clock(), clientOf(req)))
+    app.get('/equipment', async (req) => listEquipment(db, await clockOf(req), clientOf(req)))
 
     app.get<{ Params: { id: string } }>('/equipment/:id', async (req, reply) => {
-      const machine = await getEquipment(db, req.params.id, clock(), clientOf(req))
+      const machine = await getEquipment(db, req.params.id, await clockOf(req), clientOf(req))
       return machine ?? reply.code(404).send({ error: 'Not found' })
     })
 
     app.get<{ Params: { id: string } }>('/equipment/:id/products', async (req) =>
-      equipmentProducts(db, req.params.id, clock(), clientOf(req)),
+      equipmentProducts(db, req.params.id, await clockOf(req), clientOf(req)),
     )
 
     // «История замен» (Д16): swaps 1С recorded, read from the hose that names the one it replaced.
@@ -305,7 +384,9 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
       listReplacements(db, { client: clientOf(req), equipment: req.params.id }),
     )
 
-    app.get('/dashboard/summary', async (req) => dashboardSummary(db, clock(), clientOf(req)))
+    app.get('/dashboard/summary', async (req) =>
+      dashboardSummary(db, await clockOf(req), clientOf(req)),
+    )
 
     // Requests (Д18): taken here, sent to 1С by the outbox, statuses read back at sync.
     app.get('/requests', async (req) => listRequests(db, clientOf(req)))
@@ -316,6 +397,18 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
         const created = await createRequest(db, req.body ?? ({} as RequestInput), {
           clientKey: clientOf(req),
           actor: { name: who.name, email: who.email },
+        })
+        await audit(req, {
+          action: 'request.create',
+          // The СВЦБ number comes from 1С later; the log keeps what was known at the time.
+          target: { kind: 'request', id: created.id, label: created.number ?? 'Новая заявка' },
+          changes: requestChanges(
+            created,
+            await hoseLabels(
+              db,
+              created.positions.map((l) => l.productId),
+            ),
+          ),
         })
         options.requests?.onCreated?.()
         return reply.code(201).send(created)

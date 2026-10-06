@@ -14,11 +14,8 @@ export const REQUEST_STATUS_TONE = {
   rejected: 'none',
 } as const satisfies Record<RequestStatus, string>
 
-export const REQUEST_KIND_LABEL: Record<RequestKind, string> = {
-  replace: 'Замена',
-  manufacture: 'Изготовление',
-  repair: 'Ремонт',
-}
+/** Shared with the API's action log. */
+export { REQUEST_KIND_LABEL } from '@rvd/contracts'
 
 /** What each type asks of the form (customer, 2026-10-03). */
 export const REQUEST_KIND_HINT: Record<RequestKind, string> = {

@@ -70,6 +70,10 @@ async function findUser(db: Db, companyId: string, id: string): Promise<UserRow>
   return rows[0]
 }
 
+/** One of the company's users, as they are before a change (for the action log). */
+export const getUser = async (db: Db, companyId: string, id: string): Promise<CabinetUser> =>
+  toUser(await findUser(db, companyId, id))
+
 /** Adds a user to the company with a one-time password, which is returned once and stored only as a hash. */
 export async function createUser(
   db: Db,

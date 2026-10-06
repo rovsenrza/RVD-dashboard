@@ -1,7 +1,5 @@
 import { addDays, formatISO, parseISO, setHours, setMinutes, subDays } from 'date-fns'
 import type {
-  Attachment,
-  AuditChange,
   ModelStats,
   AuditEntry,
   BranchSummary,
@@ -19,7 +17,15 @@ import type {
   Replacement,
   ServiceRequest,
 } from '@/entities/types'
-import { DEFAULT_RULES, serviceDates, statusOf, warnRuleLabel } from '@/entities/product/rules'
+import { serviceDates, statusOf } from '@/entities/product/rules'
+import { DEFAULT_SETTINGS } from '@/entities/settings'
+import {
+  auditChanges as diff,
+  filesChange,
+  settingsView,
+  userView as userViewOf,
+  type AuditView,
+} from '@/entities/audit'
 
 // Deterministic pseudo-random so mock data is stable between reloads.
 let seed = 42
@@ -33,12 +39,8 @@ const iso = (d: Date) => formatISO(d, { representation: 'date' })
 const NOW = new Date()
 const BRANCHES = ['b-main', 'b-north']
 
-/** Company settings; the «Внимание» rule drives every hose status below, as it will on the BFF. */
-export const settings: CabinetSettings = {
-  ...DEFAULT_RULES,
-  leadDays: [30, 14, 7],
-  channels: { inApp: true, email: false },
-}
+/** Company settings; the «Внимание» rule drives every hose status below, as it does on the API. */
+export const settings: CabinetSettings = structuredClone(DEFAULT_SETTINGS)
 const BRANDS = [
   ['Komatsu', 'PC400', 'Экскаватор'],
   ['Caterpillar', '374F', 'Экскаватор'],
@@ -472,54 +474,19 @@ export function branchSummaries(): BranchSummary[] {
 }
 
 // ── Action log ───────────────────────────────────────────────────────────────
-// The BFF records every mutation in middleware; the mock does it in the handlers.
-// Values are stored as the customer reads them, so the log never needs the
-// objects it describes (a deleted user or a renamed branch still reads right).
+// The mock records each mutation in its handler, the API in its route; both word
+// it by @rvd/contracts (entities/audit), so the demo's log reads like the live one.
 
-/** The server's own wording for roles; the UI's labels live in entities/user. */
-const ROLE_WORD: Record<CabinetUser['role'], string> = {
-  mechanic: 'Механик',
-  engineer: 'Инженер',
-  manager: 'Руководитель',
-  admin: 'Администратор',
-}
-const branchNames = (ids: string[]) =>
-  ids.length ? ids.map((id) => BRANCH_META[id]?.name ?? id).join(', ') : 'Все филиалы'
+export { diff, filesChange, settingsView }
 
-type View = Record<string, string | null>
-
-export const installationView = (p: Product): View => ({
+export const installationView = (p: Product): AuditView => ({
   Техника: equipment.find((e) => e.id === p.equipmentId)?.garageNumber ?? null,
   'Место установки': p.installPlace,
   'Внутренний №': p.clientNumber,
 })
 
-export const userView = (u: CabinetUser): View => ({
-  ФИО: u.name,
-  Почта: u.email,
-  Роль: ROLE_WORD[u.role],
-  Филиалы: branchNames(u.branchIds),
-  Доступ: u.active ? 'Активен' : 'Отключён',
-})
-
-export const settingsView = (s: CabinetSettings): View => ({
-  '«Внимание»': warnRuleLabel(s),
-  'Предупреждать за, дней': s.leadDays.join(', ') || 'не предупреждать',
-  'Письма на почту': s.channels.email ? 'Включены' : 'Выключены',
-})
-
-/** The fields that differ between two views; unchanged ones stay out of the log. */
-export function diff(before: View, after: View): AuditChange[] {
-  return [...new Set([...Object.keys(before), ...Object.keys(after)])]
-    .filter((k) => (before[k] ?? null) !== (after[k] ?? null))
-    .map((k) => ({ field: k, before: before[k] ?? null, after: after[k] ?? null }))
-}
-
-/** «Файлы: a.jpg, b.pdf» as one log line, or nothing when none were attached. */
-export const filesChange = (files: Attachment[]): AuditChange[] =>
-  files.length
-    ? [{ field: 'Файлы', before: null, after: files.map((f) => f.fileName).join(', ') }]
-    : []
+/** A user as the log shows them, with the demo's branch names. */
+export const userView = (u: CabinetUser) => userViewOf(u, (id) => BRANCH_META[id]?.name ?? id)
 
 export const audit: AuditEntry[] = []
 let auditSeq = 0
@@ -557,7 +524,7 @@ const fieldWorkers = users.filter(
 for (const p of products.filter((x) => live(x) && x.equipmentId).slice(0, 26)) {
   const now = installationView(p)
   const kind = Math.floor(rand() * 3)
-  const before: View =
+  const before: AuditView =
     kind === 0
       ? { ...now, 'Место установки': pick(PLACES.filter((x) => x !== p.installPlace)) }
       : kind === 1

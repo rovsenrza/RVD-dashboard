@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import type { CabinetSettings } from '@/entities/types'
 import { WARN_DAYS_RANGE, WARN_PERCENT_RANGE, warnRuleLabel } from '@/entities/product'
+import { LEAD_DAY_OPTIONS } from '@/entities/settings'
 import { useSaveSettings, useSettings } from '@/shared/api/queries'
 import {
   Button,
@@ -13,8 +14,6 @@ import {
   Skeleton,
   useToast,
 } from '@/shared/ui'
-
-const LEAD_OPTIONS = [60, 30, 14, 7, 3, 1]
 
 type WarnRule = CabinetSettings['warnRule']
 const RULES: { value: WarnRule; label: string }[] = [
@@ -129,7 +128,7 @@ function SettingsForm({ saved }: { saved: CabinetSettings }) {
               Предупреждать о конце гарантии, плановой замене и перепробеге
             </legend>
             <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
-              {LEAD_OPTIONS.map((d) => (
+              {LEAD_DAY_OPTIONS.map((d) => (
                 <Checkbox
                   key={d}
                   label={`за ${d} ${d === 1 ? 'день' : d < 5 ? 'дня' : 'дней'}`}

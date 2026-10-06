@@ -325,7 +325,7 @@ export const useSaveSettings = () => {
   })
 }
 
-/** The action log, newest first. Filtering is client-side on mocks; the BFF will page it. */
+/** The company's action log, newest first, whole; the tab filters it in the browser. */
 export const useAudit = () =>
   useQuery({ queryKey: keys.audit, queryFn: () => api.get<AuditEntry[]>('/admin/audit') })
 

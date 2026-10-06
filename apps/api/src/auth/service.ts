@@ -38,7 +38,7 @@ interface AccessClaims {
 
 /** A request the person can put right: the message is shown to them as it is. */
 export class AuthRejected extends Error {
-  status: 400 | 401 | 403 | 404 | 409
+  status: 400 | 401 | 403 | 404 | 409 | 422
   constructor(status: AuthRejected['status'], message: string) {
     super(message)
     this.status = status

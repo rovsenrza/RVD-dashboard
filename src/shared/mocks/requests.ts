@@ -1,10 +1,10 @@
-import { REQUEST_KIND_LABEL } from '@/entities/request'
+import { requestChanges } from '@/entities/audit'
 import { requestProblem } from '@/entities/request/rules'
 import type { Product, RequestPosition, ServiceRequest } from '@/entities/types'
 import { LIVE } from '@/shared/api/live'
 import type { NewRequest } from '@/shared/api/queries'
 import { claimAttachments, storedFile } from './attachments'
-import { filesChange, products, record, requests } from './data'
+import { products, record, requests } from './data'
 
 /**
  * Hybrid mode: the hoses come from the BFF, which does not take requests yet,
@@ -80,12 +80,7 @@ export function createRequest(raw: NewRequest): ServiceRequest | { error: string
   record({
     action: 'request.create',
     target: { kind: 'request', id: created.id, label: created.number ?? created.id },
-    changes: [
-      { field: 'Тип', before: null, after: REQUEST_KIND_LABEL[created.kind] },
-      ...(hoses.length ? [{ field: 'Изделия', before: null, after: hoses.join(', ') }] : []),
-      { field: 'Количество', before: null, after: String(created.quantity) },
-      ...filesChange(created.attachments),
-    ],
+    changes: requestChanges(created, hoses),
   })
   return created
 }
