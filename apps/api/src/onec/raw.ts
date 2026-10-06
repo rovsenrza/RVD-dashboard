@@ -10,6 +10,8 @@ export interface RawIndicatorLine {
 
 export interface RawItem {
   Ref_Key: string
+  /** Changes whenever the item is written in 1С; a check (Д26) compares it */
+  DataVersion?: string
   DeletionMark: boolean
   Code: string
   Description: string

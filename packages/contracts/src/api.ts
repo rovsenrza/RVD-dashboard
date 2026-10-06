@@ -9,6 +9,19 @@ export interface Paginated<T> {
   limit: number
 }
 
+/**
+ * `GET /sync` (Д26): how fresh the cache is. The header says «данные на HH:MM»
+ * and warns while 1С does not answer; the cabinet keeps showing the cache.
+ */
+export interface SyncStatus {
+  /** ISO date-time the cache last matched 1С; null before the first sync */
+  syncedAt: string | null
+  /** ISO date-time since which every attempt to reach 1С failed; null while it answers */
+  unavailableSince: string | null
+  /** A sync is running right now */
+  running: boolean
+}
+
 /** A page of the registry, with the size of both its tabs under the same filters and search. */
 export interface ProductPage extends Paginated<Product> {
   counts: { active: number; archive: number }

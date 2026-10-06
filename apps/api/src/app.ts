@@ -47,6 +47,7 @@ import { equipmentProducts, getEquipment, listEquipment } from './equipment/quer
 import { productLifetime } from './products/lifetime.ts'
 import { getProduct, listProducts, type Clock } from './products/query.ts'
 import { listReplacements } from './replacements/query.ts'
+import { syncStatus } from './sync/health.ts'
 import {
   createRequest,
   listRequests,
@@ -82,6 +83,8 @@ export interface AppOptions {
     /** Called after a request is stored, to send the queue to 1С at once */
     onCreated?: () => void
   }
+  /** The sync worker (Д26), when this process runs one */
+  sync?: { kick: () => void; running: () => boolean }
 }
 
 const localToday = () => new Date().toLocaleDateString('sv-SE')
@@ -334,6 +337,14 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
 
       // The action log (Д23): every change made in the company's cabinet, newest first.
       admin.get('/admin/audit', async (req) => listAudit(db, companyOf(req)))
+
+      // «Обновить сейчас» (Д26): the next check runs at once; the header follows `GET /sync`.
+      admin.post('/sync', async (_req, reply) => {
+        if (!options.sync)
+          return reply.code(503).send({ message: 'Синхронизация с 1С на этом сервере выключена' })
+        options.sync.kick()
+        return reply.code(202).send(await syncStatus(db, options.sync.running()))
+      })
     })
 
     app.get('/products', async (req, reply) => {
@@ -477,6 +488,9 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
         throw error
       }
     })
+
+    // How fresh the cache is (Д26): «данные на HH:MM», and whether 1С answers.
+    app.get('/sync', async () => syncStatus(db, options.sync?.running() ?? false))
 
     app.get(
       '/sync/status',

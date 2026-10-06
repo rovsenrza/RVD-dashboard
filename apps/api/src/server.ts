@@ -2,8 +2,10 @@ import { buildApp, DEMO_IDENTITY } from './app.ts'
 import { loadConfig } from './config.ts'
 import { migrate } from './db/migrate.ts'
 import { createPool } from './db/pool.ts'
+import { ODataClient } from './onec/client.ts'
 import { HttpOrderService } from './onec/orders.ts'
 import { startOutbox } from './requests/outbox.ts'
+import { startSync, type SyncScheduler } from './sync/scheduler.ts'
 
 const config = loadConfig()
 // No signing secret means anyone could read any client's data: refuse, unless switched off on purpose.
@@ -17,6 +19,7 @@ const db = createPool(config.DATABASE_URL)
 await migrate(db)
 // Requests go to 1С through its order service; without one configured they wait in the queue.
 let outbox: { kick: () => void } | null = null
+let sync: SyncScheduler | null = null
 const app = buildApp({
   logLevel: config.LOG_LEVEL,
   db,
@@ -25,6 +28,7 @@ const app = buildApp({
     ? { secret, secureCookie: config.COOKIE_SECURE }
     : { demo: { ...DEMO_IDENTITY, clientKey: config.CABINET_CLIENT_KEY ?? '' } },
   requests: { clientKey: config.CABINET_CLIENT_KEY, onCreated: () => outbox?.kick() },
+  sync: { kick: () => sync?.kick(), running: () => sync?.running() ?? false },
 })
 if (!secret)
   app.log.warn('Вход выключен (AUTH_DISABLED=true): все видят данные как демо-пользователь')
@@ -36,6 +40,21 @@ if (config.ONEC_ORDERS_URL) {
     timeoutMs: config.ODATA_TIMEOUT_MS,
   })
   outbox = startOutbox(db, orders, config.OUTBOX_INTERVAL_MS, (error) => app.log.error(error))
+}
+// The cache follows 1С (Д26): a check every few minutes, a full rebuild at night.
+if (config.SYNC_ENABLED) {
+  const onec = new ODataClient({
+    baseUrl: config.ODATA_URL,
+    user: config.ODATA_USER,
+    password: config.ODATA_PASSWORD,
+    timeoutMs: config.ODATA_TIMEOUT_MS,
+  })
+  sync = startSync(db, onec, {
+    intervalMs: config.SYNC_INTERVAL_MS,
+    fullHour: config.SYNC_FULL_HOUR,
+    onRun: (r) => app.log.info({ sync: r }, 'синхронизация с 1С'),
+    onError: (error) => app.log.error({ err: error }, '1С недоступна, данные — из кэша'),
+  })
 }
 
 try {

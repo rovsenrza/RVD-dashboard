@@ -20,6 +20,19 @@ const schema = z.object({
   ONEC_ORDERS_PASSWORD: z.string().optional(),
   /** How often the queue is sent, ms */
   OUTBOX_INTERVAL_MS: z.coerce.number().int().positive().default(30_000),
+  /** The sync worker (Д26) in the API process; off for a second instance or a local run without 1С */
+  SYNC_ENABLED: z
+    .enum(['true', 'false'])
+    .default('true')
+    .transform((v) => v === 'true'),
+  /** Between checks of 1С for changes, ms */
+  SYNC_INTERVAL_MS: z.coerce
+    .number()
+    .int()
+    .positive()
+    .default(10 * 60_000),
+  /** The local hour of the nightly full rebuild */
+  SYNC_FULL_HOUR: z.coerce.number().int().min(0).max(23).default(3),
   /**
    * The 1С client (Клиент_Key) whose data the cabinet shows while sign-in is
    * off; signed in, each company sees its own client (Д6–Д7).
