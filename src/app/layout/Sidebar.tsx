@@ -16,6 +16,7 @@ import {
 import { useSession } from '@/app/session'
 import { cn } from '@/shared/lib/utils'
 import { Button } from '@/shared/ui'
+import { SyncFooter } from './SyncStatus'
 
 interface NavItem {
   to: string
@@ -96,12 +97,9 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
             <LifeBuoy size={17} strokeWidth={1.75} />
             Помощь
           </a>
-          <div className="px-3 pt-3 text-caption leading-5 text-rail-muted/80">
-            <div className="flex items-center gap-2">
-              <span className="size-1.5 rounded-full bg-status-ok" />
-              {demo ? 'Данные 1С · демо-режим' : 'Данные 1С'}
-            </div>
-            <div>v0.2</div>
+          <div className="pt-2 pr-1 pl-3 text-caption leading-5 text-rail-muted/80">
+            <SyncFooter />
+            <div>{demo ? 'Демо-режим · v0.2' : 'v0.2'}</div>
           </div>
         </div>
       </aside>

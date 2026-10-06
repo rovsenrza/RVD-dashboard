@@ -1,7 +1,7 @@
 import { http, HttpResponse, passthrough } from 'msw'
 import { LIVE, LIVE_ROUTES } from '@/shared/api/live'
 import type { InstallationPatch, NewRequest, NewSupportMessage } from '@/shared/api/queries'
-import type { PasswordChange, PasswordDelivery, UserCreated } from '@/entities/types'
+import type { PasswordChange, PasswordDelivery, SyncStatus, UserCreated } from '@/entities/types'
 import { ProductListQuery } from '@/entities/product/list'
 import { settingsProblem } from '@/entities/settings'
 import { EMAIL_TAKEN, passwordProblem } from '@/entities/user'
@@ -64,6 +64,14 @@ const newestFirst = <T extends { date: string }>(rows: T[]) =>
 const inBranch = <T extends { branchId: string }>(rows: T[], branch: string | null) =>
   branch ? rows.filter((r) => r.branchId === branch) : rows
 
+/** The demo's 1С answers; the last check was a few minutes ago. */
+let syncedAt = new Date(Date.now() - 4 * 60_000)
+const syncStatus = (): SyncStatus => ({
+  syncedAt: syncedAt.toISOString(),
+  unavailableSince: null,
+  running: false,
+})
+
 // Hybrid mode: what the real API serves goes to it, ahead of any mock below.
 const live = LIVE
   ? LIVE_ROUTES.map(([method, path]) => http[method](api(path), () => passthrough()))
@@ -74,6 +82,12 @@ export const handlers = [
   http.get(api('/dashboard/summary'), ({ request }) =>
     HttpResponse.json(dashboardSummary(branchOf(request))),
   ),
+  // How fresh the data is (Д26); «Обновить сейчас» just moves the time on.
+  http.get(api('/sync'), () => HttpResponse.json(syncStatus())),
+  http.post(api('/sync'), () => {
+    syncedAt = new Date()
+    return HttpResponse.json(syncStatus(), { status: 202 })
+  }),
   // The registry pages on the server; the mock answers the same query the same way.
   http.get(api('/products'), ({ request }) => {
     const query = ProductListQuery.safeParse(Object.fromEntries(new URL(request.url).searchParams))

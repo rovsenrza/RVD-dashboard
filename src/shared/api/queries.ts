@@ -24,6 +24,7 @@ import type {
   Replacement,
   ServiceRequest,
   SupportMessage,
+  SyncStatus,
 } from '@/entities/types'
 import { useSession } from '@/app/session'
 import { api } from './client'
@@ -56,6 +57,7 @@ const productsUrl = (query: ProductPageQuery, branch: string | null) => {
 
 export const keys = {
   dashboard: (branch: string | null) => ['dashboard', branch] as const,
+  sync: ['sync'] as const,
   productPage: (branch: string | null, query: ProductPageQuery) =>
     ['products', 'page', branch, query] as const,
   productSearch: (branch: string | null, query: ProductPageQuery) =>
@@ -90,6 +92,38 @@ export const useDashboard = () => {
   return useQuery({
     queryKey: keys.dashboard(branch),
     queryFn: () => api.get<DashboardSummary>(scoped('/dashboard/summary', branch)),
+  })
+}
+
+/** What 1С feeds: everything read from the cache, refetched once a sync brings new data. */
+const SYNCED = ['products', 'equipment', 'dashboard', 'replacements', 'requests', 'notifications']
+
+/**
+ * How fresh the cache is (Д26): asked every minute, every two seconds while a
+ * sync runs; when it lands, every screen built on 1С data reads again.
+ */
+export const useSyncStatus = () => {
+  const qc = useQueryClient()
+  return useQuery({
+    queryKey: keys.sync,
+    queryFn: async () => {
+      const before = qc.getQueryData<SyncStatus>(keys.sync)?.syncedAt
+      const status = await api.get<SyncStatus>('/sync')
+      if (before && status.syncedAt !== before)
+        for (const key of SYNCED) void qc.invalidateQueries({ queryKey: [key] })
+      return status
+    },
+    refetchInterval: (q) => (q.state.data?.running ? 2_000 : 60_000),
+  })
+}
+
+/** «Обновить сейчас»: the administrator asks the server to check 1С at once. */
+export const useRunSync = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: () => api.post<SyncStatus>('/sync', {}),
+    // Running now: the status query starts polling and catches the result.
+    onSuccess: (status) => qc.setQueryData(keys.sync, { ...status, running: true }),
   })
 }
 
