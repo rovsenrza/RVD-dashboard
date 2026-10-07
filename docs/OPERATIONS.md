@@ -6,6 +6,7 @@
 
 | Часть    | Что делает                                                                                                                                          |
 | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `proxy`  | Caddy: HTTPS с сертификатом Let's Encrypt на `SITE_ADDRESS`, перевод HTTP на HTTPS; всё передаёт в `web`                                            |
 | `web`    | nginx: отдаёт приложение, `/api` передаёт в API, ставит заголовки безопасности (CSP и др.)                                                          |
 | `api`    | Node 22: вход, данные компании, заявки в 1С, синхронизация с 1С (проверка каждые 10 минут, полная — ночью), почта, файлы. Миграции — сам при старте |
 | `db`     | Postgres 17: кэш 1С и всё, что есть только у кабинета (пользователи, заявки, журнал, настройки, места установки, комментарии, обращения, файлы)     |
@@ -37,7 +38,14 @@ scripts/deploy-vps.sh          # закоммиченный HEAD → серве�
 scripts/deploy-vps.sh --init   # первый раз: ещё и .env сервера (1С — из локального .env, секреты — на сервере)
 ```
 
-**Пока без домена и HTTPS:** кабинет открывается по IP-адресу сервера (`http://<VPS_HOST>`), поэтому в `.env` сервера `COOKIE_SECURE=false` и `CABINET_URL=http://<VPS_HOST>`. Пароли по HTTP идут открытым текстом — настоящих пользователей заводить только после HTTPS (вопрос 8). Когда заказчик направит домен на сервер: сертификат Let's Encrypt, `COOKIE_SECURE=true`, `CABINET_URL=https://…`, `docker compose -f deploy/docker-compose.prod.yml up -d`.
+**Адрес:** пока заказчик не направил свой домен, кабинет работает по HTTPS на имени `<IP через дефисы>.sslip.io` — оно само указывает на IP сервера, сертификат Let's Encrypt выдан на него (см. «HTTPS»). В `.env` сервера: `SITE_ADDRESS` — это имя, `CABINET_URL=https://…` с ним же, `COOKIE_SECURE=true`.
+
+Что ещё настроено на сервере (вне репозитория):
+
+- **SSH — только по ключу**, вход по паролю выключен (`/etc/ssh/sshd_config.d/00-rvd.conf`). Ключ разработчика — `~/.ssh/rvd_vps`; новый ключ добавляется в `/root/.ssh/authorized_keys`. Если ключа нет под рукой — консоль VPS в панели Beget (там вход по паролю root работает).
+- **Бэкапы** — `/etc/cron.d/rvd-backup`, каждую ночь в 23:00 UTC (02:00 МСК), см. «Бэкапы».
+- **Логи Docker** — не больше 5 × 10 МБ на контейнер (`/etc/docker/daemon.json`), диск ими не забьётся.
+- Подкачка 2 ГБ (`/swapfile`), fail2ban — из образа Beget. Снаружи открыты только 22, 80 и 443.
 
 ## Первый запуск
 
@@ -60,7 +68,17 @@ scripts/deploy-vps.sh --init   # первый раз: ещё и .env серве�
 
 ## HTTPS
 
-Кабинет нужно открывать только по HTTPS: refresh-cookie помечен `Secure` (`COOKIE_SECURE=true` по умолчанию в compose), по HTTP вход не переживёт перезагрузку страницы. TLS завершается либо на прокси хоста (nginx/Caddy/балансировщик заказчика — тогда пробросить его на порт `HTTP_PORT`), либо в `deploy/nginx.conf` (добавить `listen 443 ssl` и сертификаты). Решается вместе с сервером и доменом (вопрос 8).
+Кабинет нужно открывать только по HTTPS: refresh-cookie помечен `Secure` (`COOKIE_SECURE=true` по умолчанию в compose), по HTTP вход не переживёт перезагрузку страницы.
+
+TLS завершает сервис `proxy` (Caddy, `deploy/Caddyfile`): на имя из `SITE_ADDRESS` он сам получает и продлевает сертификат Let's Encrypt (хранится в томе `caddy-data`) и переводит HTTP на HTTPS. Без `SITE_ADDRESS` — обычный HTTP на 80-м порту. Caddy подставляет настоящий адрес посетителя в `X-Forwarded-For`, поэтому ограничение попыток входа по адресу не обойти подделанным заголовком.
+
+**Перевод на домен заказчика** (вопрос 8). DNS `vgiz.ru` — у mail.ru (`azov`/`saratov.ens.mail.ru`), меняет заказчик:
+
+1. A-запись `clientrvd.vgiz.ru` → IP сервера (сейчас она ведёт на хостинг Beget с демо).
+2. Когда имя начнёт указывать на сервер (`dig +short clientrvd.vgiz.ru`), в `.env` сервера: `SITE_ADDRESS=clientrvd.vgiz.ru`, `CABINET_URL=https://clientrvd.vgiz.ru`.
+3. `docker compose -f deploy/docker-compose.prod.yml up -d` — Caddy получит сертификат на новое имя за минуту; в `.env` разработчика — `CABINET_URL_VPS` с новым адресом.
+
+Хостинг Beget с демо после этого не нужен для кабинета.
 
 ## Обновление
 
@@ -73,10 +91,10 @@ docker compose -f deploy/docker-compose.prod.yml --env-file .env up -d --build
 
 ## Бэкапы
 
-`scripts/backup.sh` сохраняет всё, что есть только у кабинета, и файлы; строки кэша 1С не сохраняются — синхронизация восстановит их за секунды. Хранятся 14 последних (`BACKUP_KEEP`). Ночью по cron:
+`scripts/backup.sh` сохраняет всё, что есть только у кабинета, и файлы; строки кэша 1С не сохраняются — синхронизация восстановит их за секунды. Хранятся 14 последних (`BACKUP_KEEP`) в `/opt/rvd/app/backups`, журнал — `backups/backup.log`. На сервере это `/etc/cron.d/rvd-backup` (время сервера — UTC):
 
 ```sh
-0 2 * * * cd /opt/rvd/app && PG_DUMP="docker compose -f deploy/docker-compose.prod.yml exec -T db pg_dump" \
+0 23 * * * root cd /opt/rvd/app && PG_DUMP="docker compose -f deploy/docker-compose.prod.yml exec -T db pg_dump" \
   FILES_CMD="docker compose -f deploy/docker-compose.prod.yml exec -T api tar -czf - -C /data/files ." \
   scripts/backup.sh >> backups/backup.log 2>&1
 ```
@@ -93,7 +111,7 @@ PG_RESTORE="docker compose -f deploy/docker-compose.prod.yml exec -T db pg_resto
 docker compose -f deploy/docker-compose.prod.yml start api
 ```
 
-Кэш 1С заполнится первой же синхронизацией после старта. Восстановление проверено на копии базы.
+Кэш 1С заполнится первой же синхронизацией после старта. Восстановление проверено на копии базы, а 2026-10-07 — и на сервере: бэкап, снятый при настройке cron, развернулся в отдельную базу целиком (21 таблица из 21, все 17 миграций).
 
 ## Наблюдение
 
@@ -123,6 +141,7 @@ docker compose -f deploy/docker-compose.prod.yml start api
 | `DB_PASSWORD`                            | `docker compose … exec db psql -U rvd -c "alter role rvd password '<новый>'"` → в `.env` → `docker compose … up -d api` (сам образ Postgres берёт `POSTGRES_PASSWORD` только при первом создании тома, поэтому сначала `alter role`) | Перезапуск API — несколько секунд                                                                                                       |
 | `ODATA_PASSWORD`, `ONEC_ORDERS_PASSWORD` | Новый пароль задаёт разработчик 1С → в `.env` → `up -d api`. До перезапуска синхронизация пишет в журнал ошибку входа, кабинет показывает последние данные и «1С не отвечает»                                                        | Предупреждение о 1С до перезапуска                                                                                                      |
 | `SMTP_URL`                               | Новый пароль почтового ящика → в `.env` → `up -d api`. Неотправленные письма уйдут после перезапуска                                                                                                                                 | Ничего                                                                                                                                  |
+| SSH-ключ сервера                         | `ssh-keygen -t ed25519 -f ~/.ssh/rvd_vps_new`, открытый ключ — в `/root/.ssh/authorized_keys` на сервере, проверить вход новым ключом, старую строку удалить                                                                         | Ничего                                                                                                                                  |
 | `BEGET_PASS`                             | Меняет владелец аккаунта Beget; новый — в `.env` того, кто запускает `scripts/deploy-beget.sh`                                                                                                                                       | Ничего                                                                                                                                  |
 | Пароли пользователей                     | Администратор компании — «Администрирование» → «Пользователи» → человек → «Сбросить пароль». Выйти отовсюду всем сразу: `docker compose … exec db psql -U rvd -c "update sessions set revoked_at = now() where revoked_at is null"`  | Все войдут заново                                                                                                                       |
 
