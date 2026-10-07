@@ -147,6 +147,7 @@ export async function sendDigests(
         userId: r.id,
         client: r.client,
         leadDays: settings.leadDays,
+        inspectionDays: settings.inspectionDays,
         kinds: prefs.kinds,
       })
     ).filter((n) => !n.read && firedOn(n) === today)

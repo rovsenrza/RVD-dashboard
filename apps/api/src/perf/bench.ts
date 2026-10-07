@@ -214,10 +214,12 @@ const cases: [string, (db: Db) => Promise<unknown>][] = [
         userId: null,
         client: BIG,
         leadDays: [30, 14, 7],
+        inspectionDays: 90,
         kinds: {
           overdue: true,
           planned_replacement: true,
           warranty_end: true,
+          inspection: true,
           request_status: true,
         },
       }),

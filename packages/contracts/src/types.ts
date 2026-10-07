@@ -304,6 +304,8 @@ export interface CabinetSettings {
   /** Days before a due date (warranty end, planned replacement, overrun) to notify. */
   leadDays: number[]
   channels: { inApp: boolean; email: boolean }
+  /** Remind to inspect each machine's hoses every this many days; 0 — never (ТЗ 3.6). */
+  inspectionDays: number
 }
 
 export type AuditAction =
@@ -433,7 +435,8 @@ export interface ProductComment {
 }
 
 /** What a notification is about (ТЗ 3.6); inspections join once 1С gives their intervals. */
-export type NotificationKind = 'warranty_end' | 'planned_replacement' | 'overdue' | 'request_status'
+export type NotificationKind =
+  'warranty_end' | 'planned_replacement' | 'overdue' | 'inspection' | 'request_status'
 
 /**
  * One notification as the daily scheduler wrote it (Д19): a fact about one
@@ -450,6 +453,8 @@ export interface CabinetNotification {
   dueDate: string | null
   productId: string | null
   requestId: string | null
+  /** The machine an inspection notice is about */
+  equipmentId: string | null
   branchId: string
   /** ISO date-time the scheduler created it */
   createdAt: string

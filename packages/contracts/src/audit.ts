@@ -1,3 +1,4 @@
+import { INSPECTION_LABEL } from './settings'
 import { warnRuleLabel } from './status'
 import type {
   Attachment,
@@ -48,6 +49,7 @@ export const settingsView = (s: CabinetSettings): AuditView => ({
   '«Внимание»': warnRuleLabel(s),
   'Предупреждать за, дней': s.leadDays.join(', ') || 'не предупреждать',
   'Письма на почту': s.channels.email ? 'Включены' : 'Выключены',
+  'Осмотр рукавов': INSPECTION_LABEL[s.inspectionDays] ?? `раз в ${s.inspectionDays} дней`,
 })
 
 /** The fields that differ between two views; unchanged ones stay out of the log. */

@@ -133,7 +133,13 @@ describe.skipIf(!hasDb)('notifications on the server', () => {
 
   it('follows the person’s choice and the company’s lead days', async () => {
     expect((await call('GET', '/me/notification-prefs', engineer)).json()).toEqual({
-      kinds: { overdue: true, planned_replacement: true, warranty_end: true, request_status: true },
+      kinds: {
+        overdue: true,
+        planned_replacement: true,
+        warranty_end: true,
+        inspection: true,
+        request_status: true,
+      },
       email: true,
       address: 'engineer@romashka.ru',
       companyEmail: false,
@@ -159,5 +165,28 @@ describe.skipIf(!hasDb)('notifications on the server', () => {
       ['overdue', 0],
       ['planned_replacement', 7],
     ])
+  })
+
+  it('reminds to inspect a machine every so many days from its first hose', async () => {
+    // A quarter from 17.10.2025: 14.07 and 12.10 — neither in the last 30 days.
+    expect((await list(admin)).some((n) => n.kind === 'inspection')).toBe(false)
+    expect((await call('PATCH', '/admin/settings', admin, { inspectionDays: 45 })).statusCode).toBe(
+      422,
+    )
+    await call('PATCH', '/admin/settings', admin, { inspectionDays: 30 })
+    // Monthly: the 11th falls on 12.09; h1 is the machine's one hose in service.
+    const due = (await list(admin)).filter((n) => n.kind === 'inspection')
+    expect(due).toEqual([
+      expect.objectContaining({
+        id: 'inspection.e1.2026-09-12',
+        title: 'Техника НТ08',
+        message: 'Пора осмотреть 1 рукав — плановый осмотр раз в 30 дней',
+        dueDate: '2026-09-12',
+        equipmentId: 'e1',
+        productId: null,
+      }),
+    ])
+    await call('PATCH', '/admin/settings', admin, { inspectionDays: 0 })
+    expect((await list(admin)).some((n) => n.kind === 'inspection')).toBe(false)
   })
 })

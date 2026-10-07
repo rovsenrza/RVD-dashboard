@@ -3,7 +3,9 @@ import type { NotificationKind, NotificationPrefs, RequestStatus } from './types
 /*
  * Notifications (Д19), worded once for the mock and the API. A hose notice fires
  * `lead` days before its date (warranty end, planned replacement) and on the day
- * the service life runs out; a request notice when 1С closes the request.
+ * the service life runs out; an inspection notice on a machine every so many
+ * days (the company's setting), counted from its first hose in service; a
+ * request notice when 1С closes the request.
  */
 
 /** Days back the list reaches: what the daily scheduler wrote over the last month. */
@@ -13,12 +15,19 @@ export const NOTIFICATION_KINDS: readonly NotificationKind[] = [
   'overdue',
   'planned_replacement',
   'warranty_end',
+  'inspection',
   'request_status',
 ]
 
 /** A person who never chose hears about everything, and by e-mail where the company allows it. */
 export const DEFAULT_NOTIFICATION_PREFS: Pick<NotificationPrefs, 'kinds' | 'email'> = {
-  kinds: { overdue: true, planned_replacement: true, warranty_end: true, request_status: true },
+  kinds: {
+    overdue: true,
+    planned_replacement: true,
+    warranty_end: true,
+    inspection: true,
+    request_status: true,
+  },
   email: true,
 }
 
@@ -38,7 +47,7 @@ export const hoseNoticeTitle = (serialNumber: string, garageNumber: string | nul
 
 /** What a hose notice says, by its kind, date (ISO) and lead. */
 export function hoseNoticeText(
-  kind: Exclude<NotificationKind, 'request_status'>,
+  kind: Exclude<NotificationKind, 'request_status' | 'inspection'>,
   due: string,
   lead: number,
 ): string {
@@ -47,6 +56,14 @@ export function hoseNoticeText(
     return `Плановая замена ${dmy(due)} — ${inDays(lead)}. Пора заказать рукав`
   return `Срок эксплуатации вышел ${dmy(due)} — рукав пора менять`
 }
+
+/** «Техника НТ08»: the machine an inspection is due on. */
+export const machineNoticeTitle = (garageNumber: string | null) =>
+  `Техника ${garageNumber ?? 'без гаражного номера'}`
+
+/** What an inspection notice says: how many hoses to look at, and how often. */
+export const inspectionNoticeText = (hoses: number, every: number) =>
+  `Пора осмотреть ${hoses} ${plural(hoses, 'рукав', 'рукава', 'рукавов')} — плановый осмотр раз в ${every} ${plural(every, 'день', 'дня', 'дней')}`
 
 export const requestNoticeText = (status: Extract<RequestStatus, 'done' | 'rejected'>) =>
   status === 'done' ? 'Выполнена в 1С' : 'Отклонена в 1С — уточните у менеджера'

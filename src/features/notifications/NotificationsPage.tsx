@@ -4,6 +4,7 @@ import { format, isToday, isYesterday, parseISO } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { BellOff, CheckCheck } from 'lucide-react'
 import type { CabinetNotification, NotificationKind } from '@/entities/types'
+import { INSPECTION_LABEL } from '@/entities/settings'
 import {
   NOTIFICATION_KIND_HINT,
   NOTIFICATION_KIND_LABEL,
@@ -212,6 +213,7 @@ function PrefsCard() {
   const settings = useSettings(user.role === 'admin')
   const lead = user.role === 'admin' ? settings.data?.leadDays : undefined
   const last = lead?.at(-1) ?? 0
+  const inspection = user.role === 'admin' ? settings.data?.inspectionDays : undefined
 
   const change = (patch: Parameters<typeof save.mutate>[0]) =>
     save.mutate(patch, { onError: () => toast('Не удалось сохранить настройку', 'error') })
@@ -252,6 +254,10 @@ function PrefsCard() {
               {lead
                 ? `Предупреждаем за ${lead.join(', ')} ${plural(last, 'день', 'дня', 'дней')} до срока. `
                 : 'За сколько дней предупреждать, задаёт администратор кабинета. '}
+              {inspection !== undefined &&
+                (inspection
+                  ? `Осмотр техники — ${INSPECTION_LABEL[inspection].toLowerCase()}. `
+                  : 'Об осмотре техники не напоминаем. ')}
               {user.role === 'admin' && (
                 <Link to="/admin?tab=settings" className="text-brand-deep hover:underline">
                   Изменить сроки

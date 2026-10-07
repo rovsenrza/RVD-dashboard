@@ -1,11 +1,11 @@
 {
     "schema_version": 2,
-    "commit": "1eeff39a59f8b1635789bd6939aa097715468b1f",
-    "indexed_at": "2026-10-07T03:16:51Z",
+    "commit": "953bfe337f64183f4e28a6cc96089a9fe99a3f05",
+    "indexed_at": "2026-10-07T03:23:48Z",
     "project": "Users-User-Desktop-dashboard",
-    "nodes": 2779,
-    "edges": 9776,
+    "nodes": 2786,
+    "edges": 9821,
     "original_size": 11468800,
-    "compressed_size": 2332521,
+    "compressed_size": 2335314,
     "compression_level": 3
 }

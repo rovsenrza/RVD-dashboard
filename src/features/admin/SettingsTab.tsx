@@ -1,7 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import type { CabinetSettings } from '@/entities/types'
 import { WARN_DAYS_RANGE, WARN_PERCENT_RANGE, warnRuleLabel } from '@/entities/product'
-import { LEAD_DAY_OPTIONS } from '@/entities/settings'
+import { INSPECTION_DAY_OPTIONS, INSPECTION_LABEL, LEAD_DAY_OPTIONS } from '@/entities/settings'
 import { useSaveSettings, useSettings } from '@/shared/api/queries'
 import {
   Button,
@@ -11,6 +11,7 @@ import {
   Input,
   QueryState,
   SegmentedControl,
+  Select,
   Skeleton,
   useToast,
 } from '@/shared/ui'
@@ -53,6 +54,7 @@ function SettingsForm({ saved }: { saved: CabinetSettings }) {
   const [days, setDays] = useState(String(saved.warnDays))
   const [leadDays, setLeadDays] = useState(saved.leadDays)
   const [email, setEmail] = useState(saved.channels.email)
+  const [inspection, setInspection] = useState(saved.inspectionDays)
 
   const field = RULE_FIELD[rule]
   const [warn, setWarn] = rule === 'percent' ? [percent, setPercent] : [days, setDays]
@@ -65,6 +67,7 @@ function SettingsForm({ saved }: { saved: CabinetSettings }) {
     warnDays: rule === 'days' ? Number(days) : saved.warnDays,
     leadDays: [...leadDays].sort((a, b) => b - a),
     channels: { inApp: true, email },
+    inspectionDays: inspection,
   }
   const dirty = JSON.stringify(next) !== JSON.stringify(saved)
 
@@ -142,6 +145,25 @@ function SettingsForm({ saved }: { saved: CabinetSettings }) {
               ))}
             </div>
           </fieldset>
+          <div className="mt-5 border-t border-line pt-4">
+            <Field
+              label="Плановый осмотр рукавов на технике"
+              hint="Напоминание по каждой машине — от её первого рукава в работе"
+            >
+              {(id) => (
+                <Select
+                  id={id}
+                  value={String(inspection)}
+                  options={INSPECTION_DAY_OPTIONS.map((d) => ({
+                    value: String(d),
+                    label: INSPECTION_LABEL[d],
+                  }))}
+                  onChange={(e) => setInspection(Number(e.target.value))}
+                  className="sm:w-60"
+                />
+              )}
+            </Field>
+          </div>
           <fieldset className="mt-5 grid gap-2.5 border-t border-line pt-4">
             <legend className="sr-only">Каналы</legend>
             <Checkbox label="В кабинете — колокольчик" hint="Включено всегда" checked disabled />
@@ -165,6 +187,7 @@ function SettingsForm({ saved }: { saved: CabinetSettings }) {
             setDays(String(saved.warnDays))
             setLeadDays(saved.leadDays)
             setEmail(saved.channels.email)
+            setInspection(saved.inspectionDays)
           }}
         >
           Отменить изменения

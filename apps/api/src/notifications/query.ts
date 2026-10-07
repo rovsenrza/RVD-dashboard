@@ -2,6 +2,8 @@ import {
   DEFAULT_NOTIFICATION_PREFS,
   hoseNoticeText,
   hoseNoticeTitle,
+  inspectionNoticeText,
+  machineNoticeTitle,
   NOTIFICATION_WINDOW_DAYS,
   notificationPrefsProblem,
   requestNoticeText,
@@ -22,11 +24,13 @@ export interface Reader {
   client?: string
   /** The company's lead days (settings) */
   leadDays: number[]
+  /** The company's inspection interval, days; 0 — no inspection notices */
+  inspectionDays: number
   kinds: Prefs['kinds']
 }
 
 interface HoseRow {
-  kind: Exclude<NotificationKind, 'request_status'>
+  kind: Exclude<NotificationKind, 'request_status' | 'inspection'>
   lead: number
   id: string
   serial_number: string
@@ -34,6 +38,14 @@ interface HoseRow {
   branch_id: string
   due: string
   fired: string
+}
+
+interface MachineRow {
+  id: string
+  garage_number: string | null
+  branch_id: string
+  hoses: number
+  due: string
 }
 
 interface RequestRow {
@@ -52,8 +64,8 @@ const morning = (day: string) => new Date(`${day}T06:00:00`).toISOString()
  * The notices of the last 30 days, newest first — what a daily scheduler would
  * have written (Д19), worked out from the cache instead: each hose in service
  * fires `lead` days before its warranty ends and its planned replacement (by the
- * company's lead days) and on the day its life runs out, each request when 1С
- * closed it. Nothing older than the person's account. Ids are stable — kind,
+ * company's lead days) and on the day its life runs out, each machine with hoses
+ * in service every `inspectionDays`, each request when 1С closed it. Nothing older than the person's account. Ids are stable — kind,
  * object, date and lead — so a read stays read.
  */
 export async function listNotifications(
@@ -93,6 +105,25 @@ export async function listNotifications(
      where f.due - f.lead between $4::date and $1::date`,
     params,
   )
+  // A machine is due for inspection every `inspectionDays` from its first hose in service.
+  const { rows: machines } = reader.inspectionDays
+    ? await db.query<MachineRow>(
+        `with m as (
+           select e.id, e.garage_number, e.branch_id, count(*)::int as hoses,
+             min(coalesce(p.installed_at, p.shipped_at)) as start
+           from equipment e join products p on p.equipment_id = e.id
+           where ($2::text is null or e.client_id = $2) and p.client_id = e.client_id
+             and p.lifecycle <> 'written_off' and coalesce(p.installed_at, p.shipped_at) is not null
+           group by e.id
+         )
+         select m.id, m.garage_number, m.branch_id, m.hoses,
+           to_char(m.start + k * $4::int, 'YYYY-MM-DD') as due
+         from m cross join lateral generate_series(
+           greatest(1, ceil(($3::date - m.start)::numeric / $4::int)::int),
+           floor(($1::date - m.start)::numeric / $4::int)::int) as k`,
+        [today, reader.client ?? null, since, reader.inspectionDays],
+      )
+    : { rows: [] }
   const { rows: closed } = await db.query<RequestRow>(
     `select id, number, status, branch_id, closed_at,
        case when jsonb_array_length(positions) = 1 then positions -> 0 ->> 'productId' end
@@ -114,8 +145,22 @@ export async function listNotifications(
       dueDate: h.due,
       productId: h.id,
       requestId: null,
+      equipmentId: null,
       branchId: h.branch_id,
       createdAt: morning(h.fired),
+    })),
+    ...machines.map((m) => ({
+      id: `inspection.${m.id}.${m.due}`,
+      kind: 'inspection' as const,
+      lead: 0,
+      title: machineNoticeTitle(m.garage_number),
+      message: inspectionNoticeText(m.hoses, reader.inspectionDays),
+      dueDate: m.due,
+      productId: null,
+      requestId: null,
+      equipmentId: m.id,
+      branchId: m.branch_id,
+      createdAt: morning(m.due),
     })),
     ...closed.map((r) => ({
       id: `request_status.${r.id}`,
@@ -126,6 +171,7 @@ export async function listNotifications(
       dueDate: null,
       productId: r.product_id,
       requestId: r.id,
+      equipmentId: null,
       branchId: r.branch_id,
       createdAt: r.closed_at.toISOString(),
     })),

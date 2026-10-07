@@ -2,6 +2,7 @@ import {
   AlertTriangle,
   CalendarClock,
   ClipboardCheck,
+  ScanSearch,
   ShieldAlert,
   type LucideIcon,
 } from 'lucide-react'
@@ -15,6 +16,8 @@ const KIND: Record<NotificationKind, { icon: LucideIcon; tile: string }> = {
   overdue: { icon: AlertTriangle, tile: 'bg-status-replace-soft text-status-replace-ink' },
   planned_replacement: { icon: CalendarClock, tile: 'bg-status-warn-soft text-status-warn-ink' },
   warranty_end: { icon: ShieldAlert, tile: 'bg-status-none-soft text-status-none-ink' },
+  // Routine, not a status: the neutral ground, like a closed request.
+  inspection: { icon: ScanSearch, tile: 'bg-field text-ink-secondary' },
   request_status: { icon: ClipboardCheck, tile: 'bg-field text-ink-secondary' },
 }
 

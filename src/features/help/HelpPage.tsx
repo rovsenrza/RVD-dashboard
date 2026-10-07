@@ -2,7 +2,7 @@ import { Fragment, useEffect, useState, type ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 import { Headset } from 'lucide-react'
 import { ProductStatusBadge, STATUS_COLOR } from '@/entities/product'
-import { DEFAULT_SETTINGS } from '@/entities/settings'
+import { DEFAULT_SETTINGS, INSPECTION_LABEL } from '@/entities/settings'
 import type { ProductStatus } from '@/entities/types'
 import { ROLE_LABEL } from '@/entities/user'
 import { Button, Kbd, PageHeader } from '@/shared/ui'
@@ -20,7 +20,7 @@ const SECTIONS = [
 
 type SectionId = (typeof SECTIONS)[number]['id']
 
-const { warnDays, leadDays } = DEFAULT_SETTINGS
+const { warnDays, leadDays, inspectionDays } = DEFAULT_SETTINGS
 const days = (list: readonly number[]) =>
   `${list.slice(0, -1).join(', ')} и ${list[list.length - 1]} дней`
 
@@ -176,12 +176,17 @@ export function HelpPage() {
             <ul>
               <li>о конце гарантии и о плановой замене — заранее, за {days(leadDays)};</li>
               <li>о том, что срок эксплуатации вышел;</li>
+              <li>
+                о плановом осмотре рукавов — по каждой машине,{' '}
+                {INSPECTION_LABEL[inspectionDays].toLowerCase()};
+              </li>
               <li>о выполненной или отклонённой заявке.</li>
             </ul>
             <p>
-              За сколько дней предупреждать, решает администратор компании. Какие уведомления
-              получать и нужны ли письма, каждый выбирает сам: «Уведомления» → «Настройки
-              уведомлений». Письма приходят, когда у компании подключена почта.
+              За сколько дней предупреждать и как часто напоминать об осмотре, решает администратор
+              компании. Какие уведомления получать и нужны ли письма, каждый выбирает сам:
+              «Уведомления» → «Настройки уведомлений». Письма приходят, когда у компании подключена
+              почта.
             </p>
           </Section>
 

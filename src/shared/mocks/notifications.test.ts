@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { addDays, differenceInCalendarDays, formatISO, parseISO } from 'date-fns'
-import { settings } from './data'
+import { equipment, products, settings } from './data'
 import { markRead, notificationsFor, prefs } from './notifications'
 
 const today = new Date()
@@ -10,7 +10,7 @@ describe('the daily scheduler', () => {
   const list = notificationsFor(null, today)
 
   it('fires each hose rule exactly its lead days before the due date, within 30 days', () => {
-    const hose = list.filter((n) => n.kind !== 'request_status')
+    const hose = list.filter((n) => n.kind !== 'request_status' && n.kind !== 'inspection')
     expect(hose.length).toBeGreaterThan(0)
     for (const n of hose) {
       const fired = parseISO(n.createdAt)
@@ -20,6 +20,29 @@ describe('the daily scheduler', () => {
       expect(ago).toBeLessThan(30)
       if (n.kind !== 'overdue') expect(settings.leadDays).toContain(n.lead)
     }
+  })
+
+  it('reminds to inspect each machine every so many days from its first hose in service', () => {
+    const due = list.filter((n) => n.kind === 'inspection')
+    expect(due.length).toBeGreaterThan(0)
+    for (const n of due) {
+      const machine = equipment.find((e) => e.id === n.equipmentId)!
+      const starts = products
+        .filter((p) => p.equipmentId === machine.id && p.lifecycle !== 'written_off')
+        .map((p) => p.installedAt || p.shippedAt)
+        .filter(Boolean)
+        .sort()
+      const age = differenceInCalendarDays(parseISO(n.dueDate!), parseISO(starts[0]!))
+      expect(age % settings.inspectionDays).toBe(0)
+      expect(age).toBeGreaterThan(0)
+      expect(day(parseISO(n.createdAt))).toBe(n.dueDate)
+      expect(n.title).toBe(`Техника ${machine.garageNumber}`)
+    }
+    // The administrator turned it off: nothing.
+    const every = settings.inspectionDays
+    settings.inspectionDays = 0
+    expect(notificationsFor(null, today).some((n) => n.kind === 'inspection')).toBe(false)
+    settings.inspectionDays = every
   })
 
   it('comes newest first, with unique ids', () => {

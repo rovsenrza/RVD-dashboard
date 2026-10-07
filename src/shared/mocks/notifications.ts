@@ -1,4 +1,4 @@
-import { addDays, formatISO, parseISO, setHours } from 'date-fns'
+import { addDays, differenceInCalendarDays, formatISO, parseISO, setHours } from 'date-fns'
 import type {
   CabinetNotification,
   NotificationKind,
@@ -9,6 +9,8 @@ import {
   DEFAULT_NOTIFICATION_PREFS,
   hoseNoticeText,
   hoseNoticeTitle,
+  inspectionNoticeText,
+  machineNoticeTitle,
   NOTIFICATION_WINDOW_DAYS as WINDOW,
   requestNoticeText,
 } from '@/entities/notification'
@@ -56,7 +58,11 @@ export function notificationsFor(branch: string | null, today = new Date()): Cab
     if (!p.installedAt || p.lifecycle === 'written_off') continue
     if (branch && p.branchId !== branch) continue
     const life = productLifetime(p)!
-    const fire = (kind: Exclude<NotificationKind, 'request_status'>, due: string, lead: number) => {
+    const fire = (
+      kind: Exclude<NotificationKind, 'request_status' | 'inspection'>,
+      due: string,
+      lead: number,
+    ) => {
       const on = plus(due, -lead)
       if (on > t || on <= from) return
       list.push({
@@ -68,6 +74,7 @@ export function notificationsFor(branch: string | null, today = new Date()): Cab
         dueDate: due,
         productId: p.id,
         requestId: null,
+        equipmentId: null,
         branchId: p.branchId,
         createdAt: morning(on),
         read: false,
@@ -79,6 +86,37 @@ export function notificationsFor(branch: string | null, today = new Date()): Cab
     }
     fire('overdue', life.plannedAt, 0)
   }
+
+  // Every `inspectionDays` from the machine's first hose in service, as on the API.
+  const every = settings.inspectionDays
+  if (every)
+    for (const e of equipment) {
+      if (branch && e.branchId !== branch) continue
+      const hoses = products.filter(
+        (p) =>
+          p.equipmentId === e.id && p.lifecycle !== 'written_off' && (p.installedAt || p.shippedAt),
+      )
+      if (!hoses.length) continue
+      const start = hoses.map((p) => (p.installedAt || p.shippedAt)!).sort()[0]
+      const age = differenceInCalendarDays(parseISO(t), parseISO(start))
+      for (let k = Math.max(1, Math.ceil((age - WINDOW + 1) / every)); k * every <= age; k++) {
+        const due = plus(start, k * every)
+        list.push({
+          id: `inspection.${e.id}.${due}`,
+          kind: 'inspection',
+          lead: 0,
+          title: machineNoticeTitle(e.garageNumber),
+          message: inspectionNoticeText(hoses.length, every),
+          dueDate: due,
+          productId: null,
+          requestId: null,
+          equipmentId: e.id,
+          branchId: e.branchId,
+          createdAt: morning(due),
+          read: false,
+        })
+      }
+    }
 
   for (const r of requests) {
     if (r.status !== 'done' && r.status !== 'rejected') continue
@@ -95,6 +133,7 @@ export function notificationsFor(branch: string | null, today = new Date()): Cab
       dueDate: null,
       productId: r.productId,
       requestId: r.id,
+      equipmentId: null,
       branchId: r.branchId,
       createdAt: morning(closed),
       read: false,

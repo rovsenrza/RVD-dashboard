@@ -756,6 +756,7 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
         userId: person?.userId ?? null,
         client: clientOf(req),
         leadDays: settings.leadDays,
+        inspectionDays: settings.inspectionDays,
         kinds: prefs.kinds,
       })
     }
