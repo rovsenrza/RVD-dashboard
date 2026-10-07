@@ -45,6 +45,13 @@ const schema = z.object({
   NOTIFY_HOUR: z.coerce.number().int().min(0).max(23).default(7),
   /** The cabinet's address, for links in letters */
   CABINET_URL: z.url().optional(),
+  /** Where uploaded files live (Д25), relative to the API's working directory or absolute */
+  FILES_DIR: z.string().default('data/files'),
+  /** ClamAV's clamd; unset — only the EICAR test file is caught, and the start says so */
+  CLAMAV_HOST: z.string().optional(),
+  CLAMAV_PORT: z.coerce.number().int().positive().default(3310),
+  /** The path the browser reaches this API by (the dev proxy and the web server use /api) */
+  PUBLIC_API_PATH: z.string().default('/api'),
   /**
    * The 1С client (Клиент_Key) whose data the cabinet shows while sign-in is
    * off; signed in, each company sees its own client (Д6–Д7).

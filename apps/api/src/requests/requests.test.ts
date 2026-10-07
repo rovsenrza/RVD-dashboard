@@ -87,12 +87,30 @@ describe.skipIf(!hasDb)('requests to 1С', () => {
     expect(theirs.json().message).toMatch(/только ваши изделия/)
     const empty = await post({ branchId: 'b1', kind: 'manufacture', comment: null, positions: [] })
     expect(empty.json().message).toMatch(/таблицу Excel/)
-    const excel = await post({
+    // A name the browser claims counts for nothing; the file the server holds does.
+    const claimed = await post({
       branchId: 'b1',
       kind: 'manufacture',
       comment: null,
       positions: [],
       attachmentNames: ['позиции.xlsx'],
+    })
+    expect(claimed.statusCode).toBe(400)
+    const form = new FormData()
+    form.append(
+      'file',
+      new Blob([new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0, 0, 0, 0])]),
+      'позиции.xlsx',
+    )
+    const draft = (
+      await app.inject({ method: 'POST', url: '/attachments', payload: form })
+    ).json() as { id: string }
+    const excel = await post({
+      branchId: 'b1',
+      kind: 'manufacture',
+      comment: null,
+      positions: [],
+      attachmentIds: [draft.id],
     })
     expect(excel.statusCode).toBe(201)
   })

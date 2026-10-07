@@ -56,3 +56,6 @@ playwright-report/
 
 # Font and asset archives are kept out of the repo
 *.zip
+
+# Uploaded files of a local API run (FILES_DIR)
+apps/api/data/

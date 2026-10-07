@@ -19,8 +19,8 @@ export interface RequestInput {
   comment: string | null
   attachmentIds?: string[]
   /**
-   * Names of the attached files, for the «Excel instead of lines» rule until the
-   * BFF stores files itself (Д25) and can read them.
+   * Names of the attached files, for the «Excel instead of lines» rule: the route
+   * fills them from the drafts the server holds (Д25), never from the browser.
    */
   attachmentNames?: string[]
 }

@@ -1,4 +1,5 @@
 import cors from '@fastify/cors'
+import multipart from '@fastify/multipart'
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify'
 import {
   auditChanges,
@@ -9,6 +10,8 @@ import {
   type Product,
   DEFAULT_RULES,
   DEFAULT_SETTINGS,
+  filesChange,
+  MAX_FILE_BYTES,
   ProductListQuery,
   requestChanges,
   settingsPatch,
@@ -62,6 +65,15 @@ import { getProduct, listProducts, type Clock } from './products/query.ts'
 import { listReplacements } from './replacements/query.ts'
 import { companyModels, companyReport } from './reports/query.ts'
 import { syncStatus } from './sync/health.ts'
+import { createFiles } from './files/attachments.ts'
+import {
+  eicarOnly,
+  fileLinks,
+  memoryStore,
+  type FileStore,
+  type FileVariant,
+  type Scanner,
+} from './files/storage.ts'
 import {
   createRequest,
   listRequests,
@@ -99,6 +111,8 @@ export interface AppOptions {
   }
   /** The sync worker (Д26), when this process runs one */
   sync?: { kick: () => void; running: () => boolean }
+  /** Files (Д25): where bytes live, the antivirus, and the path the browser reaches the API by */
+  files?: { store?: FileStore; scan?: Scanner; publicPath?: string }
 }
 
 const localToday = () => new Date().toLocaleDateString('sv-SE')
@@ -160,6 +174,16 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
 
   if (options.corsOrigins?.length)
     void app.register(cors, { origin: options.corsOrigins, credentials: true })
+  void app.register(multipart, { limits: { fileSize: MAX_FILE_BYTES, files: 1, fields: 5 } })
+  const links = fileLinks(secret, options.files?.publicPath ?? '/api')
+  const files = db
+    ? createFiles(
+        db,
+        options.files?.store ?? memoryStore(),
+        options.files?.scan ?? eicarOnly,
+        links,
+      )
+    : (null as never)
 
   app.decorateRequest('identity', null)
   app.addHook('onRequest', async (req, reply) => {
@@ -169,6 +193,12 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
     }
     const path = req.url.split('?')[0]
     if (OPEN.has(path)) return
+    // A file link the API signed carries its own permission: an <img> sends no token.
+    const signed = path.match(/^\/attachments\/([^/]+)\/(file|preview)$/)
+    if (signed) {
+      const q = req.query as { exp?: unknown; sig?: unknown }
+      if (links.valid(signed[1], signed[2] as FileVariant, q.exp, q.sig)) return
+    }
     const header = req.headers.authorization
     req.identity = header?.startsWith('Bearer ') ? readAccess(header.slice(7), secret) : null
     if (!req.identity) return reply.code(401).send({ message: 'Требуется вход' })
@@ -610,15 +640,34 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
     })
 
     // Requests (Д18): taken here, sent to 1С by the outbox, statuses read back at sync.
-    app.get('/requests', async (req) => listRequests(db, clientOf(req)))
+    app.get('/requests', async (req) => {
+      const list = await listRequests(db, clientOf(req))
+      const attached = await files.ofRequests(list.map((r) => r.id))
+      return list.map((r) => ({ ...r, attachments: attached.get(r.id) ?? [] }))
+    })
 
     app.post<{ Body: RequestInput }>('/requests', async (req, reply) => {
       const who = req.identity ?? demo
+      const body = req.body ?? ({} as RequestInput)
+      // Only the asker's own unclaimed uploads join; their real names decide the «Excel» rule.
+      const drafts = await files.drafts(body.attachmentIds, who.userId)
       try {
-        const created = await createRequest(db, req.body ?? ({} as RequestInput), {
-          clientKey: clientOf(req),
-          actor: { name: who.name, email: who.email },
-        })
+        const request = await createRequest(
+          db,
+          {
+            ...body,
+            attachmentIds: drafts.map((d) => d.id),
+            attachmentNames: drafts.map((d) => d.fileName),
+          },
+          { clientKey: clientOf(req), actor: { name: who.name, email: who.email } },
+        )
+        const created = {
+          ...request,
+          attachments: await files.claim(
+            drafts.map((d) => d.id),
+            { kind: 'request', id: request.id },
+          ),
+        }
         await audit(req, {
           action: 'request.create',
           // The СВЦБ number comes from 1С later; the log keeps what was known at the time.
@@ -639,6 +688,79 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
         throw error
       }
     })
+
+    // Files (Д25): a hose takes them at once; a request form uploads drafts and claims them.
+    app.post('/attachments', async (req, reply) =>
+      answering(reply, async () => {
+        let upload: { fileName: string; data: Buffer } | null = null
+        const fields: Record<string, string> = {}
+        try {
+          for await (const part of req.parts())
+            if (part.type === 'file')
+              upload = { fileName: part.filename, data: await part.toBuffer() }
+            else fields[part.fieldname] = String(part.value)
+        } catch {
+          throw new AuthRejected(422, `Файл больше ${MAX_FILE_BYTES / 1024 / 1024} МБ`)
+        }
+        if (!upload) throw new AuthRejected(400, 'Файл не передан')
+        const { attachment, product } = await files.upload({
+          ...upload,
+          productId: fields.productId || null,
+          uploader: req.identity ?? demo,
+          client: clientOf(req),
+          clock: await clockOf(req),
+        })
+        if (product)
+          await audit(req, {
+            action: 'attachment.create',
+            target: hoseTarget(product),
+            changes: filesChange([attachment]),
+          })
+        return reply.code(201).send(attachment)
+      }),
+    )
+
+    app.get<{ Params: { id: string } }>('/products/:id/attachments', async (req, reply) =>
+      answering(reply, async () =>
+        files.ofProduct(req.params.id, clientOf(req), await clockOf(req)),
+      ),
+    )
+
+    for (const variant of ['file', 'preview'] as const)
+      app.get<{ Params: { id: string } }>(`/attachments/:id/${variant}`, async (req, reply) => {
+        // A signed link was checked on the way in; a token reads only its company's files.
+        const file = await files.read(
+          req.params.id,
+          variant,
+          req.identity ? clientOf(req) : undefined,
+        )
+        if (!file) return reply.code(404).send({ message: 'Файл не найден' })
+        return reply
+          .header('Content-Type', file.mimeType)
+          .header(
+            'Content-Disposition',
+            `inline; filename*=UTF-8''${encodeURIComponent(file.fileName)}`,
+          )
+          .header('Cache-Control', 'private, max-age=3600')
+          .header('X-Content-Type-Options', 'nosniff')
+          .send(file.data)
+      })
+
+    app.delete<{ Params: { id: string } }>('/attachments/:id', async (req, reply) =>
+      answering(reply, async () => {
+        const { fileName, product } = await files.remove(
+          req.params.id,
+          clientOf(req),
+          await clockOf(req),
+        )
+        await audit(req, {
+          action: 'attachment.delete',
+          target: hoseTarget(product),
+          changes: [{ field: 'Файлы', before: fileName, after: null }],
+        })
+        return reply.code(204).send()
+      }),
+    )
 
     // How fresh the cache is (Д26): «данные на HH:MM», and whether 1С answers.
     app.get('/sync', async () => syncStatus(db, options.sync?.running() ?? false))

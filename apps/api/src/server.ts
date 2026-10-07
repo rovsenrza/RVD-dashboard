@@ -2,6 +2,8 @@ import { buildApp, DEMO_IDENTITY } from './app.ts'
 import { loadConfig } from './config.ts'
 import { migrate } from './db/migrate.ts'
 import { createPool } from './db/pool.ts'
+import { purgeDrafts } from './files/attachments.ts'
+import { clamav, diskStore, eicarOnly } from './files/storage.ts'
 import { smtpMailer, startMail } from './mail/mail.ts'
 import { ODataClient } from './onec/client.ts'
 import { HttpOrderService } from './onec/orders.ts'
@@ -18,6 +20,9 @@ if (!config.JWT_SECRET && !config.AUTH_DISABLED)
 const secret = config.AUTH_DISABLED ? undefined : config.JWT_SECRET
 const db = createPool(config.DATABASE_URL)
 await migrate(db)
+// Files (Д25) on disk; every upload checked by ClamAV when it is configured.
+const files = diskStore(config.FILES_DIR)
+const scan = config.CLAMAV_HOST ? clamav(config.CLAMAV_HOST, config.CLAMAV_PORT) : eicarOnly
 // Requests go to 1С through its order service; without one configured they wait in the queue.
 let outbox: { kick: () => void } | null = null
 let sync: SyncScheduler | null = null
@@ -30,7 +35,15 @@ const app = buildApp({
     : { demo: { ...DEMO_IDENTITY, clientKey: config.CABINET_CLIENT_KEY ?? '' } },
   requests: { clientKey: config.CABINET_CLIENT_KEY, onCreated: () => outbox?.kick() },
   sync: { kick: () => sync?.kick(), running: () => sync?.running() ?? false },
+  files: { store: files, scan, publicPath: config.PUBLIC_API_PATH },
 })
+if (!config.CLAMAV_HOST)
+  app.log.warn('ClamAV не задан (CLAMAV_HOST): из вредоносных файлов ловится только тестовый EICAR')
+// Drafts a request form never claimed go after a day.
+setInterval(
+  () => void purgeDrafts(db, files).catch((error) => app.log.error({ err: error }, 'черновики')),
+  60 * 60_000,
+)
 if (!secret)
   app.log.warn('Вход выключен (AUTH_DISABLED=true): все видят данные как демо-пользователь')
 if (config.ONEC_ORDERS_URL) {
