@@ -1,7 +1,7 @@
 {
   "name": "@rvd/contracts",
   "private": true,
-  "version": "0.9.0",
+  "version": "1.0.0-rc.1",
   "type": "module",
   "description": "Shared domain types and rules: the one definition the web app, the mocks and the API agree on.",
   "exports": {

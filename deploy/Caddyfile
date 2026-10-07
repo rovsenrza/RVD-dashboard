@@ -6,3 +6,10 @@
 	header Strict-Transport-Security "max-age=31536000"
 	reverse_proxy web:80
 }
+
+# Other names that lead to the server (SITE_ALIASES, comma-separated, e.g. www.clientrvd.vgiz.ru)
+# get a certificate of their own and send visitors on to SITE_ADDRESS. Without them the compose
+# file puts a name here that nobody can reach.
+{$SITE_ALIASES} {
+	redir https://{$SITE_ADDRESS}{uri} permanent
+}

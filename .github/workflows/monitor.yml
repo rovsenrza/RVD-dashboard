@@ -1,0 +1,65 @@
+# Outside monitor of the live cabinet (Д31). Every 10 minutes scripts/monitor.mjs checks the page,
+# the API and its database, how fresh the 1С data is and the certificate; a problem that is still
+# there a minute later opens an issue labelled «monitor», which GitHub e-mails to the owner, and the
+# first clean check comments on it and closes it — one letter when it breaks, one when it is back.
+# GitHub may start a scheduled run late, and stops the schedule after 60 days without commits.
+name: Monitor
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: monitor
+
+jobs:
+  check:
+    name: Cabinet is up
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      CABINET_URL: https://clientrvd.vgiz.ru
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: scripts/monitor.mjs
+          sparse-checkout-cone-mode: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check
+        id: check
+        run: |
+          if node scripts/monitor.mjs > result.txt || { sleep 60; node scripts/monitor.mjs > result.txt; }; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+          fi
+          cat result.txt
+
+      - name: Open or close the alert
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          OK: ${{ steps.check.outputs.ok }}
+          OWNER: ${{ github.repository_owner }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          now=$(TZ=Europe/Moscow date '+%d.%m.%Y %H:%M МСК')
+          open=$(gh issue list --label monitor --state open --json number --jq '.[0].number // empty')
+          if [ "$OK" = true ]; then
+            if [ -n "$open" ]; then gh issue close "$open" --comment "Восстановлено $now: $(cat result.txt)"; fi
+          elif [ -z "$open" ]; then
+            gh label create monitor --color B60205 --description 'Внешний мониторинг кабинета' --force
+            printf '@%s %s — проблема с %s, подтверждена повторной проверкой через минуту:\n\n%s\n\nПроверка: %s\nЧто делать — docs/OPERATIONS.md, «Наблюдение». Issue закроется сам при первой чистой проверке.\n' \
+              "$OWNER" "$CABINET_URL" "$now" "$(cat result.txt)" "$RUN_URL" > body.md
+            gh issue create --label monitor --title "Кабинет: проблема с $now" --body-file body.md
+          fi
+          exit 0

@@ -47,7 +47,8 @@ services:
       - api
 
   # HTTPS in front of the web app (deploy/Caddyfile). SITE_ADDRESS is the cabinet's domain
-  # name; unset, the cabinet answers plain HTTP on port 80. Certificates live in caddy-data.
+  # name; unset, the cabinet answers plain HTTP on port 80. SITE_ALIASES — other names that
+  # redirect to it. Certificates live in caddy-data.
   proxy:
     image: caddy:2-alpine
     restart: unless-stopped
@@ -56,6 +57,7 @@ services:
       - '443:443'
     environment:
       SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+      SITE_ALIASES: ${SITE_ALIASES:-http://alias.invalid}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy-data:/data
