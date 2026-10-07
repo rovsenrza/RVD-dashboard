@@ -1,4 +1,5 @@
 import { useState, type FormEvent } from 'react'
+import { useSession } from '@/app/session'
 import type { Product } from '@/entities/types'
 import { INSTALL_PLACES } from '@/entities/product'
 import { useEquipment, useUpdateProduct } from '@/shared/api/queries'
@@ -19,16 +20,20 @@ export function ProductEditForm({
   const equipment = useEquipment()
   const update = useUpdateProduct(p.id)
   const toast = useToast()
+  // Live, the machine is the one 1С's «Выпуск» names; who may move a hose is open (question 14).
+  const { demo } = useSession()
+  const machineFixed = !demo
 
   const [equipmentId, setEquipmentId] = useState(p.equipmentId ?? '')
   const [installPlace, setInstallPlace] = useState(p.installPlace ?? '')
   const [clientNumber, setClientNumber] = useState(p.clientNumber ?? '')
+  const machine = equipment.data?.find((e) => e.id === p.equipmentId)
 
   const submit = (e: FormEvent) => {
     e.preventDefault()
     update.mutate(
       {
-        equipmentId: equipmentId || null,
+        ...(machineFixed ? {} : { equipmentId: equipmentId || null }),
         installPlace: equipmentId ? installPlace || null : null,
         clientNumber: clientNumber.trim() || null,
       },
@@ -64,20 +69,34 @@ export function ProductEditForm({
       }
     >
       <form id="product-edit" onSubmit={submit} className="grid gap-4">
-        <Field label="Техника" hint="Снимите выбор, чтобы вернуть изделие на склад">
-          {(id) => (
-            <Select
-              id={id}
-              value={equipmentId}
-              onChange={(e) => setEquipmentId(e.target.value)}
-              placeholder="Не установлено"
-              options={(equipment.data ?? []).map((e) => ({
-                value: e.id,
-                label: `${e.garageNumber} · ${e.brand} ${e.model}`,
-              }))}
-            />
-          )}
-        </Field>
+        {machineFixed ? (
+          <div>
+            <span className="mb-1.5 block text-ui font-medium">Техника</span>
+            <span className="block text-sm">
+              {machine
+                ? `${machine.garageNumber} · ${machine.brand} ${machine.model}`.trim()
+                : 'На складе'}
+            </span>
+            <span className="mt-1 block text-label text-ink-muted">
+              Её ведёт поставщик в 1С. Стоит на другой машине — напишите специалисту.
+            </span>
+          </div>
+        ) : (
+          <Field label="Техника" hint="Снимите выбор, чтобы вернуть изделие на склад">
+            {(id) => (
+              <Select
+                id={id}
+                value={equipmentId}
+                onChange={(e) => setEquipmentId(e.target.value)}
+                placeholder="Не установлено"
+                options={(equipment.data ?? []).map((e) => ({
+                  value: e.id,
+                  label: `${e.garageNumber} · ${e.brand} ${e.model}`,
+                }))}
+              />
+            )}
+          </Field>
+        )}
 
         {equipmentId && (
           <Field label="Место установки">

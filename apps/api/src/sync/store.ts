@@ -35,7 +35,7 @@ type Tx = PoolClient
 const CHUNK = 1000
 
 /** What the registry's search looks through: the hose's numbers and name, its machine and place. */
-const searchText = (p: Product, garageNumber: string | undefined) =>
+export const searchText = (p: Product, garageNumber: string | null | undefined) =>
   [
     p.serialNumber,
     p.clientNumber,
@@ -96,25 +96,39 @@ async function writeProducts(
       [JSON.stringify(histories.slice(i, i + CHUNK))],
     )
   }
+  // What the customer recorded (place, own number) lies over 1С's empty fields on every write.
+  const { rows: local } = await tx.query<{
+    product_id: string
+    install_place: string | null
+    client_number: string | null
+  }>('select product_id, install_place, client_number from product_local')
+  const own = new Map(local.map((l) => [l.product_id, l]))
+  const withLocal = (p: Product): Product => {
+    const l = own.get(p.id)
+    return l ? { ...p, installPlace: l.install_place, clientNumber: l.client_number } : p
+  }
   for (let i = 0; i < rows.length; i += CHUNK) {
-    const chunk = rows.slice(i, i + CHUNK).map(({ product: p, clientId, version }) => ({
-      id: p.id,
-      client_id: clientId,
-      branch_id: p.branchId,
-      equipment_id: p.equipmentId,
-      catalog_number_id: p.catalogNumberId,
-      serial_number: p.serialNumber,
-      type: p.type,
-      lifecycle: p.lifecycle,
-      shipped_at: p.shippedAt,
-      installed_at: p.installedAt,
-      warranty_days: p.warrantyDays,
-      service_life_days: p.serviceLifeDays,
-      search: searchText(p, p.equipmentId ? garages.get(p.equipmentId) : undefined),
-      data: p,
-      replaced_product_id: p.replacedProductId,
-      onec_version: version ?? null,
-    }))
+    const chunk = rows.slice(i, i + CHUNK).map(({ product, clientId, version }) => {
+      const p = withLocal(product)
+      return {
+        id: p.id,
+        client_id: clientId,
+        branch_id: p.branchId,
+        equipment_id: p.equipmentId,
+        catalog_number_id: p.catalogNumberId,
+        serial_number: p.serialNumber,
+        type: p.type,
+        lifecycle: p.lifecycle,
+        shipped_at: p.shippedAt,
+        installed_at: p.installedAt,
+        warranty_days: p.warrantyDays,
+        service_life_days: p.serviceLifeDays,
+        search: searchText(p, p.equipmentId ? garages.get(p.equipmentId) : undefined),
+        data: p,
+        replaced_product_id: p.replacedProductId,
+        onec_version: version ?? null,
+      }
+    })
     await tx.query(
       `insert into products
          select * from jsonb_to_recordset($1::jsonb) as r(

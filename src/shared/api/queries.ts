@@ -25,6 +25,8 @@ import type {
   ServiceRequest,
   SupportMessage,
   SyncStatus,
+  InstallationPatch,
+  NewSupportMessage,
 } from '@/entities/types'
 import { useSession } from '@/app/session'
 import { api } from './client'
@@ -232,9 +234,7 @@ export const useRequests = () => {
  * server-side. The installation date is not one of them: the supplier keeps it in
  * 1С, and the customer asks the specialist to correct it (`useSendSupportMessage`).
  */
-export type InstallationPatch = Partial<
-  Pick<Product, 'equipmentId' | 'installPlace' | 'clientNumber'>
->
+export type { InstallationPatch }
 
 export const useUpdateProduct = (id: string) => {
   const qc = useQueryClient()
@@ -253,7 +253,7 @@ export const useUpdateProduct = (id: string) => {
 }
 
 /** A message to the supplier's specialist; the server stamps id and time. */
-export type NewSupportMessage = Pick<SupportMessage, 'topic' | 'productId' | 'installedAt' | 'text'>
+export type { NewSupportMessage }
 
 export const useSendSupportMessage = () => {
   const qc = useQueryClient()

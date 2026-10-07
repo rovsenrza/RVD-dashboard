@@ -2,6 +2,11 @@ import cors from '@fastify/cors'
 import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest } from 'fastify'
 import {
   auditChanges,
+  commentChange,
+  SUPPORT_TOPIC_LABEL,
+  supportChanges,
+  type NewSupportMessage,
+  type Product,
   DEFAULT_RULES,
   DEFAULT_SETTINGS,
   ProductListQuery,
@@ -15,6 +20,14 @@ import {
 } from '@rvd/contracts'
 import { hoseLabels, listAudit, recordAudit, type AuditNote } from './admin/audit.ts'
 import { companySettings, saveSettings } from './admin/settings.ts'
+import {
+  addComment,
+  createSupportMessage,
+  deleteComment,
+  editComment,
+  listComments,
+  saveInstallation,
+} from './cabinet/store.ts'
 import {
   listNotifications,
   markRead,
@@ -369,6 +382,118 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
       // A plain `null` is a valid answer: no dates, no timeline.
       return reply.type('application/json').send(JSON.stringify(productLifetime(product, c.rules)))
     })
+
+    // What the customer alone knows (Д11–Д12): where a hose sits, its own number, notes, messages.
+    const scopeOf = async (req: FastifyRequest) => ({
+      client: clientOf(req),
+      clock: await clockOf(req),
+    })
+    const hoseTarget = (p: Product) => ({
+      kind: 'product' as const,
+      id: p.id,
+      label: `EHS ${p.serialNumber}`,
+    })
+    const localView = (p: Product) => ({
+      'Место установки': p.installPlace,
+      'Внутренний №': p.clientNumber,
+    })
+
+    app.patch<{ Params: { id: string } }>('/products/:id', async (req, reply) =>
+      answering(reply, async () => {
+        const body = (req.body ?? {}) as Record<string, unknown>
+        const { before, after } = await saveInstallation(
+          db,
+          req.params.id,
+          body,
+          await scopeOf(req),
+        )
+        const changes = auditChanges(localView(before), localView(after))
+        if (changes.length)
+          await audit(req, { action: 'installation.update', target: hoseTarget(after), changes })
+        return after
+      }),
+    )
+
+    app.get<{ Params: { id: string } }>('/products/:id/comments', async (req, reply) =>
+      answering(reply, async () => listComments(db, req.params.id, await scopeOf(req))),
+    )
+
+    app.post<{ Params: { id: string }; Body: { text?: unknown } }>(
+      '/products/:id/comments',
+      async (req, reply) =>
+        answering(reply, async () => {
+          const { comment, product } = await addComment(
+            db,
+            req.params.id,
+            req.body?.text,
+            req.identity ?? demo,
+            await scopeOf(req),
+          )
+          await audit(req, {
+            action: 'comment.create',
+            target: hoseTarget(product),
+            changes: commentChange(null, comment.text),
+          })
+          return reply.code(201).send(comment)
+        }),
+    )
+
+    app.patch<{ Params: { id: string }; Body: { text?: unknown } }>(
+      '/comments/:id',
+      async (req, reply) =>
+        answering(reply, async () => {
+          const { before, comment, product } = await editComment(
+            db,
+            req.params.id,
+            req.body?.text,
+            req.identity ?? demo,
+            await scopeOf(req),
+          )
+          if (before !== comment.text)
+            await audit(req, {
+              action: 'comment.update',
+              target: hoseTarget(product),
+              changes: commentChange(before, comment.text),
+            })
+          return comment
+        }),
+    )
+
+    app.delete<{ Params: { id: string } }>('/comments/:id', async (req, reply) =>
+      answering(reply, async () => {
+        const { text, product } = await deleteComment(
+          db,
+          req.params.id,
+          req.identity ?? demo,
+          await scopeOf(req),
+        )
+        await audit(req, {
+          action: 'comment.delete',
+          target: hoseTarget(product),
+          changes: commentChange(text, null),
+        })
+        return reply.code(204).send()
+      }),
+    )
+
+    app.post<{ Body: Partial<NewSupportMessage> }>('/support/messages', async (req, reply) =>
+      answering(reply, async () => {
+        const { message, product } = await createSupportMessage(
+          db,
+          req.body ?? {},
+          req.identity ?? demo,
+          await scopeOf(req),
+        )
+        await audit(req, {
+          action: 'support.message',
+          target: product
+            ? hoseTarget(product)
+            : { kind: 'message', id: message.id, label: SUPPORT_TOPIC_LABEL[message.topic] },
+          changes: supportChanges(message, product?.installedAt ?? product?.shippedAt ?? null),
+        })
+        return reply.code(201).send(message)
+      }),
+    )
 
     // «История ЖЦ»: the hose's lines in 1С's statuses register, as the last sync stored them.
     app.get<{ Params: { id: string } }>('/products/:id/history', async (req, reply) => {

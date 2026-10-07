@@ -1,12 +1,6 @@
 import { setHours, subDays } from 'date-fns'
-import type {
-  Attachment,
-  AuditChange,
-  Product,
-  ProductComment,
-  ProductLifetime,
-} from '@/entities/types'
-import { COMMENT_MAX } from '@/entities/comment'
+import type { Attachment, Product, ProductComment, ProductLifetime } from '@/entities/types'
+import { commentChange, commentProblem } from '@/entities/comment'
 import { lifetimePhases, serviceDates } from '@/entities/product/rules'
 import { currentUser, products, record, replacements, settings, users } from './data'
 
@@ -127,7 +121,6 @@ const noteRand = () => {
   return (noteSeed - 1) / 2147483646
 }
 
-const toView = (text: string) => (text.length > 140 ? `${text.slice(0, 139)}…` : text)
 const authorOf = (u = currentUser()) => ({ id: u.id, name: u.name, role: u.role })
 
 export const comments: ProductComment[] = products
@@ -154,22 +147,14 @@ export const commentsOf = (productId: string) =>
     .filter((c) => c.productId === productId)
     .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
 
-/** Why this text cannot be saved, or null. */
-export const commentProblem = (text: unknown) =>
-  typeof text !== 'string' || !text.trim()
-    ? 'Комментарий пустой'
-    : text.length > COMMENT_MAX
-      ? `Комментарий длиннее ${COMMENT_MAX} знаков — сократите его`
-      : null
+export { commentProblem }
 
 const target = (p: Product) => ({
   kind: 'product' as const,
   id: p.id,
   label: `EHS ${p.serialNumber}`,
 })
-const change = (before: string | null, after: string | null): AuditChange[] => [
-  { field: 'Комментарий', before: before && toView(before), after: after && toView(after) },
-]
+const change = commentChange
 
 export function addComment(p: Product, text: string): ProductComment {
   const c: ProductComment = {
