@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import type { ColumnDef } from '@tanstack/react-table'
-import { RefreshCw } from 'lucide-react'
+import { Pencil, RefreshCw } from 'lucide-react'
 import type { Replacement } from '@/entities/types'
 import { ProductStatusBar } from '@/entities/product'
 import { useSession } from '@/app/session'
@@ -18,6 +18,7 @@ import {
 import { formatDate } from '@/shared/lib/utils'
 import { replacementColumns } from '@/features/replacements/columns'
 import { RequestForm } from '@/features/requests/components/RequestForm'
+import { EquipmentEditForm } from './components/EquipmentEditForm'
 import { HosesByPlace } from './components/HosesByPlace'
 
 export function EquipmentDetailPage() {
@@ -27,6 +28,7 @@ export function EquipmentDetailPage() {
   const query = useEquipmentItem(id)
   const history = useEquipmentReplacements(id)
   const [requesting, setRequesting] = useState(false)
+  const [editing, setEditing] = useState(false)
 
   return (
     <QueryState query={query} skeleton={<Skeleton className="sheet h-96" />}>
@@ -40,12 +42,21 @@ export function EquipmentDetailPage() {
             description={`${e.type} · ${e.hoseCount} РВД на технике`}
             actions={
               <>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  icon={Pencil}
+                  onClick={() => setEditing(true)}
+                >
+                  Изменить
+                </Button>
                 <Button size="sm" icon={RefreshCw} onClick={() => setRequesting(true)}>
                   Заявка на замену
                 </Button>
               </>
             }
           />
+          {editing && <EquipmentEditForm machine={e} onClose={() => setEditing(false)} />}
           {requesting && (
             <RequestForm
               preset={{ kind: 'replace', equipmentId: e.id }}

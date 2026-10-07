@@ -14,7 +14,6 @@ import {
   Search,
   Settings,
   Sun,
-  UserRound,
 } from 'lucide-react'
 import { initials, useSession } from '@/app/session'
 import { useThemePreference, type ThemePreference } from '@/app/theme'
@@ -259,8 +258,12 @@ function UserMenu({ onContact, onPassword }: { onContact: () => void; onPassword
         </div>
       }
       items={[
-        { label: 'Профиль', icon: UserRound, separator: true },
-        { label: 'Настройки уведомлений', icon: Settings },
+        {
+          label: 'Настройки уведомлений',
+          icon: Settings,
+          separator: true,
+          onSelect: () => navigate('/notifications#prefs'),
+        },
         { label: 'Сменить пароль', icon: KeyRound, onSelect: onPassword },
         { label: 'Связаться со специалистом', icon: Headset, onSelect: onContact },
         {

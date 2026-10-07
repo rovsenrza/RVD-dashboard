@@ -4,6 +4,7 @@ import type { InstallationPatch, NewRequest, NewSupportMessage } from '@/shared/
 import type { PasswordChange, PasswordDelivery, SyncStatus, UserCreated } from '@/entities/types'
 import { ProductListQuery } from '@/entities/product/list'
 import { settingsProblem } from '@/entities/settings'
+import { equipmentProblem, equipmentView } from '@/entities/equipment'
 import { EMAIL_TAKEN, passwordProblem } from '@/entities/user'
 import {
   attachmentsOf,
@@ -179,6 +180,27 @@ export const handlers = [
   http.get(api('/equipment/:id'), ({ params }) => {
     const e = equipment.find((x) => x.id === params.id)
     return e ? HttpResponse.json(e) : new HttpResponse(null, { status: 404 })
+  }),
+  // A machine's department and factory number: the customer's, by the API's rule.
+  http.patch(api('/equipment/:id'), async ({ params, request }) => {
+    const e = equipment.find((x) => x.id === params.id)
+    if (!e) return new HttpResponse(null, { status: 404 })
+    const patch = (await request.json()) as Record<string, unknown>
+    const problem = equipmentProblem(patch)
+    if (problem) return HttpResponse.json({ message: problem }, { status: 400 })
+    const before = equipmentView(e)
+    const text = (v: unknown, was: string | null) =>
+      v === undefined ? was : typeof v === 'string' && v.trim() ? v.trim() : null
+    e.department = text(patch.department, e.department)
+    e.factoryNumber = text(patch.factoryNumber, e.factoryNumber)
+    const changes = diff(before, equipmentView(e))
+    if (changes.length)
+      record({
+        action: 'equipment.update',
+        target: { kind: 'equipment', id: e.id, label: e.garageNumber },
+        changes,
+      })
+    return HttpResponse.json(e)
   }),
   http.get(api('/equipment/:id/products'), ({ params }) =>
     HttpResponse.json(

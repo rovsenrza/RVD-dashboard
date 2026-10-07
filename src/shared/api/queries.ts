@@ -25,6 +25,7 @@ import type {
   ServiceRequest,
   SupportMessage,
   SyncStatus,
+  EquipmentPatch,
   InstallationPatch,
   NewSupportMessage,
 } from '@/entities/types'
@@ -199,6 +200,20 @@ export const useEquipmentItem = (id: string) =>
     queryKey: keys.equipmentItem(id),
     queryFn: () => api.get<Equipment>(`/equipment/${id}`),
   })
+
+/** A machine's department and factory number: the customer's, since 1С keeps neither (Д12). */
+export const useUpdateEquipment = (id: string) => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (patch: EquipmentPatch) => api.patch<Equipment>(`/equipment/${id}`, patch),
+    onSuccess: (saved) => {
+      qc.setQueryData(keys.equipmentItem(id), saved)
+      // The «по подразделениям» tree and the reports group by department.
+      qc.invalidateQueries({ queryKey: ['equipment'] })
+      qc.invalidateQueries({ queryKey: keys.audit })
+    },
+  })
+}
 
 export const useEquipmentProducts = (id: string) =>
   useQuery({

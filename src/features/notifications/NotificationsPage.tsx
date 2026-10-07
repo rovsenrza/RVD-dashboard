@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useEffect, useMemo, useState } from 'react'
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { format, isToday, isYesterday, parseISO } from 'date-fns'
 import { ru } from 'date-fns/locale'
 import { BellOff, CheckCheck } from 'lucide-react'
@@ -56,6 +56,11 @@ export function NotificationsPage() {
   const tab: Tab = params.get('tab') === 'unread' ? 'unread' : 'all'
   const kind = NOTIFICATION_KINDS.find((k) => k === params.get('kind')) ?? null
   const [shown, setShown] = useState(PAGE)
+  // «Настройки уведомлений» in the user menu lands on the preferences, not the top of the list.
+  const { hash } = useLocation()
+  useEffect(() => {
+    if (hash === '#prefs') document.getElementById('prefs')?.scrollIntoView({ block: 'start' })
+  }, [hash])
 
   const all = query.data ?? []
   const unread = all.filter((n) => !n.read).length
@@ -155,7 +160,9 @@ export function NotificationsPage() {
             )}
           </div>
         </Card>
-        <PrefsCard />
+        <div id="prefs" className="scroll-mt-6">
+          <PrefsCard />
+        </div>
       </div>
     </>
   )

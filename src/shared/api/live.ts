@@ -41,6 +41,7 @@ export const LIVE_ROUTES = [
   ['delete', '/attachments/:id'],
   ['get', '/equipment'],
   ['get', '/equipment/:id'],
+  ['patch', '/equipment/:id'],
   ['get', '/equipment/:id/products'],
   ['get', '/equipment/:id/replacements'],
   ['get', '/dashboard/summary'],

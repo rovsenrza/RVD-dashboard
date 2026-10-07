@@ -77,14 +77,27 @@ async function writeCatalog(tx: Tx, catalog: CatalogNumber[] | undefined) {
 
 async function writeEquipment(tx: Tx, machines: StoredEquipment[]) {
   await tx.query('delete from equipment')
+  // What the customer recorded (department, factory number) lies over 1С's empty fields.
+  const { rows: local } = await tx.query<{
+    equipment_id: string
+    department: string | null
+    factory_number: string | null
+  }>('select equipment_id, department, factory_number from equipment_local')
+  const own = new Map(local.map((l) => [l.equipment_id, l]))
   for (let i = 0; i < machines.length; i += CHUNK) {
-    const chunk = machines.slice(i, i + CHUNK).map(({ equipment: e, clientId }) => ({
-      id: e.id,
-      client_id: clientId,
-      branch_id: e.branchId,
-      garage_number: e.garageNumber,
-      data: e,
-    }))
+    const chunk = machines.slice(i, i + CHUNK).map(({ equipment, clientId }) => {
+      const l = own.get(equipment.id)
+      const e = l
+        ? { ...equipment, department: l.department, factoryNumber: l.factory_number }
+        : equipment
+      return {
+        id: e.id,
+        client_id: clientId,
+        branch_id: e.branchId,
+        garage_number: e.garageNumber,
+        data: e,
+      }
+    })
     await tx.query(
       `insert into equipment
          select * from jsonb_to_recordset($1::jsonb) as r(

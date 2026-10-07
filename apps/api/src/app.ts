@@ -4,6 +4,7 @@ import Fastify, { type FastifyInstance, type FastifyReply, type FastifyRequest }
 import {
   auditChanges,
   commentChange,
+  equipmentView,
   SUPPORT_TOPIC_LABEL,
   supportChanges,
   type NewSupportMessage,
@@ -30,6 +31,7 @@ import {
   deleteComment,
   editComment,
   listComments,
+  saveEquipment,
   saveInstallation,
 } from './cabinet/store.ts'
 import {
@@ -499,6 +501,21 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
         const changes = auditChanges(localView(before), localView(after))
         if (changes.length)
           await audit(req, { action: 'installation.update', target: hoseTarget(after), changes })
+        return after
+      }),
+    )
+
+    app.patch<{ Params: { id: string } }>('/equipment/:id', async (req, reply) =>
+      answering(reply, async () => {
+        const body = (req.body ?? {}) as Record<string, unknown>
+        const { before, after } = await saveEquipment(db, req.params.id, body, await scopeOf(req))
+        const changes = auditChanges(equipmentView(before), equipmentView(after))
+        if (changes.length)
+          await audit(req, {
+            action: 'equipment.update',
+            target: { kind: 'equipment', id: after.id, label: after.garageNumber },
+            changes,
+          })
         return after
       }),
     )

@@ -1,4 +1,4 @@
-import type { AuditChange, Product, SupportMessage, SupportTopic } from './types'
+import type { AuditChange, Equipment, Product, SupportMessage, SupportTopic } from './types'
 
 /*
  * What the customer alone knows and the cabinet keeps (not 1С): where a hose
@@ -44,6 +44,29 @@ export function installationProblem(patch: Record<string, unknown>): string | nu
   }
   return null
 }
+
+/** What the customer records about a machine that 1С does not keep: its department and factory number. */
+export type EquipmentPatch = Partial<Pick<Equipment, 'department' | 'factoryNumber'>>
+
+/** Why a machine change cannot be saved, or null. Garage number, make and owner are the supplier's. */
+export function equipmentProblem(patch: Record<string, unknown>): string | null {
+  for (const key of Object.keys(patch))
+    if (key !== 'department' && key !== 'factoryNumber')
+      return 'Гаражный номер, марку и владельца ведёт поставщик в 1С'
+  for (const key of ['department', 'factoryNumber'] as const) {
+    const v = patch[key]
+    if (v !== undefined && v !== null && typeof v !== 'string') return 'Значение указано неверно'
+    if (typeof v === 'string' && v.length > LOCAL_FIELD_MAX)
+      return `Не длиннее ${LOCAL_FIELD_MAX} знаков`
+  }
+  return null
+}
+
+/** A machine as the action log shows it. */
+export const equipmentView = (e: Pick<Equipment, 'department' | 'factoryNumber'>) => ({
+  Подразделение: e.department,
+  'Заводской №': e.factoryNumber,
+})
 
 /** «Связаться со специалистом» — what the message is about, in the order the form offers it. */
 export const SUPPORT_TOPIC_LABEL: Record<SupportTopic, string> = {

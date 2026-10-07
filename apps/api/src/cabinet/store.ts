@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto'
 import {
   commentProblem,
+  equipmentProblem,
   installationProblem,
   supportProblem,
+  type Equipment,
   type NewSupportMessage,
   type Product,
   type ProductComment,
@@ -11,6 +13,7 @@ import {
 } from '@rvd/contracts'
 import { AuthRejected, type Identity } from '../auth/service.ts'
 import type { Db } from '../db/pool.ts'
+import { getEquipment } from '../equipment/query.ts'
 import { getProduct, type Clock } from '../products/query.ts'
 import { searchText } from '../sync/store.ts'
 
@@ -225,4 +228,42 @@ export async function createSupportMessage(
     ],
   )
   return { message, product }
+}
+
+/**
+ * A machine's department and factory number (Д12): 1С keeps neither, so the
+ * customer records them; kept in `equipment_local`, laid over every sync, and
+ * written to the cached machine at once.
+ */
+export async function saveEquipment(
+  db: Db,
+  equipmentId: string,
+  patch: Record<string, unknown>,
+  scope: Scope,
+): Promise<{ before: Equipment; after: Equipment }> {
+  const problem = equipmentProblem(patch)
+  if (problem) throw new AuthRejected(400, problem)
+  const before = await getEquipment(db, equipmentId, scope.clock, scope.client)
+  if (!before) throw new AuthRejected(404, 'Техника не найдена')
+  const value = (key: 'department' | 'factoryNumber') => {
+    const v = patch[key]
+    if (v === undefined) return before[key]
+    return typeof v === 'string' && v.trim() ? v.trim() : null
+  }
+  const department = value('department')
+  const factoryNumber = value('factoryNumber')
+  await db.query(
+    `insert into equipment_local (equipment_id, client_id, department, factory_number)
+       select id, client_id, $2, $3 from equipment where id = $1
+     on conflict (equipment_id) do update
+       set department = $2, factory_number = $3, updated_at = now()`,
+    [equipmentId, department, factoryNumber],
+  )
+  await db.query(
+    `update equipment set
+       data = data || jsonb_build_object('department', $2::text, 'factoryNumber', $3::text)
+     where id = $1`,
+    [equipmentId, department, factoryNumber],
+  )
+  return { before, after: { ...before, department, factoryNumber } }
 }

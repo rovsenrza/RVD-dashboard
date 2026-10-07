@@ -318,8 +318,9 @@ export type AuditAction =
   | 'comment.update'
   | 'comment.delete'
   | 'support.message'
+  | 'equipment.update'
 
-export type AuditTargetKind = 'product' | 'request' | 'user' | 'settings' | 'message'
+export type AuditTargetKind = 'product' | 'request' | 'user' | 'settings' | 'message' | 'equipment'
 
 /** One changed field, already in the customer's words: the log is read by people, not processed. */
 export interface AuditChange {

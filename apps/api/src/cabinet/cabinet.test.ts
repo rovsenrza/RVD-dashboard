@@ -198,6 +198,35 @@ describe.skipIf(!hasDb)('what the customer alone knows, kept by the server', () 
     })
   })
 
+  it('keeps a machine’s department and factory number through every sync', async () => {
+    const saved = await call('PATCH', '/equipment/e1', engineer, {
+      department: ' Карьер № 2 ',
+      factoryNumber: 'ZX-0042',
+    })
+    expect(saved.json()).toMatchObject({ department: 'Карьер № 2', factoryNumber: 'ZX-0042' })
+    await storeCache(db, cache, 1)
+    expect((await call('GET', '/equipment/e1', engineer)).json()).toMatchObject({
+      department: 'Карьер № 2',
+      factoryNumber: 'ZX-0042',
+    })
+    const [entry] = await log()
+    expect(entry).toMatchObject({
+      action: 'equipment.update',
+      target: { kind: 'equipment', id: 'e1', label: 'НТ08' },
+      changes: [
+        { field: 'Подразделение', before: null, after: 'Карьер № 2' },
+        { field: 'Заводской №', before: null, after: 'ZX-0042' },
+      ],
+    })
+    // The garage number is the supplier's; another client's machine is not there at all.
+    expect((await call('PATCH', '/equipment/e1', engineer, { garageNumber: 'X' })).statusCode).toBe(
+      400,
+    )
+    expect((await call('PATCH', '/equipment/zz', engineer, { department: 'X' })).statusCode).toBe(
+      404,
+    )
+  })
+
   it('never shows another client’s hose through its notes', async () => {
     expect((await call('GET', '/products/x1/comments', engineer)).statusCode).toBe(404)
     // No documentation is published by 1С yet: an empty list, not the demo's sample.

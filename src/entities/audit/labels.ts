@@ -15,6 +15,7 @@ export const AUDIT_ACTION_LABEL: Record<AuditAction, string> = {
   'comment.update': 'Изменён комментарий',
   'comment.delete': 'Удалён комментарий',
   'support.message': 'Обращение к специалисту',
+  'equipment.update': 'Изменена техника',
 }
 
 export const AUDIT_TARGET_LABEL: Record<AuditTargetKind, string> = {
@@ -23,4 +24,5 @@ export const AUDIT_TARGET_LABEL: Record<AuditTargetKind, string> = {
   user: 'Пользователи',
   settings: 'Настройки',
   message: 'Обращения',
+  equipment: 'Техника',
 }
