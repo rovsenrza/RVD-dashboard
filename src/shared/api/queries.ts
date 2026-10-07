@@ -242,8 +242,10 @@ export const useReplacements = () => {
   })
 }
 
-export const useRequests = () => {
-  const branch = useScope()
+/** The branch in scope; a hose card passes the hose's own branch, which may be another. */
+export const useRequests = (inBranch?: string) => {
+  const scope = useScope()
+  const branch = inBranch ?? scope
   return useQuery({
     queryKey: keys.requests(branch),
     queryFn: () => api.get<ServiceRequest[]>(scoped('/requests', branch)),

@@ -1,25 +1,33 @@
 import { useSearchParams } from 'react-router-dom'
 import { historySteps } from '@/entities/product'
-import { useProductComments, useProductHistory, useProductReplacements } from '@/shared/api/queries'
+import { concernsProduct } from '@/entities/request'
+import {
+  useProductComments,
+  useProductHistory,
+  useProductReplacements,
+  useRequests,
+} from '@/shared/api/queries'
 import { Card, Tabs } from '@/shared/ui'
 import { ProductReplacements } from '@/features/replacements/components/ProductReplacements'
+import { ProductRequests } from '@/features/requests/components/ProductRequests'
 import { ProductComments } from './ProductComments'
 import { ProductLifecycle } from './ProductLifecycle'
 
-const TABS = ['lifecycle', 'replacements', 'comments'] as const
+const TABS = ['lifecycle', 'replacements', 'requests', 'comments'] as const
 type Tab = (typeof TABS)[number]
 
 /**
  * What happened to the hose, in one sheet: the 1С history, the swaps it took
- * part in, the specialists' notes. The tab rides in the URL (`?tab=comments`),
+ * part in, the requests for its repair or replacement, the specialists' notes. The tab rides in the URL (`?tab=comments`),
  * so a notification or a colleague's link opens the right one.
  */
-export function ProductActivity({ productId }: { productId: string }) {
+export function ProductActivity({ productId, branchId }: { productId: string; branchId: string }) {
   const [params, setParams] = useSearchParams()
   const tab: Tab = TABS.find((t) => t === params.get('tab')) ?? 'lifecycle'
   const history = useProductHistory(productId)
   const swaps = useProductReplacements(productId)
   const comments = useProductComments(productId)
+  const requests = useRequests(branchId)
 
   const choose = (next: Tab) => {
     if (next === 'lifecycle') params.delete('tab')
@@ -37,6 +45,11 @@ export function ProductActivity({ productId }: { productId: string }) {
             count: history.data && historySteps(history.data).length,
           },
           { key: 'replacements', label: 'Замены', count: swaps.data?.length },
+          {
+            key: 'requests',
+            label: 'Заявки',
+            count: requests.data?.filter((r) => concernsProduct(r, productId)).length,
+          },
           { key: 'comments', label: 'Комментарии', count: comments.data?.length },
         ]}
         value={tab}
@@ -46,6 +59,7 @@ export function ProductActivity({ productId }: { productId: string }) {
       <div role="tabpanel" className="p-5">
         {tab === 'lifecycle' && <ProductLifecycle productId={productId} />}
         {tab === 'replacements' && <ProductReplacements productId={productId} />}
+        {tab === 'requests' && <ProductRequests productId={productId} branchId={branchId} />}
         {tab === 'comments' && <ProductComments productId={productId} />}
       </div>
     </Card>

@@ -119,7 +119,7 @@ export function ProductPage() {
               <ProductAttachments productId={p.id} readOnly={p.lifecycle === 'written_off'} />
             </div>
             <div className="grid gap-5">
-              <ProductActivity productId={p.id} />
+              <ProductActivity productId={p.id} branchId={p.branchId} />
               <ProductComposition productId={p.id} lines={p.composition} />
             </div>
           </div>
