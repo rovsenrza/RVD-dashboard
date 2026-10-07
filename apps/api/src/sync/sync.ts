@@ -69,13 +69,18 @@ const statusesOf = (db: Db, client: ODataClient) =>
   refreshRequestStatuses(db, (refs) => fetchOrderStates(client, refs))
 
 /** Full sync: read 1С, adapt, replace the cache. Nightly, and whenever a check cannot do. */
-export async function runSync(db: Db, client: ODataClient): Promise<SyncResult> {
+export async function runSync(
+  db: Db,
+  client: ODataClient,
+  /** Where request statuses are read; 1С itself unless a stand-in says otherwise (Д20) */
+  states: ODataClient = client,
+): Promise<SyncResult> {
   const started = Date.now()
   const sources = await fetchSources(client)
   const cache = adapt(sources)
   await storeCache(db, cache, Date.now() - started)
   await recordSuccess(db, true, markOf(sources.statuses))
-  const requestUpdates = await statusesOf(db, client)
+  const requestUpdates = await statusesOf(db, states)
   return {
     mode: 'full',
     products: cache.products.length,
@@ -94,10 +99,14 @@ export async function runSync(db: Db, client: ODataClient): Promise<SyncResult> 
  * old date, a machine renamed — waits for the nightly rebuild. With nothing
  * synced yet, or too much changed, it rebuilds instead.
  */
-export async function runCheck(db: Db, client: ODataClient): Promise<SyncResult> {
+export async function runCheck(
+  db: Db,
+  client: ODataClient,
+  states: ODataClient = client,
+): Promise<SyncResult> {
   const started = Date.now()
   const { register_mark: mark } = await readHealth(db)
-  if (!mark) return runSync(db, client)
+  if (!mark) return runSync(db, client, states)
   const [versions, lines, cached] = await Promise.all([
     fetchVersions(client),
     fetchRegisterSince(client, earlier(mark, MARGIN_MS)),
@@ -115,7 +124,7 @@ export async function runCheck(db: Db, client: ODataClient): Promise<SyncResult>
   ]
   // A hose 1С deleted or marked; one the adapters drop (never a product) is not in the cache at all.
   const removed = [...known.keys()].filter((id) => !live.has(id))
-  if (affected.length > CHECK_LIMIT) return runSync(db, client)
+  if (affected.length > CHECK_LIMIT) return runSync(db, client, states)
 
   let products = 0
   let equipment = 0
@@ -128,7 +137,7 @@ export async function runCheck(db: Db, client: ODataClient): Promise<SyncResult>
     equipment = patch.equipment?.length ?? 0
   }
   await recordSuccess(db, false, markOf(lines))
-  const requestUpdates = await statusesOf(db, client)
+  const requestUpdates = await statusesOf(db, states)
   return {
     mode: 'check',
     products,

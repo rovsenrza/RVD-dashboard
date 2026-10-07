@@ -15,6 +15,8 @@ export interface SchedulerOptions {
   intervalMs: number
   /** The local hour of the nightly rebuild */
   fullHour: number
+  /** Where request statuses are read, when not 1С itself (the Д20 stand-in) */
+  states?: ODataClient
   onRun?: (result: SyncResult) => void
   onError?: (error: unknown) => void
   now?: () => Date
@@ -50,7 +52,9 @@ export function startSync(db: Db, client: ODataClient, options: SchedulerOptions
     if (busy || stopped) return
     busy = true
     try {
-      const result = (await fullDue()) ? await runSync(db, client) : await runCheck(db, client)
+      const result = (await fullDue())
+        ? await runSync(db, client, options.states)
+        : await runCheck(db, client, options.states)
       options.onRun?.(result)
     } catch (error) {
       await recordFailure(db, error).catch(() => undefined)

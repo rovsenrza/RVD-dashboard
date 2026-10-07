@@ -76,6 +76,15 @@ if (config.SYNC_ENABLED) {
   sync = startSync(db, onec, {
     intervalMs: config.SYNC_INTERVAL_MS,
     fullHour: config.SYNC_FULL_HOUR,
+    // The full-cycle demo (Д20) reads request statuses from the stand-in; production, from 1С.
+    states: config.ONEC_ORDER_STATES_URL
+      ? new ODataClient({
+          baseUrl: config.ONEC_ORDER_STATES_URL,
+          user: config.ODATA_USER,
+          password: config.ODATA_PASSWORD,
+          timeoutMs: config.ODATA_TIMEOUT_MS,
+        })
+      : undefined,
     onRun: (r) => app.log.info({ sync: r }, 'синхронизация с 1С'),
     onError: (error) => app.log.error({ err: error }, '1С недоступна, данные — из кэша'),
   })

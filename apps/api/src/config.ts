@@ -15,6 +15,11 @@ const schema = z.object({
    * (docs/1c/request-api.md). Unset: requests wait in the queue.
    */
   ONEC_ORDERS_URL: z.url().optional(),
+  /**
+   * Where request statuses are read back by OData; unset — the 1С base itself (production).
+   * The full-cycle demo (Д20) points it at the stand-in: `npm run fake-1c -w @rvd/api`.
+   */
+  ONEC_ORDER_STATES_URL: z.url().optional(),
   /** Its own 1С user, with rights to that service only */
   ONEC_ORDERS_USER: z.string().optional(),
   ONEC_ORDERS_PASSWORD: z.string().optional(),
