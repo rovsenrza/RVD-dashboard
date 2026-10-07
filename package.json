@@ -17,7 +17,8 @@
     "test:visual": "playwright test",
     "test:visual:update": "playwright test --update-snapshots",
     "msw:init": "msw init public --save",
-    "lint:arch": "bash scripts/check-arch.sh"
+    "lint:arch": "bash scripts/check-arch.sh",
+    "test:e2e": "playwright test -c playwright.live.config.ts"
   },
   "dependencies": {
     "@rvd/contracts": "*",

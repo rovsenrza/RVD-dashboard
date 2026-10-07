@@ -10,7 +10,7 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./src/test/setup.ts'],
     // e2e/ is Playwright's (visual regression), not Vitest's.
-    exclude: [...configDefaults.exclude, 'e2e/**'],
+    exclude: [...configDefaults.exclude, 'e2e/**', 'e2e-live/**'],
     // Only the token sheet is let through, so tokens.test.ts can read it with ?raw.
     css: { include: [/src\/index\.css/] },
   },
