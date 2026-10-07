@@ -1,4 +1,5 @@
 import type { Db } from '../db/pool.ts'
+import { toCatalogNumber } from '../onec/adapters/catalog.ts'
 import { toEquipment } from '../onec/adapters/equipment.ts'
 import { toHistory } from '../onec/adapters/history.ts'
 import { toProducts } from '../onec/adapters/product.ts'
@@ -49,6 +50,7 @@ function adapt(sources: Sources): Cache {
   // (which sees only the hoses it read) writes the same machines a rebuild does.
   const equipment = toEquipment({ ...sources, products: [] })
   const machineOwner = new Map(sources.equipment.map((e) => [e.Ref_Key, e.Owner_Key]))
+  const components = new Map(sources.components.map((c) => [c.Ref_Key, c]))
   return {
     products: products.map((product) => ({
       product,
@@ -57,6 +59,9 @@ function adapt(sources: Sources): Cache {
     })),
     history: toHistory(sources),
     equipment: equipment.map((e) => ({ equipment: e, clientId: machineOwner.get(e.id) ?? '' })),
+    catalog: sources.catalogNumbers
+      .filter((c) => !c.DeletionMark)
+      .map((c) => toCatalogNumber(c, components)),
   }
 }
 

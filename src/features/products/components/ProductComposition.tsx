@@ -65,7 +65,7 @@ function Documentation({ productId }: { productId: string }) {
             </ul>
           ) : (
             <p className="text-ui text-ink-muted">
-              Для этого каталожного номера в 1С документов нет.
+              Документов по этому каталожному номеру пока нет.
             </p>
           )
         }

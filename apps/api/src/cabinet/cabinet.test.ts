@@ -200,6 +200,9 @@ describe.skipIf(!hasDb)('what the customer alone knows, kept by the server', () 
 
   it('never shows another client’s hose through its notes', async () => {
     expect((await call('GET', '/products/x1/comments', engineer)).statusCode).toBe(404)
+    // No documentation is published by 1С yet: an empty list, not the demo's sample.
+    expect((await call('GET', '/products/h1/documentation', engineer)).json()).toEqual([])
+    expect((await call('GET', '/products/x1/documentation', engineer)).statusCode).toBe(404)
     const before: Product = (await call('GET', '/products/h1', engineer)).json()
     expect(before.id).toBe('h1')
   })

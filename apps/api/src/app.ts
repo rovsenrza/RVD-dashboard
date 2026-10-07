@@ -624,6 +624,23 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
       },
     )
 
+    // The supplier's catalogue numbers: suggestions in the request form, a filter in the registry.
+    app.get('/catalog-numbers', async () =>
+      (
+        await db.query<{ data: unknown }>(
+          `select data from catalog_numbers order by length(name), name`,
+        )
+      ).rows.map((r) => r.data),
+    )
+
+    // Technical documentation lives in 1С's file storage, which OData does not publish yet:
+    // an honest empty list rather than the demo's sample.
+    app.get<{ Params: { id: string } }>('/products/:id/documentation', async (req, reply) =>
+      (await getProduct(db, req.params.id, await clockOf(req), clientOf(req)))
+        ? []
+        : reply.code(404).send({ message: 'Изделие не найдено' }),
+    )
+
     app.get('/analytics/models', { preHandler: forManagers }, async (req) =>
       companyModels(db, await clockOf(req), clientOf(req)),
     )

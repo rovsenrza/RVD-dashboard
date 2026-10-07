@@ -5,6 +5,7 @@ import { buildApp } from '../app.ts'
 import { addUser } from '../auth/service.ts'
 import type { Db } from '../db/pool.ts'
 import {
+  catalogNumber,
   clients,
   components,
   equipment,
@@ -75,6 +76,10 @@ describe.skipIf(!hasDb)('the sync keeps up with 1С (Д26)', () => {
     Catalog_Комплектующие: components,
     Catalog_Техника: [equipment()],
     Catalog_Клиенты: clients,
+    Catalog_КаталожныеНомера: [
+      catalogNumber(),
+      catalogNumber({ Ref_Key: 'cat-gone', DeletionMark: true }),
+    ],
   })
   const cached = async () =>
     (await db.query<{ id: string; data: Product }>('select id, data from products order by id'))
@@ -91,6 +96,9 @@ describe.skipIf(!hasDb)('the sync keeps up with 1С (Д26)', () => {
     const result = await runCheck(db, onec.client)
     expect(result).toMatchObject({ mode: 'full', products: 2 })
     expect((await readHealth(db)).register_mark).toBe('2026-01-11T09:00:00')
+    // The supplier's catalogue comes along, without what 1С marked for deletion.
+    const { rows } = await db.query('select id, name from catalog_numbers')
+    expect(rows).toEqual([{ id: 'cat-1', name: '02753-00613' }])
   })
 
   it('then reads again only the hoses 1С changed, and drops the ones it removed', async () => {

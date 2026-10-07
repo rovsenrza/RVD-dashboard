@@ -1,5 +1,5 @@
 import type { PoolClient } from 'pg'
-import type { Equipment, LifecycleRecord, Product } from '@rvd/contracts'
+import type { CatalogNumber, Equipment, LifecycleRecord, Product } from '@rvd/contracts'
 import type { Db } from '../db/pool.ts'
 
 /** What the cache filters by but the contract does not carry: who owns the item, its 1С version. */
@@ -22,6 +22,8 @@ export interface Cache {
   /** Each hose's lines in the statuses register */
   history?: ReadonlyMap<string, LifecycleRecord[]>
   equipment?: StoredEquipment[]
+  /** The supplier's catalogue numbers, rewritten whole each time */
+  catalog?: CatalogNumber[]
 }
 
 /** What a check (Д26) found changed: these hoses anew, those gone, and every machine. */
@@ -61,6 +63,16 @@ async function inTransaction(db: Db, work: (tx: Tx) => Promise<void>): Promise<v
   } finally {
     tx.release()
   }
+}
+
+async function writeCatalog(tx: Tx, catalog: CatalogNumber[] | undefined) {
+  if (!catalog) return
+  await tx.query('delete from catalog_numbers')
+  await tx.query(
+    `insert into catalog_numbers
+       select * from jsonb_to_recordset($1::jsonb) as r(id text, name text, data jsonb)`,
+    [JSON.stringify(catalog.map((c) => ({ id: c.id, name: c.name, data: c })))],
+  )
 }
 
 async function writeEquipment(tx: Tx, machines: StoredEquipment[]) {
@@ -164,6 +176,7 @@ export async function storeCache(db: Db, cache: Cache, durationMs: number): Prom
     await tx.query('delete from products')
     await tx.query('delete from product_history')
     await writeEquipment(tx, machines)
+    await writeCatalog(tx, cache.catalog)
     await writeProducts(tx, cache.products, cache.history ?? new Map(), garagesOf(machines))
     await countState(tx, durationMs)
   })
@@ -182,6 +195,7 @@ export async function patchCache(db: Db, patch: CachePatch, durationMs: number):
     await tx.query('delete from products where id = any($1)', [ids])
     await tx.query('delete from product_history where product_id = any($1)', [ids])
     if (patch.equipment) await writeEquipment(tx, machines)
+    await writeCatalog(tx, patch.catalog)
     const garages = patch.equipment
       ? garagesOf(machines)
       : new Map(
