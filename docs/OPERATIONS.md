@@ -14,9 +14,11 @@
 
 Шаблоны — в `deploy/`: `api.Dockerfile`, `web.Dockerfile`, `nginx.conf`, `docker-compose.prod.yml`. Сборка проверена локально целиком: вход через nginx, реестр, загрузка фото с миниатюрой, подписанные ссылки на файлы, отчёты.
 
-## Сайт на хостинге заказчика (Beget)
+## Демо на виртуальном хостинге Beget (не используется)
 
-С 2026-10-07 сайт живёт на виртуальном хостинге Beget — `clientrvd.vgiz.ru`; доступ — SFTP/SSH к папке сайта (без панели). Публикация одной командой (доступ берётся из `.env`: `BEGET_HOST`, `BEGET_USER`, `BEGET_PASS`, `BEGET_DIR`):
+С 2026-10-08 `clientrvd.vgiz.ru` указывает на сервер (см. «Сервер (VPS)»), и виртуальный хостинг кабинет больше не обслуживает. Сертификат для `clientrvd.vgiz.ru` в панели Beget выпускать не нужно: панель требует направить на хостинг ещё и `vgiz.ru` с `www.vgiz.ru` — это основной сайт заказчика, он перестанет открываться.
+
+Как это было устроено: с 2026-10-07 демо жило на виртуальном хостинге Beget; доступ — SFTP/SSH к папке сайта (без панели). Публикация одной командой (доступ берётся из `.env`: `BEGET_HOST`, `BEGET_USER`, `BEGET_PASS`, `BEGET_DIR`):
 
 ```sh
 scripts/deploy-beget.sh                                             # демо на моках
@@ -25,7 +27,7 @@ VITE_API_BASE_URL=https://api.clientrvd.vgiz.ru scripts/deploy-beget.sh live   #
 
 Скрипт собирает приложение и зеркалирует `dist/` в папку сайта (лишнее там удаляется, кроме `cgi-bin/`). `public/.htaccess` даёт Apache переходы по адресам приложения, кэш и те же заголовки безопасности, что `deploy/nginx.conf`; в режиме live скрипт добавляет адрес API в CSP.
 
-На этом хостинге нет Node.js, PostgreSQL, Docker и cron (фоновые процессы — только через панель Beget), поэтому **API и база должны жить отдельно** — например, VPS с `deploy/docker-compose.prod.yml` под поддоменом `api.clientrvd.vgiz.ru`: поддомен того же сайта нужен, чтобы refresh-cookie (SameSite=Lax) доходил до API. У API тогда: `CORS_ORIGIN=https://clientrvd.vgiz.ru`, `PUBLIC_API_PATH=https://api.clientrvd.vgiz.ru`, `COOKIE_SECURE=true`. HTTPS для `clientrvd.vgiz.ru` включает владелец панели Beget (Let's Encrypt).
+На этом хостинге нет Node.js, PostgreSQL, Docker и cron (фоновые процессы — только через панель Beget), поэтому **API и база должны жить отдельно** — например, VPS с `deploy/docker-compose.prod.yml` под поддоменом `api.clientrvd.vgiz.ru`: поддомен того же сайта нужен, чтобы refresh-cookie (SameSite=Lax) доходил до API. У API тогда: `CORS_ORIGIN=https://clientrvd.vgiz.ru`, `PUBLIC_API_PATH=https://api.clientrvd.vgiz.ru`, `COOKIE_SECURE=true`.
 
 ## Сервер (VPS)
 
@@ -38,7 +40,7 @@ scripts/deploy-vps.sh          # закоммиченный HEAD → серве�
 scripts/deploy-vps.sh --init   # первый раз: ещё и .env сервера (1С — из локального .env, секреты — на сервере)
 ```
 
-**Адрес:** пока заказчик не направил свой домен, кабинет работает по HTTPS на имени `<IP через дефисы>.sslip.io` — оно само указывает на IP сервера, сертификат Let's Encrypt выдан на него (см. «HTTPS»). В `.env` сервера: `SITE_ADDRESS` — это имя, `CABINET_URL=https://…` с ним же, `COOKIE_SECURE=true`.
+**Адрес:** с 2026-10-08 — `https://clientrvd.vgiz.ru` (до этого временное имя `<IP через дефисы>.sslip.io`, теперь не отвечает). В `.env` сервера: `SITE_ADDRESS=clientrvd.vgiz.ru`, `CABINET_URL=https://clientrvd.vgiz.ru`, `COOKIE_SECURE=true`; см. «HTTPS».
 
 Что ещё настроено на сервере (вне репозитория):
 
@@ -72,13 +74,13 @@ scripts/deploy-vps.sh --init   # первый раз: ещё и .env серве�
 
 TLS завершает сервис `proxy` (Caddy, `deploy/Caddyfile`): на имя из `SITE_ADDRESS` он сам получает и продлевает сертификат Let's Encrypt (хранится в томе `caddy-data`) и переводит HTTP на HTTPS. Без `SITE_ADDRESS` — обычный HTTP на 80-м порту. Caddy подставляет настоящий адрес посетителя в `X-Forwarded-For`, поэтому ограничение попыток входа по адресу не обойти подделанным заголовком.
 
-**Перевод на домен заказчика** (вопрос 8). DNS `vgiz.ru` — у mail.ru (`azov`/`saratov.ens.mail.ru`), меняет заказчик:
+**Домен** (вопрос 8). DNS `vgiz.ru` — у mail.ru (`azov`/`saratov.ens.mail.ru`), записи меняет IT заказчика. На сервер указывают `clientrvd`, `www.clientrvd` и `api.clientrvd`; Caddy обслуживает только `clientrvd.vgiz.ru`. `vgiz.ru` и `www.vgiz.ru` — основной сайт заказчика на своём хостинге, их не трогать.
 
-1. A-запись `clientrvd.vgiz.ru` → IP сервера (сейчас она ведёт на хостинг Beget с демо).
-2. Когда имя начнёт указывать на сервер (`dig +short clientrvd.vgiz.ru`), в `.env` сервера: `SITE_ADDRESS=clientrvd.vgiz.ru`, `CABINET_URL=https://clientrvd.vgiz.ru`.
-3. `docker compose -f deploy/docker-compose.prod.yml up -d` — Caddy получит сертификат на новое имя за минуту; в `.env` разработчика — `CABINET_URL_VPS` с новым адресом.
+Сменить имя кабинета:
 
-Хостинг Beget с демо после этого не нужен для кабинета.
+1. A-запись нового имени → IP сервера.
+2. Когда её отдаёт сам DNS mail.ru (`dig +short <имя> @saratov.ens.mail.ru`; публичные резолверы могут ещё час помнить старое), в `.env` сервера: `SITE_ADDRESS=<имя>`, `CABINET_URL=https://<имя>`.
+3. `docker compose -f deploy/docker-compose.prod.yml up -d` — пересоздаются `api` и `proxy`, Caddy получает сертификат за минуту (`logs proxy`: «certificate obtained successfully»); в `.env` разработчика — `CABINET_URL_VPS` с новым адресом. Пользователи войдут заново: refresh-cookie привязан к имени.
 
 ## Обновление
 
@@ -147,4 +149,4 @@ docker compose -f deploy/docker-compose.prod.yml start api
 
 ## Что ждёт ответов
 
-Сервис заявок 1С (без него заявки ждут в очереди, клиент видит «Отправляется в 1С»), SMTP и адрес для обращений, сервер и домен, деление крупного клиента на филиалы, перенос изделия на другую технику, публикация справочника моделей и документов в OData — подробно в PLAN-STATUS.md, «Открытые вопросы».
+Сервис заявок 1С (без него заявки ждут в очереди, клиент видит «Отправляется в 1С»), SMTP и адрес для обращений, деление крупного клиента на филиалы, перенос изделия на другую технику, публикация справочника моделей и документов в OData — подробно в PLAN-STATUS.md, «Открытые вопросы».
