@@ -18,10 +18,12 @@
     "@fastify/cors": "^11.3.0",
     "@rvd/contracts": "*",
     "fastify": "^5.12.5",
+    "nodemailer": "^10.0.15",
     "pg": "^8.23.0",
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@types/nodemailer": "^8.0.2",
     "@types/pg": "^8.23.1",
     "tsx": "^4.23.15"
   }

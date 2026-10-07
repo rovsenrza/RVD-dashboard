@@ -34,6 +34,18 @@ const schema = z.object({
   /** The local hour of the nightly full rebuild */
   SYNC_FULL_HOUR: z.coerce.number().int().min(0).max(23).default(3),
   /**
+   * The customer's mail server (question 7), e.g. `smtps://user:password@host:465`.
+   * Unset: no letters at all — digests and messages to the specialist wait.
+   */
+  SMTP_URL: z.string().optional(),
+  MAIL_FROM: z.string().default('РВД Кабинет <no-reply@localhost>'),
+  /** Where «Связаться со специалистом» goes (question 15); unset — messages wait in the cabinet */
+  SUPPORT_EMAIL: z.email().optional(),
+  /** Local hour from which the day's notification digest goes out */
+  NOTIFY_HOUR: z.coerce.number().int().min(0).max(23).default(7),
+  /** The cabinet's address, for links in letters */
+  CABINET_URL: z.url().optional(),
+  /**
    * The 1С client (Клиент_Key) whose data the cabinet shows while sign-in is
    * off; signed in, each company sees its own client (Д6–Д7).
    */

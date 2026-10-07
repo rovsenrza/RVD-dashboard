@@ -2,6 +2,7 @@ import { buildApp, DEMO_IDENTITY } from './app.ts'
 import { loadConfig } from './config.ts'
 import { migrate } from './db/migrate.ts'
 import { createPool } from './db/pool.ts'
+import { smtpMailer, startMail } from './mail/mail.ts'
 import { ODataClient } from './onec/client.ts'
 import { HttpOrderService } from './onec/orders.ts'
 import { startOutbox } from './requests/outbox.ts'
@@ -41,6 +42,15 @@ if (config.ONEC_ORDERS_URL) {
   })
   outbox = startOutbox(db, orders, config.OUTBOX_INTERVAL_MS, (error) => app.log.error(error))
 }
+// Letters (Д19, question 7): only with the customer's SMTP; without it nothing is sent or marked sent.
+if (config.SMTP_URL)
+  startMail(db, smtpMailer(config.SMTP_URL, config.MAIL_FROM), {
+    intervalMs: 60_000,
+    supportTo: config.SUPPORT_EMAIL,
+    digestHour: config.NOTIFY_HOUR,
+    cabinetUrl: config.CABINET_URL,
+    onError: (error) => app.log.error({ err: error }, 'почта не отправлена'),
+  })
 // The cache follows 1С (Д26): a check every few minutes, a full rebuild at night.
 if (config.SYNC_ENABLED) {
   const onec = new ODataClient({
