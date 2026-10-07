@@ -27,8 +27,13 @@ const STATUS_FIELDS = [
 ]
 const RELEASE_FIELDS = ['Ref_Key', 'Number', 'ГаражныйНомер_Key']
 const ORDER_FIELDS = ['Ref_Key', 'Number']
-/** Keys per request: `Ref_Key eq guid'…' or …` stays well inside a URL. */
-const BATCH = 25
+/**
+ * How long a `$filter` of keys may get once encoded. 1С is published through IIS, which
+ * answers a query string over 2 048 characters with a bare 404; the rest of the query
+ * (`$select`, paging) takes up to about 300. A Cyrillic field name costs six characters a
+ * letter encoded — `Изделие_Key` is 46 — so batches are measured, not counted.
+ */
+export const FILTER_BUDGET = 1500
 
 /** The small reference sets — catalogue numbers, components, machines, clients — read whole each time. */
 async function fetchReference(client: ODataClient) {
@@ -58,7 +63,27 @@ export async function fetchSources(client: ODataClient): Promise<Sources> {
   return { items, statuses, releases, orders, ...reference } as Sources
 }
 
-/** Rows whose `field` is one of `keys`, a batch of keys per request. */
+/** `field eq guid'…' or …` over all `keys`, cut so each filter fits the URL once encoded. */
+export function keyFilters(field: string, keys: string[]): string[] {
+  const filters: string[] = []
+  let batch: string[] = []
+  let size = 0
+  for (const key of keys) {
+    const clause = `${field} eq ${guid(key)}`
+    const cost = encodeURIComponent(batch.length ? ` or ${clause}` : clause).length
+    if (batch.length && size + cost > FILTER_BUDGET) {
+      filters.push(batch.join(' or '))
+      batch = []
+      size = 0
+    }
+    size += batch.length ? cost : encodeURIComponent(clause).length
+    batch.push(clause)
+  }
+  if (batch.length) filters.push(batch.join(' or '))
+  return filters
+}
+
+/** Rows whose `field` is one of `keys`, as many keys per request as the URL takes. */
 async function byKeys<T>(
   client: ODataClient,
   entity: string,
@@ -67,13 +92,8 @@ async function byKeys<T>(
   select?: string[],
 ): Promise<T[]> {
   const out: T[] = []
-  for (let i = 0; i < keys.length; i += BATCH) {
-    const filter = keys
-      .slice(i, i + BATCH)
-      .map((k) => `${field} eq ${guid(k)}`)
-      .join(' or ')
+  for (const filter of keyFilters(field, keys))
     out.push(...(await client.all<T>(entity, { filter, select })))
-  }
   return out
 }
 
