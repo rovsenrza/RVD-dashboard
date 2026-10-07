@@ -351,8 +351,8 @@ export interface ModelStats {
   replacements12m: number
   /** Replacements per machine over the last 12 months */
   replacementsPerMachine: number
-  /** Share of those replacements caused by a failure, 0..1 */
-  failureShare: number
+  /** Share of those replacements caused by a failure, 0..1; null when none carries a reason (1С keeps none) */
+  failureShare: number | null
   /** Average days a hose served before it was replaced */
   avgServiceDays: number | null
   avgUsage: { value: number; unit: 'hours' | 'km' } | null

@@ -12,14 +12,8 @@ export const LIFECYCLE_ORDER: ProductLifecycle[] = [
   'written_off',
 ]
 
-export const LIFECYCLE_LABEL: Record<ProductLifecycle, string> = {
-  manufacturing: 'Изготавливается',
-  in_stock: 'На складе',
-  shipped: 'Отгружен',
-  in_operation: 'В эксплуатации',
-  needs_replacement: 'Требует замены',
-  written_off: 'Списан',
-}
+/** Shared with the API's reports. */
+export { LIFECYCLE_LABEL } from '@rvd/contracts'
 
 export const STATUS_LABEL: Record<ProductStatus, string> = {
   ok: 'Норма',

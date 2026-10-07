@@ -33,6 +33,8 @@ export const LIVE_ROUTES = [
   ['get', '/equipment/:id/products'],
   ['get', '/equipment/:id/replacements'],
   ['get', '/dashboard/summary'],
+  ['get', '/reports/:id'],
+  ['get', '/analytics/models'],
   ['get', '/sync'],
   ['post', '/sync'],
   ['get', '/notifications'],

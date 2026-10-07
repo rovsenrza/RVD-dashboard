@@ -17,6 +17,9 @@ import { migrate } from '../db/migrate.ts'
 import { createPool, type Db } from '../db/pool.ts'
 import { equipmentProducts, getEquipment, listEquipment } from '../equipment/query.ts'
 import { listProducts, type Clock } from '../products/query.ts'
+import { listNotifications } from '../notifications/query.ts'
+import { listReplacements } from '../replacements/query.ts'
+import { companyModels, companyReport } from '../reports/query.ts'
 import { storeCache, type StoredEquipment, type StoredProduct } from '../sync/store.ts'
 
 const SCHEMA = 'perf_bench'
@@ -203,6 +206,43 @@ const cases: [string, (db: Db) => Promise<unknown>][] = [
   ['machines', (d) => listEquipment(d, clock, BIG)],
   ['machine card', (d) => getEquipment(d, bigMachine, clock, BIG)],
   ['machine hoses', (d) => equipmentProducts(d, bigMachine, clock, BIG)],
+  ['replacements', (d) => listReplacements(d, { client: BIG })],
+  [
+    'notifications',
+    (d) =>
+      listNotifications(d, clock.today, {
+        userId: null,
+        client: BIG,
+        leadDays: [30, 14, 7],
+        kinds: {
+          overdue: true,
+          planned_replacement: true,
+          warranty_end: true,
+          request_status: true,
+        },
+      }),
+  ],
+  [
+    'report · registry (whole client)',
+    (d) =>
+      companyReport(d, 'registry', clock, {
+        client: BIG,
+        companyName: 'Крупный клиент',
+        from: null,
+        to: null,
+      }),
+  ],
+  [
+    'report · machines',
+    (d) =>
+      companyReport(d, 'equipment', clock, {
+        client: BIG,
+        companyName: 'Крупный клиент',
+        from: null,
+        to: null,
+      }),
+  ],
+  ['model comparison', (d) => companyModels(d, clock, BIG)],
   ['registry · small client', (d) => listProducts(d, page({ client: 'client-7' }), clock)],
   ['dashboard · all clients', (d) => dashboardSummary(d, clock)],
 ]

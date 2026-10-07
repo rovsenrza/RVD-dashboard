@@ -43,8 +43,8 @@ export const METRICS: Metric[] = [
   },
   {
     label: 'Доля поломок среди замен',
-    value: (m) => (m.replacements12m ? `${Math.round(m.failureShare * 100)} %` : '—'),
-    score: (m) => (m.replacements12m ? Math.round(m.failureShare * 100) : null),
+    value: (m) => (m.failureShare === null ? '—' : `${Math.round(m.failureShare * 100)} %`),
+    score: (m) => (m.failureShare === null ? null : Math.round(m.failureShare * 100)),
     better: 'lower',
   },
   {

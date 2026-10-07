@@ -47,6 +47,7 @@ import { equipmentProducts, getEquipment, listEquipment } from './equipment/quer
 import { productLifetime } from './products/lifetime.ts'
 import { getProduct, listProducts, type Clock } from './products/query.ts'
 import { listReplacements } from './replacements/query.ts'
+import { companyModels, companyReport } from './reports/query.ts'
 import { syncStatus } from './sync/health.ts'
 import {
   createRequest,
@@ -405,6 +406,31 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
 
     app.get('/dashboard/summary', async (req) =>
       dashboardSummary(db, await clockOf(req), clientOf(req)),
+    )
+
+    // Reports (Д21) and the model comparison (Д15): the manager's and the administrator's.
+    const forManagers = async (req: FastifyRequest, reply: FastifyReply) => {
+      if (secret && req.identity?.role !== 'manager' && req.identity?.role !== 'admin')
+        return reply.code(403).send({ message: 'Раздел для руководителя и администратора' })
+    }
+
+    app.get<{ Params: { id: string }; Querystring: { from?: string; to?: string } }>(
+      '/reports/:id',
+      { preHandler: forManagers },
+      async (req, reply) => {
+        const day = (v?: string) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null)
+        const report = await companyReport(db, req.params.id, await clockOf(req), {
+          client: clientOf(req),
+          companyName: (req.identity ?? demo).companyName,
+          from: day(req.query.from),
+          to: day(req.query.to),
+        })
+        return report ?? reply.code(404).send({ message: 'Нет такого отчёта' })
+      },
+    )
+
+    app.get('/analytics/models', { preHandler: forManagers }, async (req) =>
+      companyModels(db, await clockOf(req), clientOf(req)),
     )
 
     // Notifications (Д19): worked out per person from the cache, the company's lead days and

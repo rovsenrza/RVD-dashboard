@@ -1,64 +1,9 @@
 import { addDays, format, formatISO, parseISO, subDays } from 'date-fns'
-import type { ProductStatus, ReportColumn, ReportId, ReportValue } from '@/entities/types'
+import type { ProductStatus, ReportColumn, ReportValue } from '@/entities/types'
 import { STATUS_LABEL } from '@/entities/product'
 
-export interface ReportMeta {
-  id: ReportId
-  title: string
-  description: string
-  /** Which way the period runs from today; null — a report «на сегодня» without a period. */
-  period: 'past' | 'future' | null
-}
-
-/** ТЗ §4, in the order a manager works through them: state now, what is coming, what happened. */
-export const REPORTS: ReportMeta[] = [
-  {
-    id: 'registry',
-    title: 'Реестр РВД',
-    description: 'Все изделия филиала — на технике и на складе — с состоянием и сроками.',
-    period: null,
-  },
-  {
-    id: 'warranty',
-    title: 'На гарантии',
-    description:
-      'Установленные изделия с действующей гарантией: до какого числа и сколько дней осталось.',
-    period: null,
-  },
-  {
-    id: 'due',
-    title: 'Требуют замены',
-    description: 'Изделия, выработавшие срок эксплуатации, — на сколько дней просрочена замена.',
-    period: null,
-  },
-  {
-    id: 'plan',
-    title: 'План замен',
-    description:
-      'Что заменить до конца периода: срок эксплуатации истекает в периоде или уже истёк. Основа для заявки.',
-    period: 'future',
-  },
-  {
-    id: 'replacements',
-    title: 'История замен',
-    description: 'Замены за период: что сняли, что поставили, причина и наработка.',
-    period: 'past',
-  },
-  {
-    id: 'equipment',
-    title: 'Статистика по технике',
-    description: 'По каждой машине: сколько РВД, в каком они состоянии и сколько замен за период.',
-    period: 'past',
-  },
-  {
-    id: 'branches',
-    title: 'Статистика по филиалам',
-    description: 'По филиалам: техника, РВД, состояние, замены и заявки за период.',
-    period: 'past',
-  },
-]
-
-export const reportMeta = (id: string | null) => REPORTS.find((r) => r.id === id) ?? null
+/** The report list lives in @rvd/contracts, shared with the API that builds them. */
+export { buildReport, REPORTS, reportMeta, type ReportMeta } from '@rvd/contracts'
 
 export type PeriodPreset = '30' | '90' | '365' | 'custom'
 

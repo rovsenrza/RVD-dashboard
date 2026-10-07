@@ -1,4 +1,8 @@
+import { USAGE_UNIT_LABEL } from '@rvd/contracts'
 import type { Replacement } from '@/entities/types'
+
+/** Shared with the API's reports. */
+export { USAGE_UNIT_LABEL }
 
 /** Reasons for a swap (ТЗ, PRODUCT.md). 1С keeps the reference list; this mirrors it until sync. */
 export const REPLACEMENT_REASONS = [
@@ -9,8 +13,6 @@ export const REPLACEMENT_REASONS = [
   'Капитальный ремонт',
   'По требованию заказчика',
 ]
-
-export const USAGE_UNIT_LABEL: Record<Replacement['usageUnit'], string> = { hours: 'м/ч', km: 'км' }
 
 /** «2 241 м/ч», «15 300 км», or null when nothing was recorded. */
 export function formatUsage(r: Pick<Replacement, 'operatingHours' | 'usageUnit'>): string | null {

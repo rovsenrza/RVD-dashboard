@@ -19,6 +19,7 @@ import type {
 } from '@/entities/types'
 import { serviceDates, statusOf } from '@/entities/product/rules'
 import { DEFAULT_SETTINGS } from '@/entities/settings'
+import { compareModels } from '@/entities/analytics'
 import {
   auditChanges as diff,
   filesChange,
@@ -600,62 +601,13 @@ export const currentAuthor = () => shortName(users[0].name)
 
 // ── Model comparison (Д15) ─────────────────────────────────────────────────
 
-const DAY = 86_400_000
-const mostCommon = (values: (string | null)[]) => {
-  const counts = new Map<string, number>()
-  for (const v of values) if (v) counts.set(v, (counts.get(v) ?? 0) + 1)
-  return [...counts].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null
-}
-
-/** Per machine model: what is on it now and how its hoses fared over the last year. */
-export function modelStats(branch: string | null = null): ModelStats[] {
-  const since = iso(subDays(NOW, 365))
-  const groups = new Map<string, Equipment[]>()
-  for (const e of equipment.filter((x) => !branch || x.branchId === branch)) {
-    const key = `${e.brand} ${e.model}`
-    groups.set(key, [...(groups.get(key) ?? []), e])
-  }
-  return [...groups]
-    .map(([model, machines]) => {
-      const ids = new Set<string | null>(machines.map((m) => m.id))
-      const breakdown: ModelStats['breakdown'] = { ok: 0, warn: 0, replace: 0, no_warranty: 0 }
-      for (const m of machines)
-        for (const k of Object.keys(breakdown) as (keyof typeof breakdown)[])
-          breakdown[k] += m.statusBreakdown[k]
-      const swaps = replacements.filter((r) => ids.has(r.equipmentId) && r.date >= since)
-      const olds = swaps.map((r) => products.find((p) => p.id === r.oldProductId))
-      const served = swaps
-        .map((r, i) =>
-          olds[i]?.installedAt
-            ? (new Date(r.date).getTime() - new Date(olds[i]!.installedAt!).getTime()) / DAY
-            : -1,
-        )
-        .filter((d) => d > 0)
-      const unit: 'hours' | 'km' = machines[0].type === 'Самосвал' ? 'km' : 'hours'
-      const usage = swaps.filter((r) => r.operatingHours !== null && r.usageUnit === unit)
-      const round1 = (n: number) => Math.round(n * 10) / 10
-      return {
-        model,
-        type: machines[0].type,
-        machines: machines.length,
-        hoses: machines.reduce((sum, m) => sum + m.hoseCount, 0),
-        breakdown,
-        replacements12m: swaps.length,
-        replacementsPerMachine: round1(swaps.length / machines.length),
-        failureShare: swaps.length
-          ? swaps.filter((r) => r.reason === 'Поломка').length / swaps.length
-          : 0,
-        avgServiceDays: served.length
-          ? Math.round(served.reduce((a, b) => a + b, 0) / served.length)
-          : null,
-        avgUsage: usage.length
-          ? {
-              value: Math.round(usage.reduce((a, r) => a + r.operatingHours!, 0) / usage.length),
-              unit,
-            }
-          : null,
-        topPlace: mostCommon(olds.map((p) => p?.installPlace ?? null)),
-      }
-    })
-    .sort((a, b) => b.machines - a.machines || a.model.localeCompare(b.model))
-}
+/** Per machine model: the same comparison the API runs over its cache (@rvd/contracts). */
+export const modelStats = (branch: string | null = null): ModelStats[] =>
+  compareModels(
+    {
+      equipment: equipment.filter((x) => !branch || x.branchId === branch),
+      products,
+      replacements,
+    },
+    iso(NOW),
+  )
