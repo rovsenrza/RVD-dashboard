@@ -26,7 +26,12 @@ $PG_DUMP -U "$DB_USER" -d "$DB_NAME" -Fc \
   >"$BACKUP_DIR/db-$stamp.dump.part"
 mv "$BACKUP_DIR/db-$stamp.dump.part" "$BACKUP_DIR/db-$stamp.dump"
 
-if [ -d "$FILES_DIR" ]; then
+# Files from a folder on this host, or — with FILES_CMD — from wherever they live, e.g. the API's
+# volume in production: FILES_CMD="docker compose -f deploy/docker-compose.prod.yml exec -T api tar -czf - -C /data/files ."
+if [ -n "${FILES_CMD:-}" ]; then
+  $FILES_CMD >"$BACKUP_DIR/files-$stamp.tar.gz.part"
+  mv "$BACKUP_DIR/files-$stamp.tar.gz.part" "$BACKUP_DIR/files-$stamp.tar.gz"
+elif [ -d "$FILES_DIR" ]; then
   tar -czf "$BACKUP_DIR/files-$stamp.tar.gz.part" -C "$FILES_DIR" .
   mv "$BACKUP_DIR/files-$stamp.tar.gz.part" "$BACKUP_DIR/files-$stamp.tar.gz"
 fi
@@ -39,5 +44,5 @@ for kind in db files; do
 done
 
 files_note="без файлов ($FILES_DIR нет)"
-[ -d "$FILES_DIR" ] && files_note="$BACKUP_DIR/files-$stamp.tar.gz"
+[ -f "$BACKUP_DIR/files-$stamp.tar.gz" ] && files_note="$BACKUP_DIR/files-$stamp.tar.gz"
 echo "$(date '+%F %T') бэкап: $BACKUP_DIR/db-$stamp.dump ($(du -h "$BACKUP_DIR/db-$stamp.dump" | cut -f1)), $files_note"

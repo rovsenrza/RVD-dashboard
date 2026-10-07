@@ -2,8 +2,9 @@ import { useCallback, useState } from 'react'
 
 /**
  * Colour theme. «Системная» follows the OS through prefers-color-scheme in
- * index.css; an explicit choice pins `data-theme` on <html>. index.html applies
- * the stored choice before first paint, so there is no light flash in dark.
+ * index.css; an explicit choice pins `data-theme` on <html>. public/theme.js, loaded
+ * blocking from index.html, applies the stored choice before first paint, so there is
+ * no light flash in dark.
  */
 export type ThemePreference = 'system' | 'light' | 'dark'
 

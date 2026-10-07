@@ -119,6 +119,8 @@ export interface AppOptions {
   }
   /** The sync worker (Д26), when this process runs one */
   sync?: { kick: () => void; running: () => boolean }
+  /** Behind a proxy: the visitor's address comes from X-Forwarded-For */
+  trustProxy?: boolean
   /** Files (Д25): where bytes live, the antivirus, and the path the browser reaches the API by */
   files?: { store?: FileStore; scan?: Scanner; publicPath?: string }
 }
@@ -174,7 +176,10 @@ async function answering<T>(reply: FastifyReply, work: () => Promise<T>) {
 
 /** The HTTP app without a listener, so tests can drive it with `inject`. */
 export function buildApp(options: AppOptions = {}): FastifyInstance {
-  const app = Fastify({ logger: { level: options.logLevel ?? 'info' } })
+  const app = Fastify({
+    logger: { level: options.logLevel ?? 'info' },
+    trustProxy: options.trustProxy ?? false,
+  })
   const { db } = options
   const clock = options.clock ?? (() => ({ today: localToday(), rules: DEFAULT_RULES }))
   const secret = options.auth?.secret
@@ -253,7 +258,21 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
       }${options.auth?.secureCookie ? '; Secure' : ''}`,
     )
 
-  app.get('/health', async () => ({ status: 'ok', uptime: Math.round(process.uptime()) }))
+  // For the monitor (Д31): the database must answer; 1С being away is degraded, not down — the
+  // cabinet keeps serving its cache.
+  app.get('/health', async (_req, reply) => {
+    const uptime = Math.round(process.uptime())
+    if (!db) return { status: 'ok', uptime }
+    const sync = await syncStatus(db, options.sync?.running() ?? false).catch(() => null)
+    if (!sync) return reply.code(503).send({ status: 'down', uptime, db: 'down' })
+    return {
+      status: sync.unavailableSince ? 'degraded' : 'ok',
+      uptime,
+      db: 'ok',
+      syncedAt: sync.syncedAt,
+      onecUnavailableSince: sync.unavailableSince,
+    }
+  })
 
   if (db) {
     // Sign-in: a short access token in the answer, a long refresh token in an httpOnly cookie.

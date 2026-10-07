@@ -34,6 +34,8 @@ Layers (import direction enforced by scripts/check-arch.sh, `npm run lint:arch`,
 
 - Security (Д29): wrong passwords are limited per account (5) and per address (20) in 15 minutes (`attemptLimiter`, in memory — one API process), also for the current password on a change; every API answer carries nosniff, DENY framing, no-referrer and `Cache-Control: no-store` unless a route sets its own. Backups (`scripts/backup.sh`, `scripts/restore.sh`) keep everything only the cabinet holds plus the files, and the 1С cache tables without rows — the sync refills them.
 
+- Deployment (Д31, deploy/): the API image runs the TypeScript sources with tsx (migrations on start, `TRUST_PROXY=true`, files in a volume at /data/files); the web image builds with `VITE_USE_MOCKS=false VITE_LIVE_API=true` and serves through nginx, which proxies `/api` (stripped) and sets the CSP — scripts only from the site, so the pre-paint theme is the file public/theme.js, not inline. `docker-compose.prod.yml` runs db, api, web and ClamAV; operations are in docs/OPERATIONS.md.
+
 ## TRADEOFFS
 
 - Mocks first, integration later: UI is stable against 1С schema churn because adapters map 1С → entities/types.ts; cost is a second data model to maintain.

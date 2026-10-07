@@ -29,6 +29,7 @@ let sync: SyncScheduler | null = null
 const app = buildApp({
   logLevel: config.LOG_LEVEL,
   db,
+  trustProxy: config.TRUST_PROXY,
   corsOrigins: config.CORS_ORIGIN.split(',').map((o) => o.trim()),
   auth: secret
     ? { secret, secureCookie: config.COOKIE_SECURE }

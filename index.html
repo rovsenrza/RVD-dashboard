@@ -5,13 +5,8 @@
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="color-scheme" content="light dark" />
-    <script>
-      // Pin a stored theme choice before first paint (see src/app/theme.ts).
-      try {
-        var theme = localStorage.getItem('rvd.theme')
-        if (theme === 'light' || theme === 'dark') document.documentElement.dataset.theme = theme
-      } catch (e) {}
-    </script>
+    <!-- Blocking on purpose: the stored theme must be set before first paint. -->
+    <script src="/theme.js"></script>
     <link rel="preload" href="/fonts/Circe-Regular.woff2" as="font" type="font/woff2" crossorigin />
     <link rel="stylesheet" href="/fonts/circe.css" />
     <link rel="stylesheet" href="/fonts/golos.css" />

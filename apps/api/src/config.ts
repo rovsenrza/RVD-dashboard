@@ -53,6 +53,14 @@ const schema = z.object({
   /** The path the browser reaches this API by (the dev proxy and the web server use /api) */
   PUBLIC_API_PATH: z.string().default('/api'),
   /**
+   * Behind the web server's proxy: take the visitor's address from X-Forwarded-For, or every
+   * visitor is the proxy and one address's wrong-password limit locks out everyone (Д29).
+   */
+  TRUST_PROXY: z
+    .enum(['true', 'false'])
+    .default('false')
+    .transform((v) => v === 'true'),
+  /**
    * The 1С client (Клиент_Key) whose data the cabinet shows while sign-in is
    * off; signed in, each company sees its own client (Д6–Д7).
    */

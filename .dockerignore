@@ -1,0 +1,19 @@
+# What never goes into an image: dependencies (installed inside), secrets, customer material,
+# local data and backups, the index, test artefacts.
+node_modules
+**/node_modules
+dist
+.git
+.env
+.env.*
+!.env.example
+docs/customer
+.impeccable/review
+apps/api/data
+backups
+.codebase-memory
+test-results
+playwright-report
+e2e/__screenshots__
+*.log
+.DS_Store
