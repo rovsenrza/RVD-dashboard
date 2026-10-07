@@ -40,13 +40,17 @@ if [ "${1:-}" = "--init" ]; then
 fi
 
 # Exactly the committed tree: unpacked beside the running copy, then swapped in, the server's
-# .env and backups kept.
+# .env, its link and backups kept.
 git archive --format=tar HEAD |
   ssh_vps "set -e; rm -rf $APP.new; mkdir -p $APP.new $APP; tar -x -C $APP.new
-    rsync -a --delete --exclude /.env --exclude /backups/ $APP.new/ $APP/; rm -rf $APP.new"
+    rsync -a --delete --exclude /.env --exclude /deploy/.env --exclude /backups/ $APP.new/ $APP/
+    rm -rf $APP.new
+    # Compose reads .env beside the compose file: with this link every command in
+    # docs/OPERATIONS.md works from $APP without --env-file.
+    ln -sfn ../.env $APP/deploy/.env"
 
 ssh_vps "set -e; cd $APP
-  docker compose -f deploy/docker-compose.prod.yml --env-file .env up -d --build --remove-orphans
+  docker compose -f deploy/docker-compose.prod.yml up -d --build --remove-orphans
   docker image prune -f >/dev/null
   docker compose -f deploy/docker-compose.prod.yml ps --format 'table {{.Service}}\t{{.Status}}'"
 echo "Опубликовано: $(git rev-parse --short HEAD) → ${CABINET_URL_VPS:-http://$VPS_HOST}"

@@ -26,6 +26,19 @@ VITE_API_BASE_URL=https://api.clientrvd.vgiz.ru scripts/deploy-beget.sh live   #
 
 На этом хостинге нет Node.js, PostgreSQL, Docker и cron (фоновые процессы — только через панель Beget), поэтому **API и база должны жить отдельно** — например, VPS с `deploy/docker-compose.prod.yml` под поддоменом `api.clientrvd.vgiz.ru`: поддомен того же сайта нужен, чтобы refresh-cookie (SameSite=Lax) доходил до API. У API тогда: `CORS_ORIGIN=https://clientrvd.vgiz.ru`, `PUBLIC_API_PATH=https://api.clientrvd.vgiz.ru`, `COOKIE_SECURE=true`. HTTPS для `clientrvd.vgiz.ru` включает владелец панели Beget (Let's Encrypt).
 
+## Сервер (VPS)
+
+С 2026-10-07 кабинет целиком — API, база, антивирус и nginx с сайтом — работает на VPS заказчика в Beget (адрес — `VPS_HOST` в `.env` разработчика): Ubuntu 24.04, 2 ядра, 4 ГБ памяти и 2 ГБ подкачки, Docker из пакетов Ubuntu. Код и `.env` сервера — в `/opt/rvd/app` (`deploy/.env` — ссылка на него, поэтому все команды ниже работают из этой папки без `--env-file`). Пароль базы и `JWT_SECRET` созданы на самом сервере и есть только там.
+
+Публикация — одной командой с машины разработчика (доступ — `VPS_HOST`, `VPS_USER` в `.env` и ключ `~/.ssh/rvd_vps`):
+
+```sh
+scripts/deploy-vps.sh          # закоммиченный HEAD → сервер, пересборка того, что изменилось
+scripts/deploy-vps.sh --init   # первый раз: ещё и .env сервера (1С — из локального .env, секреты — на сервере)
+```
+
+**Пока без домена и HTTPS:** кабинет открывается по IP-адресу сервера (`http://<VPS_HOST>`), поэтому в `.env` сервера `COOKIE_SECURE=false` и `CABINET_URL=http://<VPS_HOST>`. Пароли по HTTP идут открытым текстом — настоящих пользователей заводить только после HTTPS (вопрос 8). Когда заказчик направит домен на сервер: сертификат Let's Encrypt, `COOKIE_SECURE=true`, `CABINET_URL=https://…`, `docker compose -f deploy/docker-compose.prod.yml up -d`.
+
 ## Первый запуск
 
 1. Docker и Docker Compose на сервере; доступ сервера к OData 1С (отдельный пользователь 1С только на чтение; при необходимости IP в белом списке 1С).
@@ -63,7 +76,7 @@ docker compose -f deploy/docker-compose.prod.yml --env-file .env up -d --build
 `scripts/backup.sh` сохраняет всё, что есть только у кабинета, и файлы; строки кэша 1С не сохраняются — синхронизация восстановит их за секунды. Хранятся 14 последних (`BACKUP_KEEP`). Ночью по cron:
 
 ```sh
-0 2 * * * cd /opt/rvd && PG_DUMP="docker compose -f deploy/docker-compose.prod.yml exec -T db pg_dump" \
+0 2 * * * cd /opt/rvd/app && PG_DUMP="docker compose -f deploy/docker-compose.prod.yml exec -T db pg_dump" \
   FILES_CMD="docker compose -f deploy/docker-compose.prod.yml exec -T api tar -czf - -C /data/files ." \
   scripts/backup.sh >> backups/backup.log 2>&1
 ```
