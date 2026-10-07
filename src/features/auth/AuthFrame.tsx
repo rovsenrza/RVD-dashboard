@@ -1,6 +1,11 @@
 import type { ReactNode } from 'react'
+import { CrimpDrawing } from './CrimpDrawing'
 
-/** The screens before the cabinet opens: its name, one sheet with the form, a line under it. */
+/**
+ * The screens before the cabinet opens (customer reference, 2026-10-07): dark in
+ * both themes — the brand's black and amber — the form straight on the ground,
+ * and beside it, on wide screens, a drawing of what the supplier makes.
+ */
 export function AuthFrame({
   title,
   lead,
@@ -13,28 +18,35 @@ export function AuthFrame({
   children: ReactNode
 }) {
   return (
-    <main className="flex min-h-full items-center justify-center px-4 py-10">
-      <div className="w-full max-w-sm">
-        <div className="mb-8 flex items-center gap-3">
-          <span className="grid size-9 place-items-center rounded-lg bg-brand">
-            <span className="size-3.5 rounded-full border-[3px] border-on-brand" />
-          </span>
-          <span className="leading-none">
-            <span className="block text-heading font-semibold tracking-[-0.01em]">РВД Кабинет</span>
-            <span className="mt-1 block text-micro font-normal tracking-wide text-ink-muted uppercase">
-              личный кабинет
+    <main className="theme-dark grid min-h-full bg-rail text-ink lg:grid-cols-2">
+      <section className="flex items-center justify-center px-6 py-12 sm:px-12">
+        <div className="w-full max-w-sm">
+          <span className="flex items-center gap-2.5 font-semibold tracking-[-0.01em] text-ink">
+            <img src="/brand/vgiz-yellow.svg" alt="ВГИЗ" className="h-8 w-auto" />
+            <span className="leading-none">
+              РВД Кабинет
+              <span className="mt-0.5 block text-micro font-normal tracking-wide text-ink-muted uppercase">
+                личный кабинет
+              </span>
             </span>
           </span>
-        </div>
 
-        <div className="sheet p-6">
-          <h1 className="text-heading font-semibold tracking-[-0.01em]">{title}</h1>
-          <p className="mt-1 mb-5 text-ui text-ink-muted">{lead}</p>
+          <h1 className="mt-12 text-title font-semibold tracking-[-0.02em] text-balance">
+            {title}
+          </h1>
+          <p className="mt-1.5 mb-7 text-ui text-ink-muted">{lead}</p>
           {children}
-        </div>
 
-        <p className="mt-6 text-center text-label text-ink-muted">{footer}</p>
-      </div>
+          <p className="mt-8 text-label text-ink-muted">{footer}</p>
+        </div>
+      </section>
+
+      <aside className="drafting-grid relative hidden overflow-hidden bg-field lg:block">
+        <CrimpDrawing className="absolute inset-x-10 inset-y-12 h-[calc(100%-6rem)] w-[calc(100%-5rem)]" />
+        <p className="absolute bottom-8 left-10 text-caption text-ink-muted">
+          РВД в сборе и матрица обжимного станка
+        </p>
+      </aside>
     </main>
   )
 }
