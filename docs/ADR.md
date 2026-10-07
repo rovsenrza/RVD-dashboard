@@ -32,6 +32,8 @@ Layers (import direction enforced by scripts/check-arch.sh, `npm run lint:arch`,
 - Every mutation writes an action-log line (who, when, object, fields before → after) as display strings; unchanged saves write nothing. The wording (`userView`, `settingsView`, `requestChanges`, `auditChanges` in packages/contracts/src/audit.ts, through entities/audit on the web) is shared, so the demo's log reads like the live one. Mocks record in their handlers; the BFF in each route after the change succeeds (`audit()` in app.ts → `audit_log`, migration 009), only for a signed-in company — a cabinet without sign-in keeps no log.
 - Company settings (Д22) live on the server per company (`companies.settings`, the administrator's changes over `DEFAULT_SETTINGS`, checked by the shared `settingsProblem`); every read route takes its «Внимание» rule from the asking company (`clockOf` in app.ts), so a settings change re-derives the registry, cards, machines and dashboard at the next read.
 
+- Security (Д29): wrong passwords are limited per account (5) and per address (20) in 15 minutes (`attemptLimiter`, in memory — one API process), also for the current password on a change; every API answer carries nosniff, DENY framing, no-referrer and `Cache-Control: no-store` unless a route sets its own. Backups (`scripts/backup.sh`, `scripts/restore.sh`) keep everything only the cabinet holds plus the files, and the 1С cache tables without rows — the sync refills them.
+
 ## TRADEOFFS
 
 - Mocks first, integration later: UI is stable against 1С schema churn because adapters map 1С → entities/types.ts; cost is a second data model to maintain.

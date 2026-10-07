@@ -20,6 +20,7 @@ import {
   type PasswordDelivery,
   type UserCreated,
   type UserRole,
+  WRONG_CURRENT_PASSWORD,
 } from '@rvd/contracts'
 import { hoseLabels, listAudit, recordAudit, type AuditNote } from './admin/audit.ts'
 import { companySettings, saveSettings } from './admin/settings.ts'
@@ -49,6 +50,7 @@ import {
   signedIn,
   type Identity,
 } from './auth/service.ts'
+import { attemptLimiter, waitText, type Limiter } from './auth/limiter.ts'
 import {
   createUser,
   getUser,
@@ -102,7 +104,13 @@ export interface AppOptions {
    * only its own 1С client. Without one sign-in is off: everyone is `demo`, and
    * the data is the configured client's (`requests.clientKey`) or everyone's.
    */
-  auth?: { secret?: string; secureCookie?: boolean; demo?: Identity }
+  auth?: {
+    secret?: string
+    secureCookie?: boolean
+    demo?: Identity
+    /** Wrong-password limits per account and per address (Д29); tests pass their own */
+    limits?: { account?: Limiter; address?: Limiter }
+  }
   requests?: {
     /** The 1С client a cabinet without sign-in stands for */
     clientKey?: string
@@ -185,6 +193,19 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
       )
     : (null as never)
 
+  const accounts =
+    options.auth?.limits?.account ?? attemptLimiter({ max: 5, windowMs: 15 * 60_000 })
+  const addresses =
+    options.auth?.limits?.address ?? attemptLimiter({ max: 20, windowMs: 15 * 60_000 })
+
+  // Every answer (Д29): no sniffing, no framing, no referrer; data is never cached on the way.
+  app.addHook('onSend', async (_req, reply) => {
+    reply.header('X-Content-Type-Options', 'nosniff')
+    reply.header('X-Frame-Options', 'DENY')
+    reply.header('Referrer-Policy', 'no-referrer')
+    if (!reply.hasHeader('Cache-Control')) reply.header('Cache-Control', 'no-store')
+  })
+
   app.decorateRequest('identity', null)
   app.addHook('onRequest', async (req, reply) => {
     if (!secret) {
@@ -236,15 +257,26 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
 
   if (db) {
     // Sign-in: a short access token in the answer, a long refresh token in an httpOnly cookie.
+    // Guessing (Д29): an account takes 5 wrong passwords in 15 minutes, an address 20.
+    const tooMany = (reply: FastifyReply, seconds: number) =>
+      reply
+        .code(429)
+        .header('Retry-After', String(seconds))
+        .send({ message: waitText(seconds) })
+
     app.post<{ Body: { email?: string; password?: string } }>('/auth/login', async (req, reply) => {
       if (!secret) return signedIn(demo, '')
-      const result = await login(
-        db,
-        secret,
-        String(req.body?.email ?? ''),
-        String(req.body?.password ?? ''),
-      )
-      if (!result) return reply.code(401).send({ message: 'Неверный логин или пароль' })
+      const email = String(req.body?.email ?? '')
+      const keys = [`account:${email.trim().toLowerCase()}`, `address:${req.ip}`]
+      const wait = Math.max(accounts.wait(keys[0]), addresses.wait(keys[1]))
+      if (wait) return tooMany(reply, wait)
+      const result = await login(db, secret, email, String(req.body?.password ?? ''))
+      if (!result) {
+        accounts.fail(keys[0])
+        addresses.fail(keys[1])
+        return reply.code(401).send({ message: 'Неверный логин или пароль' })
+      }
+      accounts.clear(keys[0])
       setRefresh(reply, result.refreshToken)
       return signedIn(result.identity, result.accessToken)
     })
@@ -281,10 +313,18 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
         if (!secret || !req.identity)
           return reply.code(404).send({ message: 'Вход в этом кабинете выключен' })
         const identity = req.identity
+        // A stolen session must not guess the current password either.
+        const key = `account:${identity.email.toLowerCase()}`
+        const wait = accounts.wait(key)
+        if (wait) return tooMany(reply, wait)
         return answering(reply, async () => {
           const result = await changePassword(db, secret, identity.userId, {
             current: String(req.body?.current ?? ''),
             next: String(req.body?.next ?? ''),
+          }).catch((error: unknown) => {
+            if (error instanceof AuthRejected && error.message === WRONG_CURRENT_PASSWORD)
+              accounts.fail(key)
+            throw error
           })
           setRefresh(reply, result.refreshToken)
           return signedIn(result.identity, result.accessToken)

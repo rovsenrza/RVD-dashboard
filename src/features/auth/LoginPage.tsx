@@ -29,9 +29,12 @@ export function LoginPage() {
     } catch (err) {
       setPending(false)
       setError(
-        err instanceof ApiError && err.status !== 401
-          ? 'Не удалось войти — попробуйте ещё раз'
-          : 'Неверный логин или пароль',
+        // Too many wrong passwords: the server says how long to wait.
+        err instanceof ApiError && err.status === 429
+          ? err.message
+          : err instanceof ApiError && err.status !== 401
+            ? 'Не удалось войти — попробуйте ещё раз'
+            : 'Неверный логин или пароль',
       )
     }
   }
