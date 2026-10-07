@@ -61,6 +61,8 @@ export interface RequestPreset {
   kind?: RequestKind
   products?: Product[]
   equipmentId?: string
+  /** «Заказать такой же» from a hose card: the first line of a manufacture request */
+  catalogNumber?: string
 }
 
 /**
@@ -89,7 +91,7 @@ export function RequestForm({
   const [kind, setKind] = useState<RequestKind>(preset?.kind ?? 'replace')
   const [picked, setPicked] = useState<Product[]>(preset?.products ?? [])
   const [miss, setMiss] = useState<string>()
-  const [rows, setRows] = useState<Row[]>(() => [blank()])
+  const [rows, setRows] = useState<Row[]>(() => [blank(preset?.catalogNumber ?? '')])
   const [equipmentId, setEquipmentId] = useState(NO_EQUIPMENT)
   const [comment, setComment] = useState('')
   const [pasting, setPasting] = useState(false)

@@ -62,9 +62,23 @@ export function UiPage() {
       <Overlays />
       <KpiStrip>
         <KpiCard label="Отгружено изделий" value={187} delta={19} icon={Package} />
-        <KpiCard label="На гарантии" value={70} delta={-31} icon={ShieldCheck} tone="ok" />
+        <KpiCard
+          label="На гарантии"
+          value={70}
+          delta={-31}
+          better="up"
+          icon={ShieldCheck}
+          tone="ok"
+        />
         <KpiCard label="Срок истекает" value={13} icon={Info} tone="warn" />
-        <KpiCard label="Требуют замены" value={25} delta={31} icon={AlertTriangle} tone="replace" />
+        <KpiCard
+          label="Требуют замены"
+          value={25}
+          delta={31}
+          better="down"
+          icon={AlertTriangle}
+          tone="replace"
+        />
       </KpiStrip>
       <Table />
       <States />

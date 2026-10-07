@@ -19,15 +19,16 @@ interface Totals {
 
 /**
  * «Главная» from the cache, by the same status rule as the registry. The
- * deltas compare with 30 days ago: hoses shipped since, and how many were on
- * warranty or due for replacement then (only hoses already in service then).
- * Swaps are counted by the journal's rule (`replacements/query.ts`), against
- * the 30 days before.
+ * deltas compare with `days` ago (30, 90 or 365 — the period the dashboard
+ * picks): hoses shipped since, and how many were on warranty or due for
+ * replacement then (only hoses already in service then). Swaps are counted by
+ * the journal's rule (`replacements/query.ts`), against the period before.
  */
 export async function dashboardSummary(
   db: Db,
   clock: Clock,
   client?: string,
+  days = 30,
 ): Promise<DashboardSummary> {
   const params = [...ruleParams(clock), client ?? null]
   const {
@@ -35,8 +36,8 @@ export async function dashboardSummary(
   } = await db.query<Totals>(
     `with p as (
        select ${STATUS_SQL} as status,
-         case when coalesce(installed_at, shipped_at) <= $1::date - 30
-              then ${statusAt('($1::date - 30)')} end as status_then,
+         case when coalesce(installed_at, shipped_at) <= $1::date - $6::int
+              then ${statusAt('($1::date - $6::int)')} end as status_then,
          installed_at, shipped_at
        from products where lifecycle <> 'written_off' and ($5::text is null or client_id = $5)
      )
@@ -46,11 +47,11 @@ export async function dashboardSummary(
        count(*) filter (where status = 'warn')::int as warn,
        count(*) filter (where status = 'replace')::int as replace,
        count(*) filter (where status = 'no_warranty')::int as no_warranty,
-       count(*) filter (where shipped_at > $1::date - 30)::int as shipped_lately,
+       count(*) filter (where shipped_at > $1::date - $6::int)::int as shipped_lately,
        count(*) filter (where status_then = 'ok')::int as ok_then,
        count(*) filter (where status_then = 'replace')::int as replace_then
      from p`,
-    params,
+    [...params, days],
   )
   // Nearest planned replacements of hoses in service on a machine; installation is rarely
   // recorded in 1С, so shipment starts the clock as everywhere else.
@@ -68,13 +69,14 @@ export async function dashboardSummary(
      limit 8`,
     params,
   )
-  const swaps = await replacementTotals(db, clock.today, client)
+  const swaps = await replacementTotals(db, clock.today, client, days)
   return {
     shippedTotal: t.shipped_total,
     inOperation: t.in_operation,
     onWarranty: t.ok,
     expiringSoon: t.warn,
     needsReplacement: t.replace,
+    periodDays: days,
     replacementsInPeriod: swaps.inPeriod,
     deltas: {
       shippedTotal: t.shipped_lately,

@@ -358,7 +358,7 @@ export const requests: ServiceRequest[] = Array.from({ length: 12 }, (_, i) => {
   }
 })
 
-export function dashboardSummary(branch: string | null = null): DashboardSummary {
+export function dashboardSummary(branch: string | null = null, days = 30): DashboardSummary {
   // Retired hoses live in the archive; the dashboard is about what is in hand.
   const scopedProducts = products.filter(
     (p) => p.lifecycle !== 'written_off' && (!branch || p.branchId === branch),
@@ -389,14 +389,34 @@ export function dashboardSummary(branch: string | null = null): DashboardSummary
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
     .slice(0, 8)
 
+  const since = iso(subDays(NOW, days))
+  const inPeriod = scopedReplacements.filter((r) => r.date >= since).length
+  const before = scopedReplacements.filter(
+    (r) => r.date >= iso(subDays(NOW, 2 * days)) && r.date < since,
+  ).length
+  const then = subDays(NOW, days)
+  const countThen = (status: ProductStatus) =>
+    scopedProducts.filter((p) => {
+      const start = p.installedAt ?? p.shippedAt
+      return start !== null && start <= since && statusOf(p, settings, then) === status
+    }).length
+
   return {
     shippedTotal: scopedProducts.length,
     inOperation: scopedProducts.filter((p) => p.installedAt).length,
     onWarranty: scopedProducts.filter((p) => p.status === 'ok').length,
     expiringSoon: breakdown.warn,
     needsReplacement: breakdown.replace,
-    replacementsInPeriod: scopedReplacements.filter((r) => r.date >= iso(subDays(NOW, 30))).length,
-    deltas: { shippedTotal: 19, replacements: 6, onWarranty: -31, needsReplacement: 31 },
+    periodDays: days,
+    replacementsInPeriod: inPeriod,
+    // Over the period, by the API's rule: shipped since; swaps against the period before;
+    // statuses now against then, counting only hoses already in service then.
+    deltas: {
+      shippedTotal: scopedProducts.filter((p) => p.shippedAt && p.shippedAt > since).length,
+      replacements: inPeriod - before,
+      onWarranty: breakdown.ok - countThen('ok'),
+      needsReplacement: breakdown.replace - countThen('replace'),
+    },
     statusBreakdown: breakdown,
     replacementsByMonth: [...byMonth.entries()]
       .sort(([a], [b]) => a.localeCompare(b))

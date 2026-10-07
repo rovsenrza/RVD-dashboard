@@ -11,6 +11,7 @@ import {
   type Product,
   DEFAULT_RULES,
   DEFAULT_SETTINGS,
+  dashboardPeriod,
   filesChange,
   MAX_FILE_BYTES,
   ProductListQuery,
@@ -698,8 +699,8 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
       listReplacements(db, { client: clientOf(req), equipment: req.params.id }),
     )
 
-    app.get('/dashboard/summary', async (req) =>
-      dashboardSummary(db, await clockOf(req), clientOf(req)),
+    app.get<{ Querystring: { days?: string } }>('/dashboard/summary', async (req) =>
+      dashboardSummary(db, await clockOf(req), clientOf(req), dashboardPeriod(req.query.days)),
     )
 
     // Reports (Д21) and the model comparison (Д15): the manager's and the administrator's.

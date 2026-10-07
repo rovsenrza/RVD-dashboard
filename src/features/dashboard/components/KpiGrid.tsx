@@ -1,16 +1,20 @@
 import { useNavigate } from 'react-router-dom'
 import { AlertTriangle, Clock, Package, RefreshCw, ShieldCheck, Wrench } from 'lucide-react'
 import type { DashboardSummary } from '@/entities/types'
+import { DASHBOARD_PERIOD_LABEL, dashboardPeriod } from '@/entities/dashboard'
 import { KpiCard, KpiStrip } from '@/shared/ui'
 
 export function KpiGrid({ data }: { data: DashboardSummary }) {
   const go = useNavigate()
+  const period = DASHBOARD_PERIOD_LABEL[dashboardPeriod(data.periodDays)]
+  const over = `за ${period}`
   return (
     <KpiStrip>
       <KpiCard
         label="Отгружено изделий"
         value={data.shippedTotal}
         delta={data.deltas.shippedTotal}
+        deltaLabel={over}
         icon={Package}
         onClick={() => go('/products')}
       />
@@ -24,6 +28,8 @@ export function KpiGrid({ data }: { data: DashboardSummary }) {
         label="На гарантии"
         value={data.onWarranty}
         delta={data.deltas.onWarranty}
+        deltaLabel={over}
+        better="up"
         icon={ShieldCheck}
         tone="ok"
         onClick={() => go('/products?status=ok')}
@@ -39,16 +45,19 @@ export function KpiGrid({ data }: { data: DashboardSummary }) {
         label="Требуют замены"
         value={data.needsReplacement}
         delta={data.deltas.needsReplacement}
+        deltaLabel={over}
+        better="down"
         icon={AlertTriangle}
         tone="replace"
         onClick={() => go('/products?status=replace')}
       />
       <KpiCard
-        label="Замен за 30 дней"
+        label={`Замен за ${period}`}
         value={data.replacementsInPeriod}
         delta={data.deltas.replacements}
+        deltaLabel="к прошлому периоду"
         icon={RefreshCw}
-        onClick={() => go('/replacements?period=30')}
+        onClick={() => go(`/replacements?period=${data.periodDays}`)}
       />
     </KpiStrip>
   )

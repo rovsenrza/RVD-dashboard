@@ -131,4 +131,16 @@ describe.skipIf(!hasDb)('the replacement journal from 1С links', () => {
       { month: '2026-09', count: 1 },
     ])
   })
+
+  it('counts them over the period the dashboard picks', async () => {
+    // Since 02.07: new1 and new2; the 90 days before: none.
+    const quarter = await get('/dashboard/summary?days=90')
+    expect(quarter).toMatchObject({ periodDays: 90, replacementsInPeriod: 2 })
+    expect(quarter.deltas.replacements).toBe(2)
+    // Not one of the dashboard's periods: the month.
+    expect(await get('/dashboard/summary?days=7')).toMatchObject({
+      periodDays: 30,
+      replacementsInPeriod: 1,
+    })
+  })
 })

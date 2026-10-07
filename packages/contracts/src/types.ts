@@ -257,7 +257,10 @@ export interface DashboardSummary {
   onWarranty: number
   expiringSoon: number
   needsReplacement: number
+  /** The period the swaps and the deltas cover, in days */
+  periodDays: number
   replacementsInPeriod: number
+  /** Change over the period: shipped since, swaps against the period before, statuses then and now */
   deltas: {
     shippedTotal: number
     replacements: number

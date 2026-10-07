@@ -1,12 +1,12 @@
 import { useState } from 'react'
 import { useParams } from 'react-router-dom'
-import { Pencil, RefreshCw } from 'lucide-react'
+import { Copy, Pencil, RefreshCw } from 'lucide-react'
 import { ProductStatusBadge } from '@/entities/product'
 import { useProduct } from '@/shared/api/queries'
 import { readOrigin } from '@/shared/lib/origin'
 import { Badge, Button, PageHeader, QueryState, Skeleton } from '@/shared/ui'
 import { ProductAttachments } from '@/features/attachments/ProductAttachments'
-import { RequestForm } from '@/features/requests/components/RequestForm'
+import { RequestForm, type RequestPreset } from '@/features/requests/components/RequestForm'
 import { ContactDialog, type ContactPreset } from '@/features/support/ContactDialog'
 import { ProductActivity } from './components/ProductActivity'
 import { ProductComposition } from './components/ProductComposition'
@@ -19,7 +19,7 @@ export function ProductPage() {
   const query = useProduct(id)
   const origin = readOrigin({ to: '/products', label: 'К списку изделий' })
   const [editing, setEditing] = useState(false)
-  const [requesting, setRequesting] = useState(false)
+  const [requesting, setRequesting] = useState<RequestPreset | null>(null)
   const [contact, setContact] = useState<ContactPreset | null>(null)
   return (
     <QueryState query={query} skeleton={<Skeleton className="sheet h-96" />}>
@@ -42,7 +42,7 @@ export function ProductPage() {
                 )}
               </>
             }
-            description={`${p.type} · ${p.manufacturer}`}
+            description={[p.type, p.manufacturer].filter(Boolean).join(' · ')}
             actions={
               <>
                 {/* Phones: both actions share the pinned bar; the edit keeps only its icon. */}
@@ -57,8 +57,29 @@ export function ProductPage() {
                 >
                   <span className="max-sm:sr-only">Изменить</span>
                 </Button>
+                {/* ТЗ 3.3: an identical hose, by its catalogue number — or by this one's EHS, which
+                    the manager finds in 1С with its whole bill of materials. */}
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  icon={Copy}
+                  aria-label="Заказать такой же"
+                  onClick={() =>
+                    setRequesting({
+                      kind: 'manufacture',
+                      catalogNumber: p.catalogNumber ?? `как EHS ${p.serialNumber}`,
+                    })
+                  }
+                  className="max-sm:flex-none!"
+                >
+                  <span className="max-sm:sr-only">Заказать такой же</span>
+                </Button>
                 {/* The supplier replaces and writes off in 1С; the customer asks for it. */}
-                <Button size="sm" icon={RefreshCw} onClick={() => setRequesting(true)}>
+                <Button
+                  size="sm"
+                  icon={RefreshCw}
+                  onClick={() => setRequesting({ kind: 'replace', products: [p] })}
+                >
                   <span className="sm:hidden">Заявка на замену</span>
                   <span className="max-sm:hidden">Создать заявку на замену</span>
                 </Button>
@@ -75,12 +96,7 @@ export function ProductPage() {
               }}
             />
           )}
-          {requesting && (
-            <RequestForm
-              preset={{ kind: 'replace', products: [p] }}
-              onClose={() => setRequesting(false)}
-            />
-          )}
+          {requesting && <RequestForm preset={requesting} onClose={() => setRequesting(null)} />}
           {contact && <ContactDialog preset={contact} onClose={() => setContact(null)} />}
           <div className="grid items-start gap-5 lg:grid-cols-2">
             <ProductLifetime

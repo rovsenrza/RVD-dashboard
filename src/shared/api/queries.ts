@@ -91,11 +91,16 @@ export const keys = {
     ['reports', id, branch, from, to] as const,
 }
 
-export const useDashboard = () => {
+/** «Главная» over the chosen period (30, 90 or 365 days): swaps and the changes since. */
+export const useDashboard = (days = 30) => {
   const branch = useScope()
   return useQuery({
-    queryKey: keys.dashboard(branch),
-    queryFn: () => api.get<DashboardSummary>(scoped('/dashboard/summary', branch)),
+    queryKey: [...keys.dashboard(branch), days],
+    queryFn: () => {
+      const path = scoped('/dashboard/summary', branch)
+      return api.get<DashboardSummary>(`${path}${path.includes('?') ? '&' : '?'}days=${days}`)
+    },
+    placeholderData: keepPreviousData,
   })
 }
 

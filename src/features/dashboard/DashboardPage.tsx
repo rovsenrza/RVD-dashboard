@@ -1,19 +1,40 @@
 import { useState } from 'react'
-import { Calendar, Download } from 'lucide-react'
+import { Calendar } from 'lucide-react'
 import { useSession } from '@/app/session'
+import {
+  DASHBOARD_PERIOD_LABEL,
+  DASHBOARD_PERIODS,
+  type DashboardPeriod,
+} from '@/entities/dashboard'
+import type { DashboardSummary } from '@/entities/types'
 import { useDashboard } from '@/shared/api/queries'
-import { Button, KpiSkeleton, Menu, PageHeader, QueryState, Skeleton } from '@/shared/ui'
+import type { ExportColumn } from '@/shared/lib/export'
+import {
+  Button,
+  ExportMenu,
+  KpiSkeleton,
+  Menu,
+  PageHeader,
+  QueryState,
+  Skeleton,
+} from '@/shared/ui'
 import { KpiGrid } from './components/KpiGrid'
 import { ReplacementsChart } from './components/ReplacementsChart'
 import { StatusDonut } from './components/StatusDonut'
 import { UpcomingTable } from './components/UpcomingTable'
 
-const PERIODS = ['30 дней', '90 дней', '12 месяцев'] as const
+type Upcoming = DashboardSummary['upcoming'][number]
+const UPCOMING_COLUMNS: ExportColumn<Upcoming>[] = [
+  { header: 'EHS №', value: (u) => u.serialNumber, width: 12 },
+  { header: 'Техника', value: (u) => u.equipment, width: 14 },
+  { header: 'Плановая замена', value: (u) => u.dueDate, type: 'date', width: 14 },
+]
 
 export function DashboardPage() {
-  const query = useDashboard()
+  const [period, setPeriod] = useState<DashboardPeriod>(30)
+  const query = useDashboard(period)
   const { branch } = useSession()
-  const [period, setPeriod] = useState<(typeof PERIODS)[number]>('30 дней')
+  const data = query.data
 
   return (
     <div>
@@ -25,14 +46,34 @@ export function DashboardPage() {
             <Menu
               trigger={() => (
                 <Button variant="secondary" size="sm" icon={Calendar}>
-                  {period}
+                  {DASHBOARD_PERIOD_LABEL[period]}
                 </Button>
               )}
-              items={PERIODS.map((p) => ({ label: p, onSelect: () => setPeriod(p) }))}
+              items={DASHBOARD_PERIODS.map((p) => ({
+                label: DASHBOARD_PERIOD_LABEL[p],
+                onSelect: () => setPeriod(p),
+              }))}
             />
-            <Button variant="secondary" size="sm" icon={Download}>
-              Экспорт
-            </Button>
+            {/* The summary's figures as lines above the nearest replacements, the table people act on. */}
+            <ExportMenu
+              fileName="сводка"
+              title="Сводка по изделиям и технике"
+              lines={
+                data && [
+                  branch?.name ?? 'Все филиалы',
+                  `Период: ${DASHBOARD_PERIOD_LABEL[period]}`,
+                  `Отгружено изделий: ${data.shippedTotal}`,
+                  `В эксплуатации: ${data.inOperation}`,
+                  `На гарантии: ${data.onWarranty}`,
+                  `Срок истекает: ${data.expiringSoon}`,
+                  `Требуют замены: ${data.needsReplacement}`,
+                  `Замен за период: ${data.replacementsInPeriod}`,
+                  'Ближайшие плановые замены:',
+                ]
+              }
+              columns={UPCOMING_COLUMNS}
+              rows={() => data?.upcoming ?? []}
+            />
           </>
         }
       />

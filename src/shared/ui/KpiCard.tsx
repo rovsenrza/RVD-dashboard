@@ -11,6 +11,7 @@ export function KpiCard({
   value,
   delta,
   deltaLabel = 'за 30 дней',
+  better,
   icon: Icon,
   tone = 'default',
   onClick,
@@ -19,6 +20,8 @@ export function KpiCard({
   value: number
   delta?: number
   deltaLabel?: string
+  /** Which way the delta is good news; without it the change is just a count, shown plain */
+  better?: 'up' | 'down'
   icon: LucideIcon
   tone?: 'default' | 'ok' | 'warn' | 'replace'
   onClick?: () => void
@@ -55,7 +58,7 @@ export function KpiCard({
       <div className="flex h-5 items-center gap-1.5 text-caption text-ink-muted">
         {delta !== undefined ? (
           <>
-            <Delta value={delta} />
+            <Delta value={delta} better={better} />
             <span>{deltaLabel}</span>
           </>
         ) : (
@@ -66,18 +69,20 @@ export function KpiCard({
   )
 }
 
-function Delta({ value }: { value: number }) {
-  const up = value >= 0
+function Delta({ value, better }: { value: number; better?: 'up' | 'down' }) {
+  const good = better && value !== 0 ? value > 0 === (better === 'up') : null
   return (
     <span
       className={cn(
         'rounded-md px-1.5 leading-5 font-medium tabular',
-        up
-          ? 'bg-status-ok-soft text-status-ok-ink'
-          : 'bg-status-replace-soft text-status-replace-ink',
+        good === null
+          ? 'bg-field text-ink-secondary'
+          : good
+            ? 'bg-status-ok-soft text-status-ok-ink'
+            : 'bg-status-replace-soft text-status-replace-ink',
       )}
     >
-      {up ? '+' : ''}
+      {value > 0 ? '+' : ''}
       {value}
     </span>
   )

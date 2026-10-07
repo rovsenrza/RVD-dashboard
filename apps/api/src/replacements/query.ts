@@ -72,9 +72,9 @@ export async function listReplacements(
 }
 
 export interface ReplacementTotals {
-  /** Swaps in the last 30 days, today's 30 included — what «/replacements?period=30» lists */
+  /** Swaps in the last `days`, today included — what «/replacements?period=<days>» lists */
   inPeriod: number
-  /** Against the 30 days before those */
+  /** Against the same number of days before those */
   delta: number
   /** The last 12 months, this one included, empty months as zero */
   byMonth: DashboardSummary['replacementsByMonth']
@@ -85,22 +85,23 @@ export async function replacementTotals(
   db: Db,
   today: string,
   client?: string,
+  days = 30,
 ): Promise<ReplacementTotals> {
   const {
     rows: [t],
   } = await db.query<{ lately: number; before: number; by_month: ReplacementTotals['byMonth'] }>(
     `with ${swaps('$2')}
      select
-       (select count(*) from swaps where date >= $1::date - 30)::int as lately,
-       (select count(*) from swaps where date >= $1::date - 60 and date < $1::date - 30)::int
-         as before,
+       (select count(*) from swaps where date >= $1::date - $3::int)::int as lately,
+       (select count(*) from swaps
+         where date >= $1::date - 2 * $3::int and date < $1::date - $3::int)::int as before,
        (select json_agg(json_build_object(
                 'month', to_char(m, 'YYYY-MM'),
                 'count', (select count(*) from swaps where date_trunc('month', date) = m))
               order by m)
           from generate_series(date_trunc('month', $1::date) - interval '11 months',
                                date_trunc('month', $1::date), interval '1 month') m) as by_month`,
-    [today, client ?? null],
+    [today, client ?? null, days],
   )
   return { inPeriod: t.lately, delta: t.lately - t.before, byMonth: t.by_month }
 }

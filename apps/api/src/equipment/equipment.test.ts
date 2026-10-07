@@ -102,6 +102,7 @@ describe.skipIf(!hasDb)('machines and the dashboard from the cache', () => {
       onWarranty: 2,
       expiringSoon: 0,
       needsReplacement: 1,
+      periodDays: 30,
       replacementsInPeriod: 0,
       // Shipped since 31.08: h1, h4. A month ago only h2 was in service, and it was «Внимание».
       deltas: { shippedTotal: 2, replacements: 0, onWarranty: 2, needsReplacement: 1 },

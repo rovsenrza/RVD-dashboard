@@ -4,6 +4,7 @@ import type { InstallationPatch, NewRequest, NewSupportMessage } from '@/shared/
 import type { PasswordChange, PasswordDelivery, SyncStatus, UserCreated } from '@/entities/types'
 import { ProductListQuery } from '@/entities/product/list'
 import { settingsProblem } from '@/entities/settings'
+import { dashboardPeriod } from '@/entities/dashboard'
 import { equipmentProblem, equipmentView } from '@/entities/equipment'
 import { EMAIL_TAKEN, passwordProblem } from '@/entities/user'
 import {
@@ -81,7 +82,12 @@ const live = LIVE
 export const handlers = [
   ...live,
   http.get(api('/dashboard/summary'), ({ request }) =>
-    HttpResponse.json(dashboardSummary(branchOf(request))),
+    HttpResponse.json(
+      dashboardSummary(
+        branchOf(request),
+        dashboardPeriod(new URL(request.url).searchParams.get('days')),
+      ),
+    ),
   ),
   // How fresh the data is (Д26); «Обновить сейчас» just moves the time on.
   http.get(api('/sync'), () => HttpResponse.json(syncStatus())),

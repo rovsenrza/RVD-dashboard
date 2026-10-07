@@ -9,6 +9,18 @@ export interface Paginated<T> {
   limit: number
 }
 
+/** The dashboard's periods, in days (ТЗ 3.1 «за выбранный период»), and how they read. */
+export const DASHBOARD_PERIODS = [30, 90, 365] as const
+export type DashboardPeriod = (typeof DASHBOARD_PERIODS)[number]
+export const DASHBOARD_PERIOD_LABEL: Record<DashboardPeriod, string> = {
+  30: '30 дней',
+  90: '90 дней',
+  365: '12 месяцев',
+}
+/** A period from a query string; anything else is the default month. */
+export const dashboardPeriod = (raw: unknown): DashboardPeriod =>
+  DASHBOARD_PERIODS.find((d) => String(d) === String(raw)) ?? 30
+
 /**
  * `GET /sync` (Д26): how fresh the cache is. The header says «данные на HH:MM»
  * and warns while 1С does not answer; the cabinet keeps showing the cache.
