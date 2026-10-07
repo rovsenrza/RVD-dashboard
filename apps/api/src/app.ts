@@ -52,6 +52,13 @@ import {
   signedIn,
   type Identity,
 } from './auth/service.ts'
+import {
+  acceptInvite,
+  createInvite,
+  inviteLetter,
+  readInvite,
+  type InviteKind,
+} from './auth/invites.ts'
 import { attemptLimiter, waitText, type Limiter } from './auth/limiter.ts'
 import {
   createUser,
@@ -69,6 +76,7 @@ import { getProduct, listProducts, type Clock } from './products/query.ts'
 import { listReplacements } from './replacements/query.ts'
 import { companyModels, companyReport } from './reports/query.ts'
 import { syncStatus } from './sync/health.ts'
+import type { Mail } from './mail/mail.ts'
 import { createFiles } from './files/attachments.ts'
 import {
   eicarOnly,
@@ -121,6 +129,8 @@ export interface AppOptions {
   }
   /** The sync worker (Д26), when this process runs one */
   sync?: { kick: () => void; running: () => boolean }
+  /** Letters (question 7): invitations go by mail when this is set, with links to `cabinetUrl` */
+  mail?: { send: (mail: Mail) => Promise<void>; cabinetUrl: string }
   /** Behind a proxy: the visitor's address comes from X-Forwarded-For */
   trustProxy?: boolean
   /** Files (Д25): where bytes live, the antivirus, and the path the browser reaches the API by */
@@ -149,7 +159,7 @@ const cookieOf = (req: FastifyRequest, name: string) =>
     .find(([key]) => key === name)?.[1]
 
 /** Routes anyone may call: the health check and getting a session. */
-const OPEN = new Set(['/health', '/auth/login', '/auth/refresh', '/auth/logout'])
+const OPEN = new Set(['/health', '/auth/login', '/auth/refresh', '/auth/logout', '/auth/invite'])
 /** All a person signed in with an administrator's one-time password may do until they replace it. */
 const WHILE_TEMPORARY = new Set(['/auth/password', '/me'])
 
@@ -322,6 +332,34 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
       return reply.code(204).send()
     })
 
+    // Setting one's password from an invitation link (with mail): who it is for, then the password.
+    app.get<{ Querystring: { token?: string } }>('/auth/invite', async (req, reply) => {
+      const invite = secret && req.query.token ? await readInvite(db, req.query.token) : null
+      return invite
+        ? { name: invite.name, email: invite.email }
+        : reply.code(404).send({
+            message:
+              'Ссылка недействительна или устарела — попросите администратора прислать новую',
+          })
+    })
+
+    app.post<{ Body: { token?: unknown; password?: unknown } }>(
+      '/auth/invite',
+      async (req, reply) => {
+        if (!secret) return reply.code(404).send({ message: 'Вход в этом кабинете выключен' })
+        return answering(reply, async () => {
+          const result = await acceptInvite(
+            db,
+            secret,
+            String(req.body?.token ?? ''),
+            String(req.body?.password ?? ''),
+          )
+          setRefresh(reply, result.refreshToken)
+          return signedIn(result.identity, result.accessToken)
+        })
+      },
+    )
+
     app.get('/me', async (req) => {
       const { user, company, mustChangePassword } = signedIn(req.identity ?? demo, '')
       return { user, company, mustChangePassword }
@@ -361,6 +399,30 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
       })
       const companyOf = (req: FastifyRequest) => req.identity!.companyId
 
+      /**
+       * How a new or reset password reaches the person: by mail, a link to set their own
+       * (when SMTP and the cabinet's address are known); otherwise — or if the letter
+       * fails — the one-time password, shown once to the administrator.
+       */
+      const deliver = async (
+        req: FastifyRequest,
+        user: { id: string; name: string; email: string },
+        kind: InviteKind,
+        password: string,
+      ): Promise<PasswordDelivery> => {
+        const mail = options.mail
+        if (!mail) return { kind: 'password', password }
+        try {
+          const token = await createInvite(db, user.id)
+          const link = `${mail.cabinetUrl.replace(/\/+$/, '')}/invite?token=${token}`
+          await mail.send(inviteLetter(kind, { ...user, company: req.identity!.companyName }, link))
+          return { kind: 'email', sentTo: user.email }
+        } catch (error) {
+          req.log.error({ err: error }, 'приглашение не отправлено')
+          return { kind: 'password', password }
+        }
+      }
+
       admin.get('/admin/users', async (req) => listUsers(db, companyOf(req)))
 
       admin.post('/admin/users', async (req, reply) =>
@@ -375,8 +437,9 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
             target: { kind: 'user', id: user.id, label: user.name },
             changes: auditChanges({}, userView(user)),
           })
-          // No mail server yet: the administrator passes the one-time password on.
-          const created: UserCreated = { user, delivery: { kind: 'password', password } }
+          // With mail, a link to set their own password; without, the one-time password.
+          const delivery = await deliver(req, user, 'welcome', password)
+          const created: UserCreated = { user, delivery }
           return reply.code(201).send(created)
         }),
       )
@@ -419,7 +482,7 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
               target: { kind: 'user', id: user.id, label: user.name },
               changes: [],
             })
-            return { kind: 'password', password }
+            return deliver(req, user, 'reset', password)
           }),
       )
 

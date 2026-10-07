@@ -37,7 +37,7 @@ export function AuthFrame({
           <p className="mt-1.5 mb-7 text-ui text-ink-muted">{lead}</p>
           {children}
 
-          <p className="mt-8 text-label text-ink-muted">{footer}</p>
+          {footer && <p className="mt-8 text-label text-ink-muted">{footer}</p>}
         </div>
       </section>
 

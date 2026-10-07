@@ -246,6 +246,36 @@ export async function changePassword(
   }
 }
 
+/**
+ * Sets the password the person chose through an invitation link and signs them
+ * in: every other session ends, as on a change.
+ */
+export async function setOwnPassword(
+  db: Db,
+  secret: string,
+  userId: string,
+  password: string,
+  now = new Date(),
+): Promise<{ identity: Identity; accessToken: string; refreshToken: string }> {
+  const problem = passwordProblem(password)
+  if (problem) throw new AuthRejected(400, problem)
+  const { rows } = await db.query<IdentityRow>(`${IDENTITY} where u.id = $1`, [userId])
+  const row = rows[0]
+  if (!row || !row.active)
+    throw new AuthRejected(409, 'Доступ отключён — обратитесь к администратору компании')
+  await db.query(
+    'update users set password_hash = $2, must_change_password = false where id = $1',
+    [userId, await hashPassword(password)],
+  )
+  await revokeSessions(db, userId, now)
+  const identity = { ...identityOf(row), mustChangePassword: false }
+  return {
+    identity,
+    accessToken: issueAccess(identity, secret, now),
+    refreshToken: (await openSession(db, userId, now)).token,
+  }
+}
+
 /** Adds a user, and their company when it is new (by its 1С client). */
 export async function addUser(
   db: Db,

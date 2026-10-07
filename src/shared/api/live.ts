@@ -15,6 +15,8 @@ export const LIVE_ROUTES = [
   ['post', '/auth/refresh'],
   ['post', '/auth/logout'],
   ['post', '/auth/password'],
+  ['get', '/auth/invite'],
+  ['post', '/auth/invite'],
   ['get', '/me'],
   ['get', '/admin/users'],
   ['post', '/admin/users'],

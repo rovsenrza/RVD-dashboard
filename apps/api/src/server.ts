@@ -26,6 +26,8 @@ const scan = config.CLAMAV_HOST ? clamav(config.CLAMAV_HOST, config.CLAMAV_PORT)
 // Requests go to 1С through its order service; without one configured they wait in the queue.
 let outbox: { kick: () => void } | null = null
 let sync: SyncScheduler | null = null
+// Letters (question 7): one sender for invitations, digests and messages to the specialist.
+const mailer = config.SMTP_URL ? smtpMailer(config.SMTP_URL, config.MAIL_FROM) : null
 const app = buildApp({
   logLevel: config.LOG_LEVEL,
   db,
@@ -37,6 +39,11 @@ const app = buildApp({
   requests: { clientKey: config.CABINET_CLIENT_KEY, onCreated: () => outbox?.kick() },
   sync: { kick: () => sync?.kick(), running: () => sync?.running() ?? false },
   files: { store: files, scan, publicPath: config.PUBLIC_API_PATH },
+  // Invitations need the cabinet's address for their links; without it, one-time passwords.
+  mail:
+    mailer && config.CABINET_URL
+      ? { send: mailer.send, cabinetUrl: config.CABINET_URL }
+      : undefined,
 })
 if (!config.CLAMAV_HOST)
   app.log.warn('ClamAV не задан (CLAMAV_HOST): из вредоносных файлов ловится только тестовый EICAR')
@@ -57,8 +64,8 @@ if (config.ONEC_ORDERS_URL) {
   outbox = startOutbox(db, orders, config.OUTBOX_INTERVAL_MS, (error) => app.log.error(error))
 }
 // Letters (Д19, question 7): only with the customer's SMTP; without it nothing is sent or marked sent.
-if (config.SMTP_URL)
-  startMail(db, smtpMailer(config.SMTP_URL, config.MAIL_FROM), {
+if (mailer)
+  startMail(db, mailer, {
     intervalMs: 60_000,
     supportTo: config.SUPPORT_EMAIL,
     digestHour: config.NOTIFY_HOUR,

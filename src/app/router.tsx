@@ -18,6 +18,12 @@ const blank = <></>
 
 export const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
+  // An invitation or reset link from a letter (with mail): outside the shell, like sign-in.
+  {
+    path: '/invite',
+    hydrateFallbackElement: blank,
+    lazy: page(() => import('@/features/auth/InvitePage'), 'InvitePage'),
+  },
   // Paper: outside the app shell, so nothing but the report reaches the printer.
   {
     path: '/reports/print',

@@ -381,6 +381,29 @@ export const handlers = [
     const delivery: PasswordDelivery = { kind: 'email', sentTo: user.email }
     return HttpResponse.json(delivery)
   }),
+  // An invitation link (with mail): the demo answers for any token but «expired».
+  http.get(api('/auth/invite'), ({ request }) => {
+    const token = new URL(request.url).searchParams.get('token')
+    return !token || token === 'expired'
+      ? HttpResponse.json(
+          {
+            message:
+              'Ссылка недействительна или устарела — попросите администратора прислать новую',
+          },
+          { status: 404 },
+        )
+      : HttpResponse.json({
+          name: users[1]?.name ?? users[0].name,
+          email: users[1]?.email ?? users[0].email,
+        })
+  }),
+  http.post(api('/auth/invite'), async ({ request }) => {
+    const { password } = (await request.json()) as { password?: string }
+    const problem = passwordProblem(password ?? '')
+    return problem
+      ? HttpResponse.json({ message: problem }, { status: 400 })
+      : HttpResponse.json({}, { status: 200 })
+  }),
   // One's own password: the demo checks the new one by the real rule and keeps nothing.
   http.post(api('/auth/password'), async ({ request }) => {
     const { current, next } = (await request.json()) as PasswordChange

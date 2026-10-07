@@ -25,6 +25,7 @@ import type {
   ServiceRequest,
   SupportMessage,
   SyncStatus,
+  SignedIn,
   EquipmentPatch,
   InstallationPatch,
   NewSupportMessage,
@@ -350,6 +351,23 @@ export const useResetPassword = () => {
 
 export const useBranchSummaries = () =>
   useQuery({ queryKey: keys.branches, queryFn: () => api.get<BranchSummary[]>('/admin/branches') })
+
+/** Who an invitation link is for (with mail, question 7); a spent or old link answers 404. */
+export const useInvite = (token: string) =>
+  useQuery({
+    queryKey: ['invite', token],
+    queryFn: () =>
+      api.get<{ name: string; email: string }>(`/auth/invite?token=${encodeURIComponent(token)}`),
+    enabled: token.length > 0,
+    retry: false,
+  })
+
+/** Sets the person's own password from the link; the server signs them in (the refresh cookie). */
+export const useAcceptInvite = () =>
+  useMutation({
+    mutationFn: (body: { token: string; password: string }) =>
+      api.post<SignedIn>('/auth/invite', body),
+  })
 
 /** Company settings are the administrator's; `enabled` keeps other roles from asking. */
 export const useSettings = (enabled = true) =>
