@@ -13,6 +13,19 @@
 
 Шаблоны — в `deploy/`: `api.Dockerfile`, `web.Dockerfile`, `nginx.conf`, `docker-compose.prod.yml`. Сборка проверена локально целиком: вход через nginx, реестр, загрузка фото с миниатюрой, подписанные ссылки на файлы, отчёты.
 
+## Сайт на хостинге заказчика (Beget)
+
+С 2026-10-07 сайт живёт на виртуальном хостинге Beget — `clientrvd.vgiz.ru`; доступ — SFTP/SSH к папке сайта (без панели). Публикация одной командой (доступ берётся из `.env`: `BEGET_HOST`, `BEGET_USER`, `BEGET_PASS`, `BEGET_DIR`):
+
+```sh
+scripts/deploy-beget.sh                                             # демо на моках
+VITE_API_BASE_URL=https://api.clientrvd.vgiz.ru scripts/deploy-beget.sh live   # с настоящим API
+```
+
+Скрипт собирает приложение и зеркалирует `dist/` в папку сайта (лишнее там удаляется, кроме `cgi-bin/`). `public/.htaccess` даёт Apache переходы по адресам приложения, кэш и те же заголовки безопасности, что `deploy/nginx.conf`; в режиме live скрипт добавляет адрес API в CSP.
+
+На этом хостинге нет Node.js, PostgreSQL, Docker и cron (фоновые процессы — только через панель Beget), поэтому **API и база должны жить отдельно** — например, VPS с `deploy/docker-compose.prod.yml` под поддоменом `api.clientrvd.vgiz.ru`: поддомен того же сайта нужен, чтобы refresh-cookie (SameSite=Lax) доходил до API. У API тогда: `CORS_ORIGIN=https://clientrvd.vgiz.ru`, `PUBLIC_API_PATH=https://api.clientrvd.vgiz.ru`, `COOKIE_SECURE=true`. HTTPS для `clientrvd.vgiz.ru` включает владелец панели Beget (Let's Encrypt).
+
 ## Первый запуск
 
 1. Docker и Docker Compose на сервере; доступ сервера к OData 1С (отдельный пользователь 1С только на чтение; при необходимости IP в белом списке 1С).

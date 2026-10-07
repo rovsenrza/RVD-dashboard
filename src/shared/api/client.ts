@@ -5,6 +5,11 @@ import type { SignedIn } from '@/entities/types'
  * adapters in ./adapters change — feature hooks keep the same signatures.
  */
 const BASE_URL = import.meta.env.VITE_API_BASE_URL?.trim() || '/api'
+/**
+ * The refresh cookie goes with every call even when the API lives on its own origin
+ * (the customer's hosting serves the site only); on the same origin this changes nothing.
+ */
+const CREDENTIALS: RequestCredentials = 'include'
 
 export class ApiError extends Error {
   status: number
@@ -26,7 +31,7 @@ let renewing: Promise<SignedIn | null> | null = null
 let expired: (() => void) | null = null
 
 const renew = () =>
-  (renewing ??= fetch(`${BASE_URL}/auth/refresh`, { method: 'POST' })
+  (renewing ??= fetch(`${BASE_URL}/auth/refresh`, { method: 'POST', credentials: CREDENTIALS })
     .then(async (res) => {
       if (!res.ok) return null
       const me = (await res.json()) as SignedIn
@@ -54,7 +59,7 @@ export const authToken = {
 async function send(url: string, init?: RequestInit, again = true): Promise<Response> {
   const headers = new Headers(init?.headers)
   if (accessToken) headers.set('Authorization', `Bearer ${accessToken}`)
-  const res = await fetch(url, { ...init, headers })
+  const res = await fetch(url, { ...init, headers, credentials: CREDENTIALS })
   if (res.status === 401 && again && accessToken && !url.includes('/auth/')) {
     if (await renew()) return send(url, init, false)
     accessToken = null
