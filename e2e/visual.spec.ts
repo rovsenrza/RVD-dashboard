@@ -44,6 +44,7 @@ const DESKTOP: { name: string; path: string; role?: Role; themes: ('light' | 'da
   { name: 'admin-users', path: '/admin', role: 'admin', themes: ['light'] },
   { name: 'admin-settings', path: '/admin?tab=settings', role: 'admin', themes: ['light'] },
   { name: 'admin-audit', path: '/admin?tab=audit', role: 'admin', themes: ['light'] },
+  { name: 'help', path: '/help', themes: ['light', 'dark'] },
 ]
 
 test.describe('desktop', () => {
@@ -73,6 +74,7 @@ test.describe('phone', () => {
     ['dashboard', '/'],
     ['products', '/products'],
     ['product', '/products/p-4'],
+    ['help', '/help'],
   ] as const)
     test(`${name} · phone`, async ({ page }) => {
       await open(page, path, 'light')

@@ -2,12 +2,15 @@ import path from 'node:path'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { defineConfig, loadEnv } from 'vite'
+import pkg from './package.json' with { type: 'json' }
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_')
   return {
     plugins: [react(), tailwindcss()],
+    // The rail shows it; one place to bump at a release.
+    define: { __APP_VERSION__: JSON.stringify(pkg.version) },
     resolve: {
       alias: { '@': path.resolve(__dirname, 'src') },
     },

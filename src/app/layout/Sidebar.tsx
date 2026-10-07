@@ -15,6 +15,7 @@ import {
 } from 'lucide-react'
 import { useSession } from '@/app/session'
 import { cn } from '@/shared/lib/utils'
+import { APP_VERSION } from '@/shared/lib/version'
 import { Button } from '@/shared/ui'
 import { SyncFooter } from './SyncStatus'
 
@@ -39,6 +40,14 @@ const REPORTS_NAV: NavItem = { to: '/reports', label: 'Отчёты', icon: File
 const COMPARE_NAV: NavItem = { to: '/compare', label: 'Сравнение техники', icon: Scale }
 /** Users and settings belong to the administrator; the other roles never see the entry. */
 const ADMIN_NAV: NavItem = { to: '/admin', label: 'Администрирование', icon: ShieldCheck }
+
+const navClass = ({ isActive }: { isActive: boolean }) =>
+  cn(
+    'flex h-10 items-center gap-3 rounded-lg px-3 text-ui transition-colors duration-150',
+    isActive
+      ? 'bg-brand font-medium text-on-brand'
+      : 'text-rail-muted hover:bg-rail-hover hover:text-rail-ink',
+  )
 
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { user, demo } = useSession()
@@ -69,20 +78,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
 
         <nav className="flex-1 space-y-0.5 px-3 pt-2">
           {nav.map(({ to, label, icon: Icon, end }) => (
-            <NavLink
-              key={to}
-              to={to}
-              end={end}
-              onClick={onClose}
-              className={({ isActive }) =>
-                cn(
-                  'flex h-10 items-center gap-3 rounded-lg px-3 text-ui transition-colors duration-150',
-                  isActive
-                    ? 'bg-brand font-medium text-on-brand'
-                    : 'text-rail-muted hover:bg-rail-hover hover:text-rail-ink',
-                )
-              }
-            >
+            <NavLink key={to} to={to} end={end} onClick={onClose} className={navClass}>
               <Icon size={17} strokeWidth={1.75} />
               {label}
             </NavLink>
@@ -90,16 +86,13 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
         </nav>
 
         <div className="space-y-0.5 px-3 pb-4">
-          <a
-            href="#help"
-            className="flex h-10 items-center gap-3 rounded-lg px-3 text-ui text-rail-muted hover:bg-rail-hover hover:text-rail-ink"
-          >
+          <NavLink to="/help" onClick={onClose} className={navClass}>
             <LifeBuoy size={17} strokeWidth={1.75} />
             Помощь
-          </a>
+          </NavLink>
           <div className="pt-2 pr-1 pl-3 text-caption leading-5 text-rail-muted/80">
             <SyncFooter />
-            <div>{demo ? 'Демо-режим · v0.2' : 'v0.2'}</div>
+            <div>{demo ? `Демо-режим · v${APP_VERSION}` : `v${APP_VERSION}`}</div>
           </div>
         </div>
       </aside>
