@@ -1,0 +1,8 @@
+# The cabinet's front door (q. 8): with SITE_ADDRESS a domain name, HTTPS with a Let's Encrypt
+# certificate Caddy gets and renews itself, and HTTP redirected to it; with ":80", plain HTTP.
+# Everything goes on to nginx (web), which serves the app and passes /api to the API.
+{$SITE_ADDRESS} {
+	encode zstd gzip
+	header Strict-Transport-Security "max-age=31536000"
+	reverse_proxy web:80
+}
