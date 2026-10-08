@@ -35,6 +35,16 @@ const LIFECYCLE: Record<string, ProductLifecycle> = {
   Списан: 'written_off',
 }
 
+/** How far along a stage is; `needs_replacement` is the cabinet's own and never comes from 1С. */
+const REACHED: Record<ProductLifecycle, number> = {
+  manufacturing: 0,
+  in_stock: 1,
+  shipped: 2,
+  in_operation: 3,
+  needs_replacement: 3,
+  written_off: 4,
+}
+
 /** Whether the cabinet knows a register status; an unknown one (a repair line, say) is an event, not a stage. */
 export const isKnownStatus = (status: string | null | undefined) =>
   Object.hasOwn(LIFECYCLE, cleanText(status))
@@ -82,9 +92,9 @@ const lastWith = (records: RawStatusRecord[], status: string) =>
 
 /**
  * 1С keeps no dates on the item itself: shipment and installation are when the
- * statuses register recorded «Отгружен» and «ВЭксплуатации», the stage is its
- * latest record, the machine is the item's owner, health is computed here
- * (docs/1c/mapping.md).
+ * statuses register recorded «Отгружен» and «ВЭксплуатации» — as long as the
+ * hose has not gone back from there —, the stage is its latest record, the
+ * machine is the item's owner, health is computed here (docs/1c/mapping.md).
  */
 export function toProducts(src: ProductSources, options: ProductOptions = {}): Product[] {
   const rules = options.rules ?? DEFAULT_RULES
@@ -105,12 +115,19 @@ export function toProducts(src: ProductSources, options: ProductOptions = {}): P
       const cat = isRef(item.КаталожныйНомер_Key)
         ? catalog.get(item.КаталожныйНомер_Key)
         : undefined
-      const shippedAt = dateOnly(lastWith(history, 'Отгружен')?.Period)
-      const installedAt = dateOnly(lastWith(history, 'ВЭксплуатации')?.Period)
       // The stage is the latest status the cabinet knows. A status 1С adds later — the
       // repair line of its new package, say — records an event and must not move the hose.
       const stage = [...history].reverse().find((r) => isKnownStatus(r.Статус))
       const lifecycle = LIFECYCLE[cleanText(stage?.Статус)] ?? 'manufacturing'
+      // 1С takes hoses back: in the working base 291 went from «ВЭксплуатации» to «НаСкладе»
+      // (163 on 1 September). A hose in the warehouse has no installation to count from.
+      const reached = REACHED[lifecycle]
+      const shippedAt =
+        reached >= REACHED.shipped ? dateOnly(lastWith(history, 'Отгружен')?.Period) : null
+      const installedAt =
+        reached >= REACHED.in_operation
+          ? dateOnly(lastWith(history, 'ВЭксплуатации')?.Period)
+          : null
       // The item names its machine from the order on, while still in the warehouse (the
       // order's target); it sits on it only from shipment on.
       const onMachine = lifecycle === 'shipped' || lifecycle === 'in_operation'

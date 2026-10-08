@@ -42,7 +42,9 @@ export function findDiscrepancies(src: DiscrepancySources): Discrepancy[] {
 
   for (const item of src.items) {
     if (item.DeletionMark) continue
-    const at = `Изделие ${displayCode(item.Code)}:`
+    // 1С has two series of codes (9 and 20 digits) that share 256 numbers across clients:
+    // the number alone does not name the hose, the number and its client do.
+    const at = `Изделие ${displayCode(item.Code)} (${client(item.Клиент_Key)}):`
     const add = (kind: DiscrepancyKind, values: [string, string], text: string) =>
       found.push({
         key: [kind, item.Ref_Key, ...values].join(':'),
@@ -56,7 +58,7 @@ export function findDiscrepancies(src: DiscrepancySources): Discrepancy[] {
       add(
         'machine_client',
         [item.Клиент_Key, owner],
-        `${at} клиент изделия ${client(item.Клиент_Key)}, а его техника ${machine(item.Owner_Key)} записана на клиента ${client(owner)}`,
+        `${at} его техника ${machine(item.Owner_Key)} записана на клиента ${client(owner)}`,
       )
 
     const release = (histories.get(item.Ref_Key) ?? [])
@@ -79,7 +81,7 @@ export function findDiscrepancies(src: DiscrepancySources): Discrepancy[] {
       add(
         'release_client',
         [item.Клиент_Key, release.Клиент_Key],
-        `${at} в изделии клиент ${client(item.Клиент_Key)}, а ${doc} — ${client(release.Клиент_Key)}`,
+        `${at} ${doc} клиент ${client(release.Клиент_Key)}`,
       )
   }
   return found

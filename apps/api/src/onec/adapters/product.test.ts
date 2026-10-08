@@ -105,6 +105,28 @@ describe('dates and lifecycle come from the statuses register', () => {
     expect(p).toMatchObject({ installedAt: null, lifecycle: 'shipped' })
   })
 
+  it('forgets a shipment and an installation the hose went back from', () => {
+    const back = [
+      chain[1],
+      chain[2],
+      statusRecord({ Recorder: 'd', Period: '2026-09-01T10:00:00', Статус: 'НаСкладе' }),
+    ]
+    expect(one({ statuses: back })).toMatchObject({
+      lifecycle: 'in_stock',
+      shippedAt: null,
+      installedAt: null,
+    })
+    const again = [
+      ...back,
+      statusRecord({ Recorder: 'e', Period: '2026-09-10T10:00:00', Статус: 'Отгружен' }),
+    ]
+    expect(one({ statuses: again })).toMatchObject({
+      lifecycle: 'shipped',
+      shippedAt: '2026-09-10',
+      installedAt: null,
+    })
+  })
+
   it('orders the records of one moment by their line in the document', () => {
     const same = '2026-05-05T10:00:00'
     const p = one({
