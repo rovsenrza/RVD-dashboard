@@ -6,14 +6,13 @@ import {
   type ProductStatus,
   type StatusRules,
 } from '@rvd/contracts'
-import type { RawClient, RawEquipment, RawNamed } from '../raw.ts'
+import type { RawEquipment, RawNamed } from '../raw.ts'
 import { byKey, cleanText, isPlaceholderMachine, isRef, orNull } from './common.ts'
 
 export interface EquipmentSources {
   equipment: RawEquipment[]
   brands: RawNamed[]
   types: RawNamed[]
-  clients: RawClient[]
   /** Already adapted, so each machine's hoses and dates agree with the registry. */
   products: Product[]
   rules?: StatusRules
@@ -31,7 +30,6 @@ export function toEquipment(src: EquipmentSources): Equipment[] {
   const rules = src.rules ?? DEFAULT_RULES
   const brands = byKey(src.brands, (b) => b.Ref_Key)
   const types = byKey(src.types, (t) => t.Ref_Key)
-  const clients = byKey(src.clients, (c) => c.Ref_Key)
 
   const onMachine = new Map<string, Product[]>()
   for (const p of src.products) {
@@ -51,7 +49,8 @@ export function toEquipment(src: EquipmentSources): Equipment[] {
         .sort()
       return {
         id: e.Ref_Key,
-        branchId: clients.get(e.Owner_Key)?.Филиал_Key ?? '',
+        // A branch of the client company is one of its 1С clients — the machine's owner.
+        branchId: e.Owner_Key,
         type: isRef(e.Тип_Key) ? cleanText(types.get(e.Тип_Key)?.Description) : '',
         brand: isRef(e.Марка_Key) ? cleanText(brands.get(e.Марка_Key)?.Description) : '',
         // The model catalogue is not published yet; the garage number names the machine meanwhile.

@@ -46,7 +46,7 @@ const whereOf = (conditions: string[]) =>
  */
 export async function listProducts(
   db: Db,
-  query: ProductListQuery,
+  query: ProductListQuery & { clients?: string[] },
   clock: Clock,
 ): Promise<ProductPage> {
   const params: unknown[] = [
@@ -66,7 +66,8 @@ export async function listProducts(
   if (query.lifecycle) add('lifecycle = ?', query.lifecycle)
   if (query.equipment) add('equipment_id = ?', query.equipment)
   if (query.catalog) add('catalog_number_id = ?', query.catalog)
-  if (query.branch) add('branch_id = ?', query.branch)
+  // A branch is one of the company's 1С clients: the route turns `branch` into `clients`.
+  if (query.clients) add('client_id = any(?)', query.clients)
   if (query.client) add('client_id = ?', query.client)
   if (query.installed === '1') where.push('installed_at is not null')
   if (query.installed === '0') where.push('installed_at is null')
@@ -104,24 +105,24 @@ export async function listProducts(
   }
 }
 
-/** One hose; with `client`, only if it is that client's — anyone else's is as absent as a typo. */
+/** One hose; with `clients`, only if it is one of theirs — anyone else's is as absent as a typo. */
 export async function getProduct(
   db: Db,
   id: string,
   clock: Clock,
-  client?: string,
+  clients?: string[],
 ): Promise<Product | null> {
   const { rows } = await db.query<{ product: Product }>(
     `with p as (select products.*, ${STATUS_SQL} as status from products)
      select data || jsonb_build_object('status', status) as product from p
-     where id = $5 and ($6::text is null or client_id = $6)`,
+     where id = $5 and ($6::text[] is null or client_id = any($6))`,
     [
       clock.today,
       clock.rules.warnRule,
       clock.rules.warnPercent,
       clock.rules.warnDays,
       id,
-      client ?? null,
+      clients ?? null,
     ],
   )
   return rows[0]?.product ?? null

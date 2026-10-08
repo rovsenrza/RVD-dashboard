@@ -34,6 +34,7 @@ export interface Session {
 
 const AUTH_KEY = 'rvd.session'
 const ROLE_KEY = 'rvd.role'
+const BRANCH_KEY = 'rvd.branch'
 
 const SessionContext = createContext<Session | null>(null)
 
@@ -64,6 +65,24 @@ const writeAuth = (on: boolean) => {
     else localStorage.removeItem(AUTH_KEY)
   } catch {
     // Private mode or blocked storage: the session simply will not survive a reload.
+  }
+}
+
+/** The branch last picked in the header; checked against the person's branches before use. */
+const readBranch = (): string | null => {
+  try {
+    return localStorage.getItem(BRANCH_KEY)
+  } catch {
+    return null
+  }
+}
+
+const writeBranch = (id: string | null) => {
+  try {
+    if (id) localStorage.setItem(BRANCH_KEY, id)
+    else localStorage.removeItem(BRANCH_KEY)
+  } catch {
+    // Storage blocked: the choice lasts until reload.
   }
 }
 
@@ -140,9 +159,10 @@ const NO_USER = { id: '', name: '', role: 'engineer' as Role }
 /**
  * The live session (Д6): the access token stays in memory, a reload keeps the
  * sign-in through the refresh cookie, and the company is whatever the token
- * says. 1С knows no branches of the client yet, so there are none to pick.
- * Signing in or out drops every cached answer: the next company must never
- * glimpse the last one's hoses.
+ * says. Its branches are the person's — the company's 1С clients, or the ones
+ * the administrator bound them to: one of them is simply in scope, several can
+ * be picked between or all taken together. Signing in or out drops every cached
+ * answer: the next company must never glimpse the last one's hoses.
  */
 function LiveSessionProvider({ children }: { children: ReactNode }) {
   const queries = useQueryClient()
@@ -150,6 +170,7 @@ function LiveSessionProvider({ children }: { children: ReactNode }) {
     ready: false,
     me: null,
   })
+  const [branchId, setBranchId] = useState<string | null>(readBranch)
 
   useEffect(() => {
     let alive = true
@@ -168,8 +189,10 @@ function LiveSessionProvider({ children }: { children: ReactNode }) {
     }
   }, [queries])
 
-  const value = useMemo<Session>(
-    () => ({
+  const value = useMemo<Session>(() => {
+    const branches = state.me?.branches ?? []
+    const role = state.me?.user.role ?? NO_USER.role
+    return {
       ready: state.ready,
       authenticated: state.me !== null,
       demo: false,
@@ -177,10 +200,15 @@ function LiveSessionProvider({ children }: { children: ReactNode }) {
         ? { id: state.me.user.id, name: state.me.user.name, role: state.me.user.role }
         : NO_USER,
       company: state.me?.company ?? { id: '', name: '' },
-      branches: [],
-      branch: null,
-      branchLocked: false,
-      setBranchId: () => {},
+      branches,
+      // One branch is the scope itself; of several, the one picked last, if still theirs.
+      branch:
+        branches.length === 1 ? branches[0] : (branches.find((b) => b.id === branchId) ?? null),
+      branchLocked: isBranchBound(role),
+      setBranchId: (id) => {
+        writeBranch(id)
+        setBranchId(id)
+      },
       setRole: () => {},
       signIn: async (email, password) => {
         const me = await api.post<SignedIn>('/auth/login', { email, password })
@@ -201,9 +229,8 @@ function LiveSessionProvider({ children }: { children: ReactNode }) {
         authToken.set(me.accessToken)
         setState({ ready: true, me })
       },
-    }),
-    [state, queries],
-  )
+    }
+  }, [state, queries, branchId])
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
 }

@@ -5,18 +5,20 @@ import type { Db } from '../db/pool.ts'
  * Swaps from 1С: a new hose naming the one it replaces (`ЗаменяемоеИзделие_Key`). A swap
  * counts once the new hose has left the supplier and is dated by its installation, else its
  * shipment — the clock everything else runs on; before that it is an order in progress and
- * shows under «Заявки». Both hoses must be the same client's: 1С holds a link across
- * clients, and a company must not read another's serial numbers. `client` is the
- * placeholder of the client parameter in the query that uses it.
+ * shows under «Заявки». Both hoses must be the reader's — their branches' clients, so a
+ * swap may cross branches of one company; with no reader, one client's: 1С holds a link
+ * across clients, and a company must not read another's serial numbers. `clients` is the
+ * placeholder of the clients parameter in the query that uses it.
  */
-const swaps = (client: string) => `swaps as (
+const swaps = (clients: string) => `swaps as (
   select n.id, o.id as old_id, o.serial_number as old_serial, n.serial_number as new_serial,
     coalesce(n.equipment_id, o.equipment_id) as equipment_id,
     coalesce(n.installed_at, n.shipped_at) as date
   from products n
-  join products o on o.id = n.replaced_product_id and o.client_id = n.client_id
+  join products o on o.id = n.replaced_product_id
+    and ((${clients}::text[] is null and o.client_id = n.client_id) or o.client_id = any(${clients}))
   where n.replaced_product_id is not null and coalesce(n.installed_at, n.shipped_at) is not null
-    and (${client}::text is null or n.client_id = ${client})
+    and (${clients}::text[] is null or n.client_id = any(${clients}))
 )`
 
 interface Row {
@@ -31,7 +33,7 @@ interface Row {
 
 /** Which swaps to list; each narrows the client's journal. */
 export interface ReplacementFilter {
-  client?: string
+  clients?: string[]
   /** Swaps this hose took part in, as the one taken off or the one put on */
   product?: string
   /** Swaps on this machine */
@@ -51,7 +53,7 @@ export async function listReplacements(
      where ($2::text is null or s.id = $2 or s.old_id = $2)
        and ($3::text is null or s.equipment_id = $3)
      order by s.date desc, s.id`,
-    [filter.client ?? null, filter.product ?? null, filter.equipment ?? null],
+    [filter.clients ?? null, filter.product ?? null, filter.equipment ?? null],
   )
   return rows.map((r) => ({
     id: r.id,
@@ -84,7 +86,7 @@ export interface ReplacementTotals {
 export async function replacementTotals(
   db: Db,
   today: string,
-  client?: string,
+  clients?: string[],
   days = 30,
 ): Promise<ReplacementTotals> {
   const {
@@ -101,7 +103,7 @@ export async function replacementTotals(
               order by m)
           from generate_series(date_trunc('month', $1::date) - interval '11 months',
                                date_trunc('month', $1::date), interval '1 month') m) as by_month`,
-    [today, client ?? null, days],
+    [today, clients ?? null, days],
   )
   return { inPeriod: t.lately, delta: t.lately - t.before, byMonth: t.by_month }
 }

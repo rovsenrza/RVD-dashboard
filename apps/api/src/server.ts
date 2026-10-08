@@ -33,9 +33,7 @@ const app = buildApp({
   db,
   trustProxy: config.TRUST_PROXY,
   corsOrigins: config.CORS_ORIGIN.split(',').map((o) => o.trim()),
-  auth: secret
-    ? { secret, secureCookie: config.COOKIE_SECURE }
-    : { demo: { ...DEMO_IDENTITY, clientKey: config.CABINET_CLIENT_KEY ?? '' } },
+  auth: secret ? { secret, secureCookie: config.COOKIE_SECURE } : { demo: DEMO_IDENTITY },
   requests: { clientKey: config.CABINET_CLIENT_KEY, onCreated: () => outbox?.kick() },
   sync: { kick: () => sync?.kick(), running: () => sync?.running() ?? false },
   files: { store: files, scan, publicPath: config.PUBLIC_API_PATH },

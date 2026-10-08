@@ -20,8 +20,8 @@ export type Prefs = Pick<NotificationPrefs, 'kinds' | 'email'>
 export interface Reader {
   /** The signed-in person; null without sign-in — then nothing is ever read */
   userId: string | null
-  /** The company's 1С client; undefined — every client (no sign-in, no client configured) */
-  client?: string
+  /** The person's branches — 1С clients; undefined — every client (no sign-in, no client configured) */
+  clients?: string[]
   /** The company's lead days (settings) */
   leadDays: number[]
   /** The company's inspection interval, days; 0 — no inspection notices */
@@ -81,13 +81,13 @@ export async function listNotifications(
        'YYYY-MM-DD') as since`,
     [today, reader.userId],
   )
-  const params = [today, reader.client ?? null, reader.leadDays, since]
+  const params = [today, reader.clients ?? null, reader.leadDays, since]
   const { rows: hoses } = await db.query<HoseRow>(
     `with p as (
-       select id, serial_number, equipment_id, branch_id, warranty_days, service_life_days,
+       select id, serial_number, equipment_id, client_id as branch_id, warranty_days, service_life_days,
          coalesce(installed_at, shipped_at) as start
        from products
-       where ($2::text is null or client_id = $2) and lifecycle <> 'written_off'
+       where ($2::text[] is null or client_id = any($2)) and lifecycle <> 'written_off'
          and coalesce(installed_at, shipped_at) is not null
      ),
      f as (
@@ -109,10 +109,10 @@ export async function listNotifications(
   const { rows: machines } = reader.inspectionDays
     ? await db.query<MachineRow>(
         `with m as (
-           select e.id, e.garage_number, e.branch_id, count(*)::int as hoses,
+           select e.id, e.garage_number, e.client_id as branch_id, count(*)::int as hoses,
              min(coalesce(p.installed_at, p.shipped_at)) as start
            from equipment e join products p on p.equipment_id = e.id
-           where ($2::text is null or e.client_id = $2) and p.client_id = e.client_id
+           where ($2::text[] is null or e.client_id = any($2)) and p.client_id = e.client_id
              and p.lifecycle <> 'written_off' and coalesce(p.installed_at, p.shipped_at) is not null
            group by e.id
          )
@@ -121,17 +121,17 @@ export async function listNotifications(
          from m cross join lateral generate_series(
            greatest(1, ceil(($3::date - m.start)::numeric / $4::int)::int),
            floor(($1::date - m.start)::numeric / $4::int)::int) as k`,
-        [today, reader.client ?? null, since, reader.inspectionDays],
+        [today, reader.clients ?? null, since, reader.inspectionDays],
       )
     : { rows: [] }
   const { rows: closed } = await db.query<RequestRow>(
-    `select id, number, status, branch_id, closed_at,
+    `select id, number, status, client_id as branch_id, closed_at,
        case when jsonb_array_length(positions) = 1 then positions -> 0 ->> 'productId' end
          as product_id
      from requests
-     where ($2::text is null or client_id = $2) and status in ('done', 'rejected')
+     where ($2::text[] is null or client_id = any($2)) and status in ('done', 'rejected')
        and closed_at::date between $3::date and $1::date`,
-    [today, reader.client ?? null, since],
+    [today, reader.clients ?? null, since],
   )
   const read = await readIds(db, reader.userId)
 

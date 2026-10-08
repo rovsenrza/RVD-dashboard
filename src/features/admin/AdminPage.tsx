@@ -16,13 +16,13 @@ const TABS: { key: Tab; label: string }[] = [
   { key: 'import', label: 'Импорт' },
   { key: 'audit', label: 'Журнал' },
 ]
-const LIVE_TABS = new Set<Tab>(['users', 'settings', 'audit'])
+const LIVE_TABS = new Set<Tab>(['users', 'branches', 'settings', 'audit'])
 
 export function AdminPage() {
   const { user, demo } = useSession()
   const [params, setParams] = useSearchParams()
-  // A live cabinet keeps its users, settings and journal on the server; branches and import
-  // still run on the demo's data there, so they join as the server takes each over.
+  // A live cabinet keeps its users, branches, settings and journal on the server; the import
+  // still runs on the demo's data there and joins once the server takes it over.
   const tabs = demo ? TABS : TABS.filter((t) => LIVE_TABS.has(t.key))
   const tab = tabs.find((t) => t.key === params.get('tab'))?.key ?? 'users'
 

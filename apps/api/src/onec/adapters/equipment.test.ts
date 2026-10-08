@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
-import { clients, equipment, item, release, statusRecord } from '../__fixtures__/builders.ts'
+import { equipment, item, release, statusRecord } from '../__fixtures__/builders.ts'
 import { toEquipment } from './equipment.ts'
 import { toProducts } from './product.ts'
 
@@ -34,7 +34,6 @@ describe('toEquipment', () => {
         catalogNumbers: [],
         components: [],
         equipment: equipmentRows,
-        clients,
       },
       { today: TODAY },
     )
@@ -42,7 +41,6 @@ describe('toEquipment', () => {
       equipment: equipmentRows,
       brands: [{ Ref_Key: 'brand-1', Description: 'FAW' }],
       types: [{ Ref_Key: 'type-1', Description: 'Самосвал' }],
-      clients,
       products,
     })
   }
@@ -56,7 +54,7 @@ describe('toEquipment', () => {
       type: 'Самосвал',
       garageNumber: 'р414вв154',
       inventoryNumber: null,
-      branchId: 'branch-1',
+      branchId: 'client-1',
     })
   })
 
@@ -83,7 +81,6 @@ describe('toEquipment', () => {
       ],
       brands: [],
       types: [],
-      clients,
       products: [],
     })
     expect(machines.map((m) => [m.id, m.garageNumber])).toEqual([

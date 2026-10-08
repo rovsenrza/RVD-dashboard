@@ -18,4 +18,4 @@ export const ROLE_SCOPE: Record<UserRole, string> = {
 }
 
 /** Roles bound to a single branch; the branch switcher is locked for them. */
-export const isBranchBound = (role: UserRole) => role === 'mechanic'
+export { isBranchBound } from '@rvd/contracts'

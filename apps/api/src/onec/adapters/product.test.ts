@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest'
 import { ZERO_GUID } from '../raw.ts'
 import {
   catalogNumber,
-  clients,
   components,
   equipment,
   item,
@@ -21,7 +20,6 @@ const sources = (over: Partial<ProductSources> = {}): ProductSources => ({
   catalogNumbers: [],
   components,
   equipment: [equipment()],
-  clients,
   ...over,
 })
 
@@ -240,9 +238,9 @@ describe('health and ownership', () => {
     expect(one().status).toBe('no_warranty')
   })
 
-  it('links the replaced item and the branch of the customer', () => {
+  it('links the replaced item and the branch — the customer itself', () => {
     const p = one({ items: [item({ ЗаменяемоеИзделие_Key: 'old-1' })] })
-    expect(p).toMatchObject({ replacedProductId: 'old-1', branchId: 'branch-1' })
+    expect(p).toMatchObject({ replacedProductId: 'old-1', branchId: 'client-1' })
     expect(
       one({ items: [item({ ЗаменяемоеИзделие_Key: ZERO_GUID })] }).replacedProductId,
     ).toBeNull()

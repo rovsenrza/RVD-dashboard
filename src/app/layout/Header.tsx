@@ -126,22 +126,36 @@ export function Header({ onMenu }: { onMenu: () => void }) {
 
 function BranchSwitcher() {
   const { company, branch, branches, branchLocked, setBranchId } = useSession()
+  // The branch line: the one in scope, «all» across several, nothing when it is the company itself.
+  const scope = branch
+    ? branch.name !== company.name
+      ? branch.name
+      : null
+    : branches.length > 1
+      ? 'Все филиалы'
+      : null
   const label = (
     <>
       <span className="grid size-8 place-items-center rounded-lg bg-field text-ink-muted">
         <Building2 size={16} strokeWidth={1.75} />
       </span>
       <span className="hidden min-w-0 text-left sm:block">
-        <span className="block truncate text-caption leading-4 text-ink-muted">{company.name}</span>
-        <span className="block truncate text-ui leading-4 font-medium">
-          {branch?.name ?? 'Все филиалы'}
-        </span>
+        {scope ? (
+          <>
+            <span className="block truncate text-caption leading-4 text-ink-muted">
+              {company.name}
+            </span>
+            <span className="block truncate text-ui leading-4 font-medium">{scope}</span>
+          </>
+        ) : (
+          <span className="block truncate text-ui leading-4 font-medium">{company.name}</span>
+        )}
       </span>
     </>
   )
 
-  // Nothing to switch between: a live company has no branches from 1С yet.
-  if (branches.length === 0)
+  // Nothing to switch between: the company is one client in 1С, or the person works in one branch.
+  if (branches.length <= 1)
     return <span className="flex h-10 items-center gap-2.5 rounded-lg px-2">{label}</span>
 
   // A mechanic works inside one branch: show it, but offer nothing to switch.

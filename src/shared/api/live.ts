@@ -22,6 +22,7 @@ export const LIVE_ROUTES = [
   ['post', '/admin/users'],
   ['patch', '/admin/users/:id'],
   ['post', '/admin/users/:id/reset-password'],
+  ['get', '/admin/branches'],
   ['get', '/admin/settings'],
   ['patch', '/admin/settings'],
   ['get', '/admin/audit'],

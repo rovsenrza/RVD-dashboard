@@ -6,7 +6,6 @@ import { addUser } from '../auth/service.ts'
 import type { Db } from '../db/pool.ts'
 import {
   catalogNumber,
-  clients,
   components,
   equipment,
   item,
@@ -75,7 +74,6 @@ describe.skipIf(!hasDb)('the sync keeps up with 1С (Д26)', () => {
     Document_Выпуск: [release({ Ref_Key: DOC })],
     Catalog_Комплектующие: components,
     Catalog_Техника: [equipment()],
-    Catalog_Клиенты: clients,
     Catalog_КаталожныеНомера: [
       catalogNumber(),
       catalogNumber({ Ref_Key: 'cat-gone', DeletionMark: true }),

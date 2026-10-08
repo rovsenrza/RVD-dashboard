@@ -27,10 +27,10 @@ interface Totals {
 export async function dashboardSummary(
   db: Db,
   clock: Clock,
-  client?: string,
+  clients?: string[],
   days = 30,
 ): Promise<DashboardSummary> {
-  const params = [...ruleParams(clock), client ?? null]
+  const params = [...ruleParams(clock), clients ?? null]
   const {
     rows: [t],
   } = await db.query<Totals>(
@@ -39,7 +39,7 @@ export async function dashboardSummary(
          case when coalesce(installed_at, shipped_at) <= $1::date - $6::int
               then ${statusAt('($1::date - $6::int)')} end as status_then,
          installed_at, shipped_at
-       from products where lifecycle <> 'written_off' and ($5::text is null or client_id = $5)
+       from products where lifecycle <> 'written_off' and ($5::text[] is null or client_id = any($5))
      )
      select count(*)::int as shipped_total,
        count(*) filter (where installed_at is not null)::int as in_operation,
@@ -59,7 +59,7 @@ export async function dashboardSummary(
     `with p as (
        select products.*, ${STATUS_SQL} as status, ${PLANNED_AT} as planned_at from products
        where lifecycle <> 'written_off' and equipment_id is not null and service_life_days > 0
-         and ($5::text is null or client_id = $5)
+         and ($5::text[] is null or client_id = any($5))
      )
      select p.id as "productId", p.serial_number as "serialNumber",
        coalesce(e.garage_number, '—') as equipment, to_char(p.planned_at, 'YYYY-MM-DD') as "dueDate"
@@ -69,7 +69,7 @@ export async function dashboardSummary(
      limit 8`,
     params,
   )
-  const swaps = await replacementTotals(db, clock.today, client, days)
+  const swaps = await replacementTotals(db, clock.today, clients, days)
   return {
     shippedTotal: t.shipped_total,
     inOperation: t.in_operation,

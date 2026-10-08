@@ -25,6 +25,7 @@ import {
   WRONG_CURRENT_PASSWORD,
 } from '@rvd/contracts'
 import { hoseLabels, listAudit, recordAudit, type AuditNote } from './admin/audit.ts'
+import { listBranches } from './admin/branches.ts'
 import { companySettings, saveSettings } from './admin/settings.ts'
 import {
   addComment,
@@ -45,6 +46,7 @@ import {
 import {
   AuthRejected,
   changePassword,
+  clientKeysOf,
   login,
   logout,
   readAccess,
@@ -62,6 +64,7 @@ import {
 } from './auth/invites.ts'
 import { attemptLimiter, waitText, type Limiter } from './auth/limiter.ts'
 import {
+  companyBranchNames,
   createUser,
   getUser,
   listUsers,
@@ -149,7 +152,7 @@ export const DEMO_IDENTITY: Identity = {
   role: 'engineer',
   companyId: 'demo',
   companyName: 'Демо-клиент',
-  clientKey: '',
+  branches: [],
   mustChangePassword: false,
 }
 
@@ -172,6 +175,9 @@ const userFields = (body: unknown): Partial<UserDraft> & { active?: boolean } =>
     name: text(b.name),
     email: text(b.email),
     role: text(b.role) as UserRole | undefined,
+    branchIds: Array.isArray(b.branchIds)
+      ? b.branchIds.filter((id): id is string => typeof id === 'string')
+      : undefined,
     active: typeof b.active === 'boolean' ? b.active : undefined,
   }
 }
@@ -246,9 +252,21 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
       return reply.code(403).send({ message: 'Смените пароль, выданный администратором' })
   })
 
-  /** Whose data this request may see: the company's 1С client, or the configured one without sign-in. */
-  const clientOf = (req: FastifyRequest): string | undefined =>
-    (secret ? req.identity?.clientKey : options.requests?.clientKey) || undefined
+  /**
+   * Whose data this request may see: the person's branches — their company's 1С clients —
+   * or, when `?branch=` names one of them, that one alone; a branch that is not theirs
+   * narrows nothing. Without sign-in: the configured client, or everyone's (undefined).
+   */
+  const clientsOf = (req: FastifyRequest): string[] | undefined => {
+    const asked = (req.query as { branch?: unknown } | undefined)?.branch
+    const branch = typeof asked === 'string' && asked ? asked : null
+    if (!secret) {
+      const own = options.requests?.clientKey
+      return own ? [own] : branch ? [branch] : undefined
+    }
+    const mine = req.identity ? clientKeysOf(req.identity) : []
+    return branch && mine.includes(branch) ? [branch] : mine
+  }
 
   /** Today and the asking company's «Внимание» rule (Д22); without sign-in, the defaults. */
   const clockOf = async (req: FastifyRequest): Promise<Clock> => {
@@ -362,8 +380,8 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
     )
 
     app.get('/me', async (req) => {
-      const { user, company, mustChangePassword } = signedIn(req.identity ?? demo, '')
-      return { user, company, mustChangePassword }
+      const { accessToken: _token, ...me } = signedIn(req.identity ?? demo, '')
+      return me
     })
 
     // One's own password: every other sign-in ends, this one goes on with fresh tokens.
@@ -426,6 +444,9 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
 
       admin.get('/admin/users', async (req) => listUsers(db, companyOf(req)))
 
+      // The company's branches — its 1С clients — and what the cabinet holds for each.
+      admin.get('/admin/branches', async (req) => listBranches(db, companyOf(req)))
+
       admin.post('/admin/users', async (req, reply) =>
         answering(reply, async () => {
           const { user, password } = await createUser(
@@ -433,10 +454,14 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
             companyOf(req),
             userFields(req.body) as UserDraft,
           )
+          const names = await companyBranchNames(db, companyOf(req))
           await audit(req, {
             action: 'user.create',
             target: { kind: 'user', id: user.id, label: user.name },
-            changes: auditChanges({}, userView(user)),
+            changes: auditChanges(
+              {},
+              userView(user, (b) => names.get(b) ?? b),
+            ),
           })
           // With mail, a link to set their own password; without, the one-time password.
           const delivery = await deliver(req, user, 'welcome', password)
@@ -455,7 +480,9 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
             req.params.id,
             userFields(req.body),
           )
-          const changes = auditChanges(userView(before), userView(user))
+          const names = await companyBranchNames(db, companyOf(req))
+          const branchName = (b: string) => names.get(b) ?? b
+          const changes = auditChanges(userView(before, branchName), userView(user, branchName))
           // Access switched on or off alone reads as its own action, as in the demo.
           const onlyAccess = changes.length === 1 && changes[0].field === 'Доступ'
           if (changes.length)
@@ -520,19 +547,19 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
       const query = ProductListQuery.safeParse(req.query)
       if (!query.success)
         return reply.code(400).send({ error: 'Bad query', issues: query.error.issues })
-      // Signed in, the company's client wins over whatever the query asks for.
-      const client = secret ? clientOf(req) : (query.data.client ?? clientOf(req))
-      return listProducts(db, { ...query.data, client }, await clockOf(req))
+      // Signed in, the person's branches win over whatever the query asks for.
+      const clients = secret || !query.data.client ? clientsOf(req) : [query.data.client]
+      return listProducts(db, { ...query.data, client: undefined, clients }, await clockOf(req))
     })
 
     app.get<{ Params: { id: string } }>('/products/:id', async (req, reply) => {
-      const product = await getProduct(db, req.params.id, await clockOf(req), clientOf(req))
+      const product = await getProduct(db, req.params.id, await clockOf(req), clientsOf(req))
       return product ?? reply.code(404).send({ error: 'Not found' })
     })
 
     app.get<{ Params: { id: string } }>('/products/:id/lifetime', async (req, reply) => {
       const c = await clockOf(req)
-      const product = await getProduct(db, req.params.id, c, clientOf(req))
+      const product = await getProduct(db, req.params.id, c, clientsOf(req))
       if (!product) return reply.code(404).send({ error: 'Not found' })
       // A plain `null` is a valid answer: no dates, no timeline.
       return reply.type('application/json').send(JSON.stringify(productLifetime(product, c.rules)))
@@ -540,7 +567,7 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
 
     // What the customer alone knows (Д11–Д12): where a hose sits, its own number, notes, messages.
     const scopeOf = async (req: FastifyRequest) => ({
-      client: clientOf(req),
+      clients: clientsOf(req),
       clock: await clockOf(req),
     })
     const hoseTarget = (p: Product) => ({
@@ -670,37 +697,37 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
       const { rows } = await db.query<{ records: unknown[] | null }>(
         `select h.records from products p
            left join product_history h on h.product_id = p.id
-          where p.id = $1 and ($2::text is null or p.client_id = $2)`,
-        [req.params.id, clientOf(req) ?? null],
+          where p.id = $1 and ($2::text[] is null or p.client_id = any($2))`,
+        [req.params.id, clientsOf(req) ?? null],
       )
       if (!rows.length) return reply.code(404).send({ error: 'Not found' })
       return rows[0].records ?? []
     })
 
-    app.get('/equipment', async (req) => listEquipment(db, await clockOf(req), clientOf(req)))
+    app.get('/equipment', async (req) => listEquipment(db, await clockOf(req), clientsOf(req)))
 
     app.get<{ Params: { id: string } }>('/equipment/:id', async (req, reply) => {
-      const machine = await getEquipment(db, req.params.id, await clockOf(req), clientOf(req))
+      const machine = await getEquipment(db, req.params.id, await clockOf(req), clientsOf(req))
       return machine ?? reply.code(404).send({ error: 'Not found' })
     })
 
     app.get<{ Params: { id: string } }>('/equipment/:id/products', async (req) =>
-      equipmentProducts(db, req.params.id, await clockOf(req), clientOf(req)),
+      equipmentProducts(db, req.params.id, await clockOf(req), clientsOf(req)),
     )
 
     // «История замен» (Д16): swaps 1С recorded, read from the hose that names the one it replaced.
-    app.get('/replacements', async (req) => listReplacements(db, { client: clientOf(req) }))
+    app.get('/replacements', async (req) => listReplacements(db, { clients: clientsOf(req) }))
 
     app.get<{ Params: { id: string } }>('/products/:id/replacements', async (req) =>
-      listReplacements(db, { client: clientOf(req), product: req.params.id }),
+      listReplacements(db, { clients: clientsOf(req), product: req.params.id }),
     )
 
     app.get<{ Params: { id: string } }>('/equipment/:id/replacements', async (req) =>
-      listReplacements(db, { client: clientOf(req), equipment: req.params.id }),
+      listReplacements(db, { clients: clientsOf(req), equipment: req.params.id }),
     )
 
     app.get<{ Querystring: { days?: string } }>('/dashboard/summary', async (req) =>
-      dashboardSummary(db, await clockOf(req), clientOf(req), dashboardPeriod(req.query.days)),
+      dashboardSummary(db, await clockOf(req), clientsOf(req), dashboardPeriod(req.query.days)),
     )
 
     // Reports (Д21) and the model comparison (Д15): the manager's and the administrator's.
@@ -715,7 +742,8 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
       async (req, reply) => {
         const day = (v?: string) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null)
         const report = await companyReport(db, req.params.id, await clockOf(req), {
-          client: clientOf(req),
+          clients: clientsOf(req),
+          branches: (req.identity ?? demo).branches,
           companyName: (req.identity ?? demo).companyName,
           from: day(req.query.from),
           to: day(req.query.to),
@@ -736,13 +764,13 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
     // Technical documentation lives in 1С's file storage, which OData does not publish yet:
     // an honest empty list rather than the demo's sample.
     app.get<{ Params: { id: string } }>('/products/:id/documentation', async (req, reply) =>
-      (await getProduct(db, req.params.id, await clockOf(req), clientOf(req)))
+      (await getProduct(db, req.params.id, await clockOf(req), clientsOf(req)))
         ? []
         : reply.code(404).send({ message: 'Изделие не найдено' }),
     )
 
     app.get('/analytics/models', { preHandler: forManagers }, async (req) =>
-      companyModels(db, await clockOf(req), clientOf(req)),
+      companyModels(db, await clockOf(req), clientsOf(req)),
     )
 
     // Notifications (Д19): worked out per person from the cache, the company's lead days and
@@ -754,7 +782,7 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
       const prefs = await notificationPrefs(db, person?.userId ?? null)
       return listNotifications(db, clock().today, {
         userId: person?.userId ?? null,
-        client: clientOf(req),
+        clients: clientsOf(req),
         leadDays: settings.leadDays,
         inspectionDays: settings.inspectionDays,
         kinds: prefs.kinds,
@@ -799,7 +827,7 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
 
     // Requests (Д18): taken here, sent to 1С by the outbox, statuses read back at sync.
     app.get('/requests', async (req) => {
-      const list = await listRequests(db, clientOf(req))
+      const list = await listRequests(db, clientsOf(req))
       const attached = await files.ofRequests(list.map((r) => r.id))
       return list.map((r) => ({ ...r, attachments: attached.get(r.id) ?? [] }))
     })
@@ -817,7 +845,7 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
             attachmentIds: drafts.map((d) => d.id),
             attachmentNames: drafts.map((d) => d.fileName),
           },
-          { clientKey: clientOf(req), actor: { name: who.name, email: who.email } },
+          { clients: clientsOf(req), actor: { name: who.name, email: who.email } },
         )
         const created = {
           ...request,
@@ -865,7 +893,7 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
           ...upload,
           productId: fields.productId || null,
           uploader: req.identity ?? demo,
-          client: clientOf(req),
+          clients: clientsOf(req),
           clock: await clockOf(req),
         })
         if (product)
@@ -880,7 +908,7 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
 
     app.get<{ Params: { id: string } }>('/products/:id/attachments', async (req, reply) =>
       answering(reply, async () =>
-        files.ofProduct(req.params.id, clientOf(req), await clockOf(req)),
+        files.ofProduct(req.params.id, clientsOf(req), await clockOf(req)),
       ),
     )
 
@@ -890,7 +918,7 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
         const file = await files.read(
           req.params.id,
           variant,
-          req.identity ? clientOf(req) : undefined,
+          req.identity ? clientsOf(req) : undefined,
         )
         if (!file) return reply.code(404).send({ message: 'Файл не найден' })
         return reply
@@ -908,7 +936,7 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
       answering(reply, async () => {
         const { fileName, product } = await files.remove(
           req.params.id,
-          clientOf(req),
+          clientsOf(req),
           await clockOf(req),
         )
         await audit(req, {

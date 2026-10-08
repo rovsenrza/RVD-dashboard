@@ -7,7 +7,6 @@ import {
 } from '@rvd/contracts'
 import type {
   RawCatalogNumber,
-  RawClient,
   RawComponent,
   RawEquipment,
   RawItem,
@@ -52,7 +51,6 @@ export interface ProductSources {
   catalogNumbers: RawCatalogNumber[]
   components: RawComponent[]
   equipment: RawEquipment[]
-  clients: RawClient[]
 }
 
 export interface ProductOptions {
@@ -101,7 +99,6 @@ export function toProducts(src: ProductSources, options: ProductOptions = {}): P
     src.equipment.filter((e) => !isPlaceholderMachine(e)),
     (e) => e.Ref_Key,
   )
-  const clients = byKey(src.clients, (c) => c.Ref_Key)
   const releases = byKey(src.releases, (r) => r.Ref_Key)
   const lifecycles = statusesByItem(src.statuses)
 
@@ -163,7 +160,8 @@ export function toProducts(src: ProductSources, options: ProductOptions = {}): P
         replacedProductId: isRef(item.ЗаменяемоеИзделие_Key) ? item.ЗаменяемоеИзделие_Key : null,
         equipmentId: machine?.Ref_Key ?? null,
         installPlace: null,
-        branchId: clients.get(item.Клиент_Key)?.Филиал_Key ?? '',
+        // A branch of the client company is one of its 1С clients (not the supplier's Филиал).
+        branchId: item.Клиент_Key,
       }
     })
 }

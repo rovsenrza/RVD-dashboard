@@ -45,8 +45,8 @@ export function UsersTab() {
         cell: (c) => <span className="text-ink-secondary">{c.getValue()}</span>,
       }),
       col.accessor((u) => ROLE_LABEL[u.role], { id: 'role', header: 'Роль' }),
-      // Without branches (1С keeps none for the client yet) everyone works company-wide.
-      ...(branches.length
+      // One branch (the company is one client in 1С) is no choice: the column shows only with several.
+      ...(branches.length > 1
         ? [
             col.accessor(
               (u) =>

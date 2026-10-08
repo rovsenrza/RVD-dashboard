@@ -115,7 +115,8 @@ interface Reader {
   id: string
   name: string
   email: string
-  client: string
+  /** The person's branches, 1С clients: their own, else every branch of the company */
+  clients: string[]
   settings: Partial<CabinetSettings>
 }
 
@@ -131,7 +132,9 @@ export async function sendDigests(
   cabinetUrl?: string,
 ): Promise<number> {
   const { rows: readers } = await db.query<Reader>(
-    `select u.id, u.name, u.email, c.onec_client_key as client, c.settings
+    `select u.id, u.name, u.email, c.settings,
+       coalesce((select array_agg(client_key) from user_branches where user_id = u.id),
+         (select array_agg(client_key) from company_branches where company_id = c.id), '{}') as clients
      from users u join companies c on c.id = u.company_id
      where u.active and not exists (
        select 1 from notification_mail m where m.user_id = u.id and m.day = $1::date)`,
@@ -145,7 +148,7 @@ export async function sendDigests(
     const fresh = (
       await listNotifications(db, today, {
         userId: r.id,
-        client: r.client,
+        clients: r.clients,
         leadDays: settings.leadDays,
         inspectionDays: settings.inspectionDays,
         kinds: prefs.kinds,

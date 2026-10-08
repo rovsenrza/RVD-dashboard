@@ -18,8 +18,9 @@ export function UserDialog({ user, onClose }: { user: CabinetUser | null; onClos
   const toast = useToast()
   const save = useSaveUser()
   const reset = useResetPassword()
-  // 1С keeps no branches of the client yet: then everyone works across the whole company.
+  // A company of one client in 1С has one branch: nothing to choose, everyone works across it.
   const firstBranch = session.branches[0]?.id
+  const several = session.branches.length > 1
   const [name, setName] = useState(user?.name ?? '')
   const [email, setEmail] = useState(user?.email ?? '')
   const [role, setRole] = useState<UserRole>(user?.role ?? (firstBranch ? 'mechanic' : 'engineer'))
@@ -68,7 +69,7 @@ export function UserDialog({ user, onClose }: { user: CabinetUser | null; onClos
       ? []
       : bound
         ? branchIds.slice(0, 1)
-        : everywhere
+        : everywhere || !several
           ? []
           : branchIds.length
             ? branchIds
@@ -125,7 +126,7 @@ export function UserDialog({ user, onClose }: { user: CabinetUser | null; onClos
       title={user ? user.name : 'Новый пользователь'}
       description={
         user
-          ? firstBranch
+          ? several
             ? 'Роль и филиалы определяют, что человек видит в кабинете.'
             : 'Роль определяет, что человек видит в кабинете.'
           : session.demo
@@ -184,7 +185,7 @@ export function UserDialog({ user, onClose }: { user: CabinetUser | null; onClos
           )}
         </Field>
 
-        {firstBranch &&
+        {several &&
           (bound ? (
             <Field label="Филиал" hint="Механик видит технику и изделия только своего филиала">
               {(id) => (

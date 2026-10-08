@@ -32,18 +32,15 @@ import type {
 } from '@/entities/types'
 import { useSession } from '@/app/session'
 import { api } from './client'
-import { LIVE } from './live'
 
 /**
- * Branch scope travels as a query parameter, the way the BFF will receive it
- * once auth lands — so the mock and the real API narrow data the same way.
+ * Branch scope travels as a query parameter: the mock narrows by it, and the API
+ * narrows the signed-in person's branches — their company's 1С clients — to it.
  */
 const useScope = () => useSession().branch?.id ?? null
 
-// Live data is not narrowed by the header's branch yet: those branches are the mock's,
-// and per-company access arrives with login (Д7).
 const scoped = (path: string, branch: string | null) =>
-  branch && !LIVE ? `${path}?branch=${encodeURIComponent(branch)}` : path
+  branch ? `${path}?branch=${encodeURIComponent(branch)}` : path
 
 /** What the registry asks the server for: filters, search, tab, sort and page, all optional. */
 export type ProductPageQuery = Partial<Omit<ProductListQuery, 'branch' | 'client'>>
@@ -55,7 +52,7 @@ const productsUrl = (query: ProductPageQuery, branch: string | null) => {
   const params = new URLSearchParams()
   for (const [key, value] of Object.entries(query))
     if (value !== undefined && value !== '') params.set(key, String(value))
-  if (branch && !LIVE) params.set('branch', branch)
+  if (branch) params.set('branch', branch)
   return `/products?${params}`
 }
 

@@ -93,6 +93,7 @@ export function RequestForm({
   const [miss, setMiss] = useState<string>()
   const [rows, setRows] = useState<Row[]>(() => [blank(preset?.catalogNumber ?? '')])
   const [equipmentId, setEquipmentId] = useState(NO_EQUIPMENT)
+  const [branchChoice, setBranchChoice] = useState('')
   const [comment, setComment] = useState('')
   const [pasting, setPasting] = useState(false)
   const [pasted, setPasted] = useState('')
@@ -125,7 +126,13 @@ export function RequestForm({
   const hoses = withHoses ? picked.filter(eligible) : []
   const hosesFull = hoses.length + (withRows ? filled.length : 0) >= MAX_REQUEST_POSITIONS
   const rowsFull = hoses.length + rows.length >= MAX_REQUEST_POSITIONS
-  const ready = replacing ? hoses.length > 0 : hoses.length > 0 || filled.length > 0 || withExcel
+  const chosenMachine = equipment.data?.find((x) => x.id === equipmentId)
+  // A request is one branch's order in 1С. Hoses, the machine or the header's branch name it;
+  // across several branches with none of those, the person picks.
+  const needsBranch = branches.length > 1 && !branch && hoses.length === 0 && !chosenMachine
+  const ready =
+    (replacing ? hoses.length > 0 : hoses.length > 0 || filled.length > 0 || withExcel) &&
+    (!needsBranch || branchChoice !== '')
 
   const patch = (key: number, part: Partial<Row>) =>
     setRows((all) => all.map((r) => (r.key === key ? { ...r, ...part } : r)))
@@ -146,7 +153,7 @@ export function RequestForm({
     e.preventDefault()
     if (!ready) return
     setError(undefined)
-    const eq = equipment.data?.find((x) => x.id === equipmentId)
+    const eq = chosenMachine
     const positions: RequestPosition[] = [
       ...hoses.map((p) => ({
         productId: p.id,
@@ -172,8 +179,12 @@ export function RequestForm({
     create.mutate(
       {
         // A replacement belongs where its hoses are; otherwise the chosen machine
-        // decides the branch, and without one the branch in scope.
-        branchId: hoses[0]?.branchId ?? eq?.branchId ?? branch?.id ?? branches[0].id,
+        // decides the branch, then the branch in scope, then the one picked here.
+        branchId:
+          hoses[0]?.branchId ??
+          eq?.branchId ??
+          branch?.id ??
+          (branchChoice || (branches[0]?.id ?? '')),
         productId: positions.length === 1 ? positions[0].productId : null,
         kind,
         quantity: positions.reduce((sum, l) => sum + l.quantity, 0),
@@ -449,6 +460,20 @@ export function RequestForm({
                 />
               )}
             </Field>
+
+            {needsBranch && (
+              <Field label="Филиал" hint="Заявка уходит в 1С от одного филиала">
+                {(id) => (
+                  <Select
+                    id={id}
+                    value={branchChoice}
+                    onChange={(e) => setBranchChoice(e.target.value)}
+                    placeholder="Выберите филиал"
+                    options={branches.map((b) => ({ value: b.id, label: b.name }))}
+                  />
+                )}
+              </Field>
+            )}
           </>
         )}
 

@@ -22,27 +22,28 @@ import { listRequests } from '../requests/store.ts'
 async function companyData(
   db: Db,
   clock: Clock,
-  client: string | undefined,
+  clients: string[] | undefined,
 ): Promise<Omit<ReportData, 'branches'>> {
   const [products, equipment, replacements, requests] = await Promise.all([
     db
       .query<{ product: Product }>(
         `select data || jsonb_build_object('status', ${STATUS_SQL}) as product from products
-         where ($5::text is null or client_id = $5)`,
-        [...ruleParams(clock), client ?? null],
+         where ($5::text[] is null or client_id = any($5))`,
+        [...ruleParams(clock), clients ?? null],
       )
       .then((r) => r.rows.map((row) => row.product)),
-    listEquipment(db, clock, client),
-    listReplacements(db, { client }),
-    listRequests(db, client),
+    listEquipment(db, clock, clients),
+    listReplacements(db, { clients }),
+    listRequests(db, clients),
   ])
   return { products, equipment, replacements, requests }
 }
 
 export interface ReportScope {
-  /** The company's 1С client; undefined — every client (no sign-in, no client configured) */
-  client?: string
-  /** What the «по филиалам» rows are called: in 1С a client has one branch, so the company's name */
+  /** The person's branches — 1С clients; undefined — every client (no sign-in, no client configured) */
+  clients?: string[]
+  /** The «по филиалам» rows' names; a branch not named here goes by the company's name */
+  branches: { id: string; name: string }[]
   companyName: string
   from: string | null
   to: string | null
@@ -56,11 +57,15 @@ export async function companyReport(
   scope: ReportScope,
 ): Promise<Report | null> {
   if (!reportMeta(id)) return null
-  const data = await companyData(db, clock, scope.client)
+  const data = await companyData(db, clock, scope.clients)
+  const names = new Map(scope.branches.map((b) => [b.id, b.name]))
   const branchIds = [...new Set([...data.products, ...data.equipment].map((r) => r.branchId))]
   return buildReport(
     id as ReportId,
-    { ...data, branches: branchIds.map((branchId) => ({ id: branchId, name: scope.companyName })) },
+    {
+      ...data,
+      branches: branchIds.map((id) => ({ id, name: names.get(id) ?? scope.companyName })),
+    },
     {
       branch: null,
       from: scope.from,
@@ -76,7 +81,7 @@ export async function companyReport(
 export async function companyModels(
   db: Db,
   clock: Clock,
-  client: string | undefined,
+  clients: string[] | undefined,
 ): Promise<ModelStats[]> {
-  return modelStats(await companyData(db, clock, client), clock.today)
+  return modelStats(await companyData(db, clock, clients), clock.today)
 }

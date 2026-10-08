@@ -495,6 +495,8 @@ export interface SignedIn {
   accessToken: string
   user: { id: string; name: string; email: string; role: UserRole }
   company: { id: string; name: string }
+  /** The branches the person works in — the company's clients in 1С; all of them unless the administrator named some. */
+  branches: Branch[]
   /** Signed in with a password the administrator gave: the cabinet opens once it is replaced. */
   mustChangePassword: boolean
 }

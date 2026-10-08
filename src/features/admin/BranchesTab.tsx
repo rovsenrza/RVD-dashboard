@@ -13,7 +13,8 @@ const columns = [
   }),
   col.accessor('code', {
     header: 'Код в 1С',
-    cell: (c) => <span className="text-ink-secondary">{c.getValue()}</span>,
+    // The cache keeps no 1С codes of clients: a live branch shows a dash.
+    cell: (c) => <span className="text-ink-secondary">{valueOr(c.getValue() || null)}</span>,
   }),
   col.accessor('address', { header: 'Адрес', cell: (c) => valueOr(c.getValue()) }),
   col.accessor('equipmentCount', { header: 'Техника' }),
@@ -33,7 +34,7 @@ export function BranchesTab() {
           toolbar={
             <p className="flex items-center gap-2 text-ui text-ink-muted">
               <Info size={15} strokeWidth={1.75} className="shrink-0" />
-              Филиалы ведутся в 1С и здесь только читаются
+              Филиалы — клиенты компании в 1С; здесь они только читаются
             </p>
           }
         />

@@ -83,3 +83,22 @@ test('a mechanic is kept out of reports by the server, not only the menu', async
   })
   expect(report.status()).toBe(403)
 })
+
+test('a company of several 1С clients picks its branch in the header', async ({ page }) => {
+  await signIn(page, 'sites@e2e.test')
+  await page.goto('/products')
+  await expect(page.locator('tbody tr')).toHaveCount(3)
+
+  // The header offers the company's branches — its clients in 1С — and narrows to one.
+  await page.getByRole('button', { name: /Все филиалы/ }).click()
+  await page.getByRole('menuitem', { name: 'Участок Б' }).click()
+  await expect(page.locator('tbody tr')).toHaveCount(1)
+  await expect(page.getByText('5201').filter({ visible: true }).first()).toBeVisible()
+
+  // The choice outlives a reload, and «all» brings the whole company back.
+  await page.reload()
+  await expect(page.locator('tbody tr')).toHaveCount(1)
+  await page.getByRole('button', { name: /Участок Б/ }).click()
+  await page.getByRole('menuitem', { name: 'Все филиалы компании' }).click()
+  await expect(page.locator('tbody tr')).toHaveCount(3)
+})

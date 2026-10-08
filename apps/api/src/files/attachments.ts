@@ -90,7 +90,8 @@ export function createFiles(db: Db, store: FileStore, scan: Scanner, links: Link
       data: Buffer
       productId: string | null
       uploader: Identity
-      client?: string
+      /** The uploader's branches, 1С clients; undefined — everyone's (no sign-in) */
+      clients?: string[]
       clock: Clock
     }): Promise<{ attachment: Attachment; product: Product | null }> {
       const { fileName, data } = input
@@ -100,7 +101,7 @@ export function createFiles(db: Db, store: FileStore, scan: Scanner, links: Link
       if (!signatureMatches(format, data))
         throw new AuthRejected(422, `«${fileName}»: содержимое не похоже на ${format.label}`)
       const product = input.productId
-        ? await getProduct(db, input.productId, input.clock, input.client)
+        ? await getProduct(db, input.productId, input.clock, input.clients)
         : null
       if (input.productId && !product) throw new AuthRejected(404, 'Изделие не найдено')
       if (product && (await owned({ kind: 'product', id: product.id })).length >= MAX_FILES)
@@ -118,10 +119,12 @@ export function createFiles(db: Db, store: FileStore, scan: Scanner, links: Link
       const { rows } = await db.query<Row>(
         `insert into attachments (id, client_id, owner_kind, owner_id, file_name, mime_type, size,
            kind, has_preview, uploaded_by, uploaded_by_id)
-         values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) returning *`,
+         values ($1, coalesce((select client_id from products where id = $4), $2), $3, $4, $5, $6, $7,
+           $8, $9, $10, $11) returning *`,
         [
           id,
-          input.client ?? null,
+          // A hose's file is its branch's; a draft, the uploader's until a request claims it.
+          input.clients?.[0] ?? null,
           product ? 'product' : null,
           product?.id ?? null,
           fileName,
@@ -137,17 +140,17 @@ export function createFiles(db: Db, store: FileStore, scan: Scanner, links: Link
     },
 
     /** A hose's files, newest first; the hose must be in the asker's scope. */
-    async ofProduct(productId: string, client: string | undefined, clock: Clock) {
-      if (!(await getProduct(db, productId, clock, client)))
+    async ofProduct(productId: string, clients: string[] | undefined, clock: Clock) {
+      if (!(await getProduct(db, productId, clock, clients)))
         throw new AuthRejected(404, 'Изделие не найдено')
       return (await owned({ kind: 'product', id: productId })).map(toAttachment)
     },
 
-    /** The bytes and what they are; `client` narrows to the asker's (a signed link needs none). */
-    async read(id: string, variant: FileVariant, client?: string) {
+    /** The bytes and what they are; `clients` narrow to the asker's (a signed link needs none). */
+    async read(id: string, variant: FileVariant, clients?: string[]) {
       const { rows } = await db.query<Row>(
-        'select * from attachments where id = $1 and ($2::text is null or client_id = $2)',
-        [id, client ?? null],
+        'select * from attachments where id = $1 and ($2::text[] is null or client_id = any($2))',
+        [id, clients ?? null],
       )
       const row = rows[0]
       if (!row || (variant === 'preview' && !row.has_preview)) return null
@@ -162,16 +165,16 @@ export function createFiles(db: Db, store: FileStore, scan: Scanner, links: Link
     },
 
     /** A hose's file; a request's went to 1С with it and stays as evidence. */
-    async remove(id: string, client: string | undefined, clock: Clock) {
+    async remove(id: string, clients: string[] | undefined, clock: Clock) {
       const { rows } = await db.query<Row>(
-        'select * from attachments where id = $1 and ($2::text is null or client_id = $2)',
-        [id, client ?? null],
+        'select * from attachments where id = $1 and ($2::text[] is null or client_id = any($2))',
+        [id, clients ?? null],
       )
       const row = rows[0]
       if (!row) throw new AuthRejected(404, 'Файл не найден')
       if (row.owner_kind !== 'product')
         throw new AuthRejected(409, 'Файлы заявок уходят в 1С вместе с ними и не удаляются')
-      const product = await getProduct(db, row.owner_id!, clock, client)
+      const product = await getProduct(db, row.owner_id!, clock, clients)
       if (!product) throw new AuthRejected(404, 'Файл не найден')
       await db.query('delete from attachments where id = $1', [id])
       await store.remove(id)
@@ -191,11 +194,12 @@ export function createFiles(db: Db, store: FileStore, scan: Scanner, links: Link
       return rows.map(toAttachment)
     },
 
-    /** Binds drafts to the record just created. */
+    /** Binds drafts to the record just created; a request's files are its branch's. */
     async claim(ids: string[], owner: Owner) {
       if (!ids.length) return []
       const { rows } = await db.query<Row>(
-        `update attachments set owner_kind = $2, owner_id = $3
+        `update attachments set owner_kind = $2, owner_id = $3,
+           client_id = coalesce((select client_id from requests where id = $3 and $2 = 'request'), client_id)
          where id = any($1) and owner_kind is null returning *`,
         [ids, owner.kind, owner.id],
       )

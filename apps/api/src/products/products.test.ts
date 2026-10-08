@@ -128,12 +128,12 @@ describe.skipIf(!hasDb)('products in the cache', () => {
     expect(await get('/products?archive=0')).toMatchObject({ total: 3 })
   })
 
-  it('filters by customer, machine, catalogue number, installation and branch', async () => {
+  it('filters by customer, machine, catalogue number, installation and branch — one of the clients', async () => {
     expect(ids(await get('/products?client=k2'))).toEqual(['p4', 'p3'])
     expect(ids(await get('/products?equipment=e1'))).toEqual(['p1'])
     expect(ids(await get('/products?catalog=c1'))).toEqual(['p1'])
     expect(ids(await get('/products?installed=0'))).toEqual(['p4'])
-    expect(ids(await get('/products?branch=b2'))).toEqual(['p4'])
+    expect(ids(await get('/products?branch=k2'))).toEqual(['p4', 'p3'])
   })
 
   it('searches the numbers, the name, the machine and the place, and treats wildcards literally', async () => {

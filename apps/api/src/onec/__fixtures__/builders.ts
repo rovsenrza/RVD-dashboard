@@ -1,7 +1,6 @@
 import {
   ZERO_GUID,
   type RawCatalogNumber,
-  type RawClient,
   type RawComponent,
   type RawEquipment,
   type RawItem,
@@ -94,7 +93,3 @@ export const equipment = (over: Partial<RawEquipment> = {}): RawEquipment => ({
   ИнвентарныйНомер: '',
   ...over,
 })
-
-export const clients: RawClient[] = [
-  { Ref_Key: 'client-1', Description: 'Клиент ООО', Филиал_Key: 'branch-1' },
-]

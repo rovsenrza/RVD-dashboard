@@ -17,14 +17,14 @@ import { getEquipment } from '../equipment/query.ts'
 import { getProduct, type Clock } from '../products/query.ts'
 import { searchText } from '../sync/store.ts'
 
-/** Whose data a call may touch and when it happens. */
+/** Whose data a call may touch — the person's branches, 1С clients; none: everyone's — and when. */
 export interface Scope {
-  client?: string
+  clients?: string[]
   clock: Clock
 }
 
 const found = async (db: Db, productId: string, scope: Scope) => {
-  const product = await getProduct(db, productId, scope.clock, scope.client)
+  const product = await getProduct(db, productId, scope.clock, scope.clients)
   if (!product) throw new AuthRejected(404, 'Изделие не найдено')
   return product
 }
@@ -137,8 +137,8 @@ export async function addComment(
 async function ownComment(db: Db, id: string, scope: Scope) {
   const { rows } = await db.query<CommentRow>(
     `select c.* from product_comments c
-     where c.id = $1 and ($2::text is null or c.client_id = $2)`,
-    [id, scope.client ?? null],
+     where c.id = $1 and ($2::text[] is null or c.client_id = any($2))`,
+    [id, scope.clients ?? null],
   )
   if (!rows[0]) throw new AuthRejected(404, 'Комментарий не найден')
   return rows[0]
@@ -197,7 +197,7 @@ export async function createSupportMessage(
   scope: Scope,
 ): Promise<{ message: SupportMessage; product: Product | null }> {
   const product = body.productId
-    ? await getProduct(db, body.productId, scope.clock, scope.client)
+    ? await getProduct(db, body.productId, scope.clock, scope.clients)
     : null
   const problem = supportProblem(body, product, scope.clock.today)
   if (problem) throw new AuthRejected(400, problem)
@@ -212,10 +212,12 @@ export async function createSupportMessage(
   await db.query(
     `insert into support_messages (id, client_id, company_id, author_id, author_name, author_email,
        topic, product_id, installed_at, text, created_at)
-     values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+     values ($1, coalesce((select client_id from products where id = $8), $2), $3, $4, $5, $6,
+       $7, $8, $9, $10, $11)`,
     [
       message.id,
-      scope.client ?? null,
+      // The hose's branch; without a hose, the person's only branch, else the company as a whole.
+      scope.clients?.length === 1 ? scope.clients[0] : null,
       author.companyId,
       author.userId,
       author.name,
@@ -243,7 +245,7 @@ export async function saveEquipment(
 ): Promise<{ before: Equipment; after: Equipment }> {
   const problem = equipmentProblem(patch)
   if (problem) throw new AuthRejected(400, problem)
-  const before = await getEquipment(db, equipmentId, scope.clock, scope.client)
+  const before = await getEquipment(db, equipmentId, scope.clock, scope.clients)
   if (!before) throw new AuthRejected(404, 'Техника не найдена')
   const value = (key: 'department' | 'factoryNumber') => {
     const v = patch[key]

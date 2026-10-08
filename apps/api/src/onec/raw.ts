@@ -109,7 +109,3 @@ export interface RawNamed {
   Ref_Key: string
   Description: string
 }
-
-export interface RawClient extends RawNamed {
-  Филиал_Key: string
-}

@@ -2,6 +2,9 @@ import type { CabinetUser, UserRole } from './types'
 
 export const USER_ROLES: readonly UserRole[] = ['mechanic', 'engineer', 'manager', 'admin']
 
+/** Roles bound to a single branch: the server holds them to one, the header's switcher is locked. */
+export const isBranchBound = (role: UserRole) => role === 'mechanic'
+
 export const MIN_PASSWORD_LENGTH = 10
 
 /** Refusals a form shows under the field they are about, so the API and the form share the words. */

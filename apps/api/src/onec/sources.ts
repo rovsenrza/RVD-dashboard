@@ -35,17 +35,16 @@ const ORDER_FIELDS = ['Ref_Key', 'Number']
  */
 export const FILTER_BUDGET = 1500
 
-/** The small reference sets — catalogue numbers, components, machines, clients — read whole each time. */
+/** The small reference sets — catalogue numbers, components, machines — read whole each time. */
 async function fetchReference(client: ODataClient) {
-  const [catalogNumbers, components, equipment, clients, brands, types] = await Promise.all([
+  const [catalogNumbers, components, equipment, brands, types] = await Promise.all([
     client.all('Catalog_КаталожныеНомера'),
     client.all('Catalog_Комплектующие'),
     client.all('Catalog_Техника'),
-    client.all('Catalog_Клиенты'),
     client.all('Catalog_Марки'),
     client.all('Catalog_ТипТехники'),
   ])
-  return { catalogNumbers, components, equipment, clients, brands, types }
+  return { catalogNumbers, components, equipment, brands, types }
 }
 
 /**

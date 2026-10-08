@@ -9,7 +9,16 @@ import type { Db } from '../db/pool.ts'
 import { signJwt, verifyJwt } from './jwt.ts'
 import { hashPassword, verifyPassword } from './password.ts'
 
-/** Who is asking, and whose data they may see: their company's 1С client. */
+/** A branch of the company: one of its clients in 1С, named by its Клиент_Key. */
+export interface IdentityBranch {
+  id: string
+  name: string
+}
+
+/**
+ * Who is asking, and whose data they may see: the branches they work in — their
+ * company's 1С clients, all of them unless the administrator named some.
+ */
 export interface Identity {
   userId: string
   name: string
@@ -17,7 +26,7 @@ export interface Identity {
   role: UserRole
   companyId: string
   companyName: string
-  clientKey: string
+  branches: IdentityBranch[]
   /** Signed in with a password the administrator gave; only replacing it is allowed */
   mustChangePassword: boolean
 }
@@ -29,7 +38,8 @@ interface AccessClaims {
   role: UserRole
   cid: string
   cname: string
-  ck: string
+  /** Branches: [Клиент_Key, name] */
+  br: [string, string][]
   /** Must change the password */
   mcp?: true
   iat: number
@@ -59,7 +69,7 @@ export function issueAccess(identity: Identity, secret: string, now = new Date()
     role: identity.role,
     cid: identity.companyId,
     cname: identity.companyName,
-    ck: identity.clientKey,
+    br: identity.branches.map((b) => [b.id, b.name]),
     ...(identity.mustChangePassword && { mcp: true as const }),
     iat,
     exp: iat + ACCESS_SECONDS,
@@ -67,9 +77,10 @@ export function issueAccess(identity: Identity, secret: string, now = new Date()
   return signJwt(claims, secret)
 }
 
+/** A token from before branches carries none: it reads as no token, and the cabinet renews it. */
 export function readAccess(token: string, secret: string, now = Date.now()): Identity | null {
   const c = verifyJwt<AccessClaims>(token, secret, now)
-  return c
+  return c && Array.isArray(c.br)
     ? {
         userId: c.sub,
         name: c.name,
@@ -77,22 +88,35 @@ export function readAccess(token: string, secret: string, now = Date.now()): Ide
         role: c.role,
         companyId: c.cid,
         companyName: c.cname,
-        clientKey: c.ck,
+        branches: c.br.map(([id, name]) => ({ id, name })),
         mustChangePassword: c.mcp === true,
       }
     : null
 }
 
+/** The 1С clients whose data the person sees. */
+export const clientKeysOf = (identity: Identity) => identity.branches.map((b) => b.id)
+
 export const signedIn = (identity: Identity, accessToken: string): SignedIn => ({
   accessToken,
   user: { id: identity.userId, name: identity.name, email: identity.email, role: identity.role },
   company: { id: identity.companyId, name: identity.companyName },
+  branches: identity.branches.map((b) => ({ ...b, companyId: identity.companyId })),
   mustChangePassword: identity.mustChangePassword,
 })
 
+/** The person's branches as JSON; none of their own — every branch of the company. */
+const BRANCHES = `coalesce(
+    (select json_agg(json_build_object('id', b.client_key, 'name', b.name) order by b.name)
+       from user_branches ub join company_branches b on b.client_key = ub.client_key
+      where ub.user_id = u.id),
+    (select json_agg(json_build_object('id', b.client_key, 'name', b.name) order by b.name)
+       from company_branches b where b.company_id = c.id),
+    '[]')`
+
 const IDENTITY = `select u.id as "userId", u.name, u.email, u.role, u.active, u.password_hash,
     u.must_change_password as "mustChangePassword",
-    c.id as "companyId", c.name as "companyName", c.onec_client_key as "clientKey"
+    c.id as "companyId", c.name as "companyName", ${BRANCHES} as branches
   from users u join companies c on c.id = u.company_id`
 
 type IdentityRow = Identity & { active: boolean; password_hash: string }
@@ -276,7 +300,10 @@ export async function setOwnPassword(
   }
 }
 
-/** Adds a user, and their company when it is new (by its 1С client). */
+/**
+ * Adds a user, and their company when it is new (by its 1С client, which is also its first
+ * branch). `branchKeys` binds the person to some of the company's branches; none — all of them.
+ */
 export async function addUser(
   db: Db,
   input: {
@@ -286,6 +313,7 @@ export async function addUser(
     email: string
     password: string
     role: UserRole
+    branchKeys?: string[]
   },
 ): Promise<string> {
   const company = await db.query<{ id: string }>(
@@ -293,19 +321,55 @@ export async function addUser(
      on conflict (onec_client_key) do update set name = excluded.name returning id`,
     [randomUUID(), input.company, input.clientKey],
   )
+  const companyId = company.rows[0].id
+  await db.query(
+    `insert into company_branches (client_key, company_id, name) values ($1, $2, $3)
+     on conflict (client_key) do nothing`,
+    [input.clientKey, companyId, input.company],
+  )
+  // Checked before the person exists: a failed binding must not leave them company-wide.
+  const branchKeys = [...new Set(input.branchKeys ?? [])]
+  const { rows: known } = await db.query<{ client_key: string }>(
+    'select client_key from company_branches where company_id = $1 and client_key = any($2)',
+    [companyId, branchKeys],
+  )
+  if (known.length !== branchKeys.length) throw new AuthRejected(422, 'Филиал не из этой компании')
   const id = randomUUID()
   await db.query(
     `insert into users (id, company_id, name, email, password_hash, role) values ($1, $2, $3, $4, $5, $6)`,
-    [
-      id,
-      company.rows[0].id,
-      input.name,
-      input.email.trim(),
-      await hashPassword(input.password),
-      input.role,
-    ],
+    [id, companyId, input.name, input.email.trim(), await hashPassword(input.password), input.role],
   )
+  if (branchKeys.length)
+    await db.query(
+      'insert into user_branches (user_id, client_key) select $1, unnest($2::text[])',
+      [id, branchKeys],
+    )
   return id
+}
+
+/**
+ * Makes a 1С client a branch of the company that has `companyKey` among its branches, or
+ * renames it. A client belongs to one company only.
+ */
+export async function addBranch(
+  db: Db,
+  input: { companyKey: string; clientKey: string; name: string },
+): Promise<string> {
+  const { rows } = await db.query<{ company_id: string }>(
+    'select company_id from company_branches where client_key = $1',
+    [input.companyKey],
+  )
+  const companyId = rows[0]?.company_id
+  if (!companyId) throw new AuthRejected(404, `Нет компании с клиентом 1С ${input.companyKey}`)
+  const { rows: added } = await db.query<{ company_id: string }>(
+    `insert into company_branches (client_key, company_id, name) values ($1, $2, $3)
+     on conflict (client_key) do update set name = excluded.name
+       where company_branches.company_id = excluded.company_id
+     returning company_id`,
+    [input.clientKey, companyId, input.name.trim()],
+  )
+  if (!added.length) throw new AuthRejected(409, 'Этот клиент 1С — уже филиал другой компании')
+  return companyId
 }
 
 // A real hash of nothing in particular, for the «no such user» path.

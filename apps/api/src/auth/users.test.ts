@@ -90,11 +90,17 @@ describe.skipIf(!hasDb)('the company’s users, as its administrator manages the
       name: 'Петров Пётр',
       email: 'petrov@romashka.ru',
       role: 'mechanic',
-      branchIds: ['ignored'],
+      branchIds: [],
     })
     expect(res.statusCode).toBe(201)
     const { user, delivery } = res.json() as UserCreated
-    expect(user).toMatchObject({ name: 'Петров Пётр', role: 'mechanic', lastLoginAt: null })
+    // A company of one branch: a mechanic works in it without naming it.
+    expect(user).toMatchObject({
+      name: 'Петров Пётр',
+      role: 'mechanic',
+      branchIds: ['k1'],
+      lastLoginAt: null,
+    })
     if (delivery.kind !== 'password') throw new Error('a one-time password was expected')
 
     const first = await signIn('petrov@romashka.ru', delivery.password)

@@ -202,17 +202,17 @@ const cases: [string, (db: Db) => Promise<unknown>][] = [
     'registry · all hoses (lookups)',
     (d) => listProducts(d, page({ client: BIG, limit: 5000 }), clock),
   ],
-  ['dashboard', (d) => dashboardSummary(d, clock, BIG)],
-  ['machines', (d) => listEquipment(d, clock, BIG)],
-  ['machine card', (d) => getEquipment(d, bigMachine, clock, BIG)],
-  ['machine hoses', (d) => equipmentProducts(d, bigMachine, clock, BIG)],
-  ['replacements', (d) => listReplacements(d, { client: BIG })],
+  ['dashboard', (d) => dashboardSummary(d, clock, [BIG])],
+  ['machines', (d) => listEquipment(d, clock, [BIG])],
+  ['machine card', (d) => getEquipment(d, bigMachine, clock, [BIG])],
+  ['machine hoses', (d) => equipmentProducts(d, bigMachine, clock, [BIG])],
+  ['replacements', (d) => listReplacements(d, { clients: [BIG] })],
   [
     'notifications',
     (d) =>
       listNotifications(d, clock.today, {
         userId: null,
-        client: BIG,
+        clients: [BIG],
         leadDays: [30, 14, 7],
         inspectionDays: 90,
         kinds: {
@@ -228,7 +228,8 @@ const cases: [string, (db: Db) => Promise<unknown>][] = [
     'report · registry (whole client)',
     (d) =>
       companyReport(d, 'registry', clock, {
-        client: BIG,
+        clients: [BIG],
+        branches: [],
         companyName: 'Крупный клиент',
         from: null,
         to: null,
@@ -238,13 +239,14 @@ const cases: [string, (db: Db) => Promise<unknown>][] = [
     'report · machines',
     (d) =>
       companyReport(d, 'equipment', clock, {
-        client: BIG,
+        clients: [BIG],
+        branches: [],
         companyName: 'Крупный клиент',
         from: null,
         to: null,
       }),
   ],
-  ['model comparison', (d) => companyModels(d, clock, BIG)],
+  ['model comparison', (d) => companyModels(d, clock, [BIG])],
   ['registry · small client', (d) => listProducts(d, page({ client: 'client-7' }), clock)],
   ['dashboard · all clients', (d) => dashboardSummary(d, clock)],
 ]

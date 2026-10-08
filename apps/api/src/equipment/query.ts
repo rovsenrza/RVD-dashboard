@@ -38,15 +38,19 @@ const MACHINE = `e.data || jsonb_build_object(
     'replace', coalesce(m.replace, 0), 'no_warranty', coalesce(m.no_warranty, 0)),
   'nextPlannedReplacement', m.next_planned)`
 
-/** «Моя техника»: the client's machines with their hoses counted for today. */
-export async function listEquipment(db: Db, clock: Clock, client?: string): Promise<Equipment[]> {
+/** «Моя техника»: the clients' machines with their hoses counted for today. */
+export async function listEquipment(
+  db: Db,
+  clock: Clock,
+  clients?: string[],
+): Promise<Equipment[]> {
   const { rows } = await db.query<{ machine: Equipment }>(
-    `with ${onMachine('($5::text is null or client_id = $5)')}
+    `with ${onMachine('($5::text[] is null or client_id = any($5))')}
      select ${MACHINE} as machine
      from equipment e left join on_machine m on m.equipment_id = e.id
-     where ($5::text is null or e.client_id = $5)
+     where ($5::text[] is null or e.client_id = any($5))
      order by e.garage_number, e.id`,
-    [...ruleParams(clock), client ?? null],
+    [...ruleParams(clock), clients ?? null],
   )
   return rows.map((r) => r.machine)
 }
@@ -55,14 +59,14 @@ export async function getEquipment(
   db: Db,
   id: string,
   clock: Clock,
-  client?: string,
+  clients?: string[],
 ): Promise<Equipment | null> {
   const { rows } = await db.query<{ machine: Equipment }>(
     `with ${onMachine('equipment_id = $5')}
      select ${MACHINE} as machine
      from equipment e left join on_machine m on m.equipment_id = e.id
-     where e.id = $5 and ($6::text is null or e.client_id = $6)`,
-    [...ruleParams(clock), id, client ?? null],
+     where e.id = $5 and ($6::text[] is null or e.client_id = any($6))`,
+    [...ruleParams(clock), id, clients ?? null],
   )
   return rows[0]?.machine ?? null
 }
@@ -72,8 +76,8 @@ export async function equipmentProducts(
   db: Db,
   id: string,
   clock: Clock,
-  client?: string,
+  clients?: string[],
 ): Promise<Product[]> {
-  const query = ProductListQuery.parse({ equipment: id, archive: '0', limit: 5000, client })
-  return (await listProducts(db, query, clock)).items
+  const query = ProductListQuery.parse({ equipment: id, archive: '0', limit: 5000 })
+  return (await listProducts(db, { ...query, clients }, clock)).items
 }

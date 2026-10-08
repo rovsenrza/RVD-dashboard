@@ -57,7 +57,8 @@ export function toServiceRequest(r: RequestRow): ServiceRequest {
   return {
     id: r.id,
     number: r.number,
-    branchId: r.branch_id,
+    // A branch is one of the company's 1С clients, and a request is one client's order.
+    branchId: r.client_id,
     productId: r.positions.length === 1 ? r.positions[0].productId : null,
     kind: r.kind,
     positions: r.positions,
@@ -80,13 +81,15 @@ export function toServiceRequest(r: RequestRow): ServiceRequest {
 /**
  * Takes a request the way the mock does, against the cache: the shared rule
  * checks it, a hose line is rebuilt from the hose itself (number, machine),
- * and the request joins the queue for 1С. The client is the cabinet's 1С
- * client; without one configured, the hoses' own client — one per request.
+ * and the request joins the queue for 1С. A request is one 1С client's order —
+ * one branch's: its hoses' branch, else the branch the form names, else the
+ * person's only one. `clients` are the person's branches; without sign-in
+ * (undefined) any client's hoses count.
  */
 export async function createRequest(
   db: Db,
   input: RequestInput,
-  ctx: { clientKey?: string; actor: Actor },
+  ctx: { clients?: string[]; actor: Actor },
 ): Promise<ServiceRequest> {
   const positions = Array.isArray(input.positions) ? input.positions : []
   const ids = [...new Set(positions.flatMap((l) => (l.productId ? [l.productId] : [])))]
@@ -94,17 +97,24 @@ export async function createRequest(
     `select data as product, client_id from products where id = any($1)`,
     [ids],
   )
-  const owners = new Set(found.map((r) => r.client_id))
-  const clientId = ctx.clientKey ?? (owners.size === 1 ? [...owners][0] : undefined)
+  // Only the person's hoses count as «yours»; anyone else's is as unknown as a typo.
+  const own = found.filter((r) => !ctx.clients || ctx.clients.includes(r.client_id))
+  const owners = new Set(own.map((r) => r.client_id))
+  if (owners.size > 1)
+    throw new RequestRejected(
+      'В одной заявке — изделия одного филиала: оформите по заявке на каждый',
+    )
+  const named = input.branchId && ctx.clients?.includes(input.branchId) ? input.branchId : undefined
+  const clientId =
+    [...owners][0] ?? named ?? (ctx.clients?.length === 1 ? ctx.clients[0] : undefined)
   if (!clientId)
     throw new RequestRejected(
-      owners.size > 1
-        ? 'В одной заявке — изделия одного клиента'
+      ctx.clients
+        ? 'Выберите филиал, для которого заявка'
         : 'Кабинет не привязан к клиенту 1С: выберите изделия или задайте CABINET_CLIENT_KEY',
     )
-  // Only the client's own hoses count as «yours»; anyone else's is as unknown as a typo.
   const hoses = new Map(
-    found.filter((r) => r.client_id === clientId).map((r) => [r.product.id, r.product]),
+    own.filter((r) => r.client_id === clientId).map((r) => [r.product.id, r.product]),
   )
   const problem = requestProblem(
     { kind: input.kind, positions },
@@ -129,7 +139,7 @@ export async function createRequest(
     [
       randomUUID(),
       clientId,
-      input.branchId ?? '',
+      clientId,
       input.kind,
       JSON.stringify(lines),
       input.comment?.trim() || null,
@@ -140,11 +150,12 @@ export async function createRequest(
   return toServiceRequest(rows[0])
 }
 
-/** The client's requests, newest first; all of them when no client is configured (the demo). */
-export async function listRequests(db: Db, clientKey?: string): Promise<ServiceRequest[]> {
+/** The clients' requests, newest first; all of them when no client is configured (the demo). */
+export async function listRequests(db: Db, clients?: string[]): Promise<ServiceRequest[]> {
   const { rows } = await db.query<RequestRow>(
-    `select * from requests where ($1::text is null or client_id = $1) order by created_at desc, id`,
-    [clientKey ?? null],
+    `select * from requests where ($1::text[] is null or client_id = any($1))
+     order by created_at desc, id`,
+    [clients ?? null],
   )
   return rows.map(toServiceRequest)
 }
