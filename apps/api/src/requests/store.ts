@@ -131,6 +131,12 @@ export async function createRequest(
       catalogNumber: hose.catalogNumber,
       equipmentId: hose.equipmentId,
       quantity: 1,
+      // Why and after how much work — the client's word for the journal (customer, 2026-10-08).
+      ...(input.kind === 'replace' && {
+        reason: line.reason ?? null,
+        operatingHours: line.operatingHours ?? null,
+        usageUnit: line.usageUnit === 'km' ? ('km' as const) : ('hours' as const),
+      }),
     }
   })
   const { rows } = await db.query<RequestRow>(

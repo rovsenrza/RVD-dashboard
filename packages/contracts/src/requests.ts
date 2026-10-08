@@ -8,6 +8,34 @@ export const REQUEST_KINDS: readonly RequestKind[] = ['replace', 'manufacture', 
 /** A spreadsheet the manager can read the positions from instead of the lines. */
 export const isSpreadsheet = (fileName: string) => /\.xlsx?$/i.test(fileName.trim())
 
+/**
+ * Why a hose is replaced (ТЗ 3.5, PRODUCT.md). 1С keeps no reason for a swap, so the client
+ * gives one in the replacement request (customer, 2026-10-08) and the journal shows it.
+ */
+export const REPLACEMENT_REASONS = [
+  'Плановая замена',
+  'Гарантийная замена',
+  'Поломка',
+  'Износ',
+  'Капитальный ремонт',
+  'По требованию заказчика',
+]
+
+/** Running hours or kilometres a client may give: whole, from nought to a machine's lifetime. */
+export const MAX_OPERATING_HOURS = 1_000_000
+
+/** What is wrong with a replacement line's reason and running hours, or null; both may be left out. */
+function usageProblem(line: RequestPosition, serial: string): string | null {
+  if (line.reason != null && !REPLACEMENT_REASONS.includes(line.reason))
+    return `EHS ${serial}: выберите причину замены из списка`
+  const hours = line.operatingHours
+  if (hours != null && !(Number.isInteger(hours) && hours >= 0 && hours <= MAX_OPERATING_HOURS))
+    return `EHS ${serial}: наработка — целое число от 0 до ${MAX_OPERATING_HOURS.toLocaleString('ru-RU')}`
+  if (line.usageUnit != null && line.usageUnit !== 'hours' && line.usageUnit !== 'km')
+    return `EHS ${serial}: наработка — в моточасах или километрах`
+  return null
+}
+
 export interface RequestDraft {
   kind: RequestKind
   positions: RequestPosition[]
@@ -56,6 +84,8 @@ export function requestProblem(
       return `Изделие EHS ${hose.serialNumber} списано — в ремонт его не отправить`
     if (seen.has(hose.id)) return `Изделие EHS ${hose.serialNumber} указано дважды`
     seen.add(hose.id)
+    const usage = draft.kind === 'replace' ? usageProblem(line, hose.serialNumber) : null
+    if (usage) return usage
   }
   if (draft.kind === 'replace') return null
 

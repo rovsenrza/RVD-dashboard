@@ -1,4 +1,9 @@
-import type { RequestKind, RequestPosition, RequestStatus } from '@rvd/contracts'
+import {
+  USAGE_UNIT_LABEL,
+  type RequestKind,
+  type RequestPosition,
+  type RequestStatus,
+} from '@rvd/contracts'
 
 /** What the cabinet sends 1С for one request — the structure of docs/1c/request-api.md. */
 export interface OrderPayload {
@@ -48,7 +53,8 @@ export interface OutgoingRequest {
 /**
  * Lines as 1С reads them: a hose by its Ref_Key; a catalogue number by its
  * Ref_Key, or as text when the catalogue does not know it (for a repair, the
- * work described). Files travel once the BFF stores them (Д25).
+ * work described). A replacement line carries the client's reason and running
+ * hours as its comment, for the manager. Files travel once the BFF stores them (Д25).
  */
 export function toOrderPayload(r: OutgoingRequest): OrderPayload {
   return {
@@ -63,7 +69,7 @@ export function toOrderPayload(r: OutgoingRequest): OrderPayload {
       catalogNumberText: p.catalogNumberId ? null : p.catalogNumber,
       equipment: p.equipmentId,
       quantity: p.quantity,
-      comment: null,
+      comment: usageNote(p),
     })),
     files: [],
   }
@@ -132,4 +138,15 @@ export class HttpOrderService implements OrderService {
       throw new OrderRefused(body.error || `1С отклонила заявку (${res.status})`)
     throw new OrderUnavailable(`1С ответила ${res.status}`)
   }
+}
+
+/** «Причина: Износ; наработка 2 241 м/ч» — what the client said about a hose to replace, or null. */
+export function usageNote(p: RequestPosition): string | null {
+  const parts = [
+    p.reason ? `Причина: ${p.reason}` : null,
+    p.operatingHours != null
+      ? `наработка ${p.operatingHours.toLocaleString('ru-RU')} ${USAGE_UNIT_LABEL[p.usageUnit ?? 'hours']}`
+      : null,
+  ].filter((part): part is string => part !== null)
+  return parts.length ? parts.join('; ') : null
 }

@@ -8,6 +8,7 @@ import {
   OrderUnavailable,
   requestStatusFrom1C,
   toOrderPayload,
+  usageNote,
   type OutgoingRequest,
 } from './orders.ts'
 
@@ -71,6 +72,19 @@ describe('the order payload', () => {
     expect(requestStatusFrom1C('ВРаботе')).toBe('in_progress')
     expect(requestStatusFrom1C('Выполнен')).toBe('done')
     expect(requestStatusFrom1C('Отменён')).toBeNull()
+  })
+})
+
+describe('a replacement line’s note for the manager', () => {
+  it('carries the client’s reason and running hours, or nothing', () => {
+    const line = request.positions[0]
+    expect(usageNote({ ...line, reason: 'Износ', operatingHours: 2241, usageUnit: 'hours' })).toBe(
+      `Причина: Износ; наработка ${(2241).toLocaleString('ru-RU')} м/ч`,
+    )
+    expect(usageNote({ ...line, operatingHours: 15300, usageUnit: 'km' })).toBe(
+      `наработка ${(15300).toLocaleString('ru-RU')} км`,
+    )
+    expect(usageNote(line)).toBeNull()
   })
 })
 

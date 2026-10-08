@@ -29,6 +29,9 @@ interface Row {
   equipment_id: string | null
   garage_number: string | null
   day: string
+  reason: string | null
+  operating_hours: number | null
+  usage_unit: 'hours' | 'km' | null
 }
 
 /** Which swaps to list; each narrows the client's journal. */
@@ -40,7 +43,11 @@ export interface ReplacementFilter {
   equipment?: string
 }
 
-/** «История замен», newest first; 1С keeps no reason, usage or performer for a swap. */
+/**
+ * «История замен», newest first. 1С keeps no reason, usage or performer for a swap: the
+ * reason and running hours are what the client wrote in the latest replacement request
+ * naming the hose taken off (customer, 2026-10-08).
+ */
 export async function listReplacements(
   db: Db,
   filter: ReplacementFilter = {},
@@ -48,8 +55,15 @@ export async function listReplacements(
   const { rows } = await db.query<Row>(
     `with ${swaps('$1')}
      select s.id, s.old_id, s.old_serial, s.new_serial, s.equipment_id, e.garage_number,
-       to_char(s.date, 'YYYY-MM-DD') as day
+       to_char(s.date, 'YYYY-MM-DD') as day, asked.line ->> 'reason' as reason,
+       (asked.line ->> 'operatingHours')::int as operating_hours,
+       asked.line ->> 'usageUnit' as usage_unit
      from swaps s left join equipment e on e.id = s.equipment_id
+     left join lateral (
+       select l.line from requests r cross join jsonb_array_elements(r.positions) as l(line)
+        where r.kind = 'replace' and l.line ->> 'productId' = s.old_id
+        order by r.created_at desc limit 1
+     ) asked on true
      where ($2::text is null or s.id = $2 or s.old_id = $2)
        and ($3::text is null or s.equipment_id = $3)
      order by s.date desc, s.id`,
@@ -64,9 +78,9 @@ export async function listReplacements(
     equipmentId: r.equipment_id,
     garageNumber: r.garage_number,
     date: r.day,
-    reason: null,
-    operatingHours: null,
-    usageUnit: 'hours',
+    reason: r.reason,
+    operatingHours: r.operating_hours,
+    usageUnit: r.usage_unit ?? 'hours',
     performedBy: null,
     comment: null,
     attachments: [],

@@ -143,4 +143,34 @@ describe.skipIf(!hasDb)('the replacement journal from 1С links', () => {
       replacementsInPeriod: 1,
     })
   })
+
+  it('shows the reason and running hours the client gave in the replacement request', async () => {
+    const asked = await app.inject({
+      method: 'POST',
+      url: '/requests',
+      payload: {
+        branchId: '',
+        kind: 'replace',
+        comment: null,
+        positions: [
+          {
+            productId: 'old1',
+            catalogNumberId: null,
+            catalogNumber: null,
+            equipmentId: null,
+            quantity: 1,
+            reason: 'Износ',
+            operatingHours: 2241,
+            usageUnit: 'hours',
+          },
+        ],
+      },
+    })
+    expect(asked.statusCode).toBe(201)
+    const [swap] = (await get('/products/old1/replacements')) as Replacement[]
+    expect(swap).toMatchObject({ reason: 'Износ', operatingHours: 2241, usageUnit: 'hours' })
+    // A swap nobody asked about keeps 1С's silence.
+    const other = (await get('/replacements')) as Replacement[]
+    expect(other.find((r) => r.oldProductId === 'old2')).toMatchObject({ reason: null })
+  })
 })

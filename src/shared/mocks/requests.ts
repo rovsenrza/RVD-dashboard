@@ -52,6 +52,12 @@ export function createRequest(raw: NewRequest): ServiceRequest | { error: string
       catalogNumber: hose.catalogNumber,
       equipmentId: hose.equipmentId,
       quantity: 1,
+      // The client's reason and running hours stay with a replacement line, as on the API.
+      ...(body.kind === 'replace' && {
+        reason: line.reason ?? null,
+        operatingHours: line.operatingHours ?? null,
+        usageUnit: line.usageUnit === 'km' ? ('km' as const) : ('hours' as const),
+      }),
     }
   })
   const id = `req-${requests.length + 1}`

@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState, type FormEvent } from 'react'
 import { ClipboardPaste, Plus, X } from 'lucide-react'
 import { useSession } from '@/app/session'
 import { ProductStatusBadge } from '@/entities/product'
+import { REPLACEMENT_REASONS, USAGE_UNIT_LABEL } from '@/entities/replacement'
 import { REQUEST_KIND_HINT, REQUEST_KIND_LABEL } from '@/entities/request'
 import { isSpreadsheet, MAX_REQUEST_POSITIONS } from '@/entities/request/rules'
 import type { Product, RequestKind, RequestPosition } from '@/entities/types'
@@ -26,6 +27,14 @@ import { productLabel } from '@/features/products/productLookup'
 import { parsePositions } from '../parsePositions'
 
 const NO_EQUIPMENT = ''
+
+/** What the client says about a hose to replace: why, and after how much work (both optional). */
+interface Usage {
+  reason: string
+  hours: string
+  unit: 'hours' | 'km'
+}
+const NO_USAGE: Usage = { reason: '', hours: '', unit: 'hours' }
 const CATALOG_LIST = 'request-catalog-numbers'
 
 const KINDS: SegmentedOption<RequestKind>[] = (['replace', 'manufacture', 'repair'] as const).map(
@@ -94,6 +103,7 @@ export function RequestForm({
   const [rows, setRows] = useState<Row[]>(() => [blank(preset?.catalogNumber ?? '')])
   const [equipmentId, setEquipmentId] = useState(NO_EQUIPMENT)
   const [branchChoice, setBranchChoice] = useState('')
+  const [usage, setUsage] = useState<Record<string, Usage>>({})
   const [comment, setComment] = useState('')
   const [pasting, setPasting] = useState(false)
   const [pasted, setPasted] = useState('')
@@ -136,6 +146,8 @@ export function RequestForm({
 
   const patch = (key: number, part: Partial<Row>) =>
     setRows((all) => all.map((r) => (r.key === key ? { ...r, ...part } : r)))
+  const patchUsage = (id: string, part: Partial<Usage>) =>
+    setUsage((all) => ({ ...all, [id]: { ...(all[id] ?? NO_USAGE), ...part } }))
 
   /** Pasted lines join the filled ones, up to the ten-line ceiling; the rest are counted, not lost silently. */
   const addPasted = () => {
@@ -155,13 +167,22 @@ export function RequestForm({
     setError(undefined)
     const eq = chosenMachine
     const positions: RequestPosition[] = [
-      ...hoses.map((p) => ({
-        productId: p.id,
-        catalogNumberId: p.catalogNumberId,
-        catalogNumber: p.catalogNumber,
-        equipmentId: p.equipmentId,
-        quantity: 1,
-      })),
+      ...hoses.map((p) => {
+        const u = usage[p.id] ?? NO_USAGE
+        return {
+          productId: p.id,
+          catalogNumberId: p.catalogNumberId,
+          catalogNumber: p.catalogNumber,
+          equipmentId: p.equipmentId,
+          quantity: 1,
+          // The reason and running hours go to the replacement history (customer, 2026-10-08).
+          ...(replacing && {
+            reason: u.reason || null,
+            operatingHours: u.hours === '' ? null : Number(u.hours),
+            usageUnit: u.unit,
+          }),
+        }
+      }),
       ...(withRows ? filled : []).map((r) => {
         const typed = r.catalogNumber.trim()
         // Text the catalogue does not know — a number or, for a repair, the work — goes
@@ -266,30 +287,72 @@ export function RequestForm({
               hosesFull
                 ? `В одной заявке — до ${MAX_REQUEST_POSITIONS} позиций.`
                 : replacing
-                  ? 'Те, что пора менять, в подсказке первыми. Техника — у каждого изделия своя.'
+                  ? 'Те, что пора менять, в подсказке первыми. Техника — у каждого изделия своя. Причину и наработку можно не указывать — они попадут в историю замен.'
                   : 'Если ремонтируем изделие, которое мы поставили, — выберите его. Если нет — опишите работу ниже.'
             }
             error={miss}
           >
             {(id) => (
-              <div className="grid gap-1.5">
-                {hoses.map((p) => (
-                  <ProductRow
-                    key={p.id}
-                    label={labelOf(p)}
-                    aside={
-                      p.lifecycle === 'written_off' ? (
-                        <Badge tone="none" dot>
-                          Списано
-                        </Badge>
-                      ) : (
-                        <ProductStatusBadge status={p.status} />
-                      )
-                    }
-                    removeLabel={`Убрать EHS ${p.serialNumber}`}
-                    onRemove={() => setPicked((all) => all.filter((x) => x.id !== p.id))}
-                  />
-                ))}
+              // With its reason and hours under it, each hose reads as a group of its own.
+              <div className={replacing ? 'grid gap-3' : 'grid gap-1.5'}>
+                {hoses.map((p) => {
+                  const u = usage[p.id] ?? NO_USAGE
+                  const row = (
+                    <ProductRow
+                      label={labelOf(p)}
+                      aside={
+                        p.lifecycle === 'written_off' ? (
+                          <Badge tone="none" dot>
+                            Списано
+                          </Badge>
+                        ) : (
+                          <ProductStatusBadge status={p.status} />
+                        )
+                      }
+                      removeLabel={`Убрать EHS ${p.serialNumber}`}
+                      onRemove={() => setPicked((all) => all.filter((x) => x.id !== p.id))}
+                    />
+                  )
+                  if (!replacing) return <div key={p.id}>{row}</div>
+                  return (
+                    <div key={p.id} className="grid gap-1.5">
+                      {row}
+                      <div className="grid grid-cols-[minmax(0,1fr)_5.5rem] gap-1.5 pl-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,8.5rem)_5.5rem]">
+                        <Select
+                          className="col-span-2 sm:col-span-1"
+                          aria-label={`Причина замены EHS ${p.serialNumber}`}
+                          value={u.reason}
+                          onChange={(e) => patchUsage(p.id, { reason: e.target.value })}
+                          placeholder="Причина не указана"
+                          options={REPLACEMENT_REASONS.map((r) => ({ value: r, label: r }))}
+                        />
+                        <Input
+                          aria-label={`Наработка EHS ${p.serialNumber}`}
+                          inputMode="numeric"
+                          placeholder="Наработка"
+                          value={u.hours}
+                          // Whole hours or kilometres: anything but digits is dropped as typed.
+                          onChange={(e) =>
+                            patchUsage(p.id, {
+                              hours: e.target.value.replace(/\D/g, '').slice(0, 7),
+                            })
+                          }
+                        />
+                        <Select
+                          aria-label={`Единица наработки EHS ${p.serialNumber}`}
+                          value={u.unit}
+                          onChange={(e) =>
+                            patchUsage(p.id, { unit: e.target.value === 'km' ? 'km' : 'hours' })
+                          }
+                          options={(['hours', 'km'] as const).map((unit) => ({
+                            value: unit,
+                            label: USAGE_UNIT_LABEL[unit],
+                          }))}
+                        />
+                      </div>
+                    </div>
+                  )
+                })}
                 <ProductPicker
                   id={id}
                   eligible={eligible}

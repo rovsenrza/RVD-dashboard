@@ -205,6 +205,11 @@ export interface RequestPosition {
   /** Техника, на которую пойдёт изделие; null — «без привязки к технике» */
   equipmentId: string | null
   quantity: number
+  /** «Замена»: почему меняют — из REPLACEMENT_REASONS (клиент указывает в заявке, вопрос 22) */
+  reason?: string | null
+  /** «Замена»: наработка снимаемого изделия, в `usageUnit` */
+  operatingHours?: number | null
+  usageUnit?: 'hours' | 'km'
 }
 
 /**

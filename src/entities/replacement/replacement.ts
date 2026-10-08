@@ -4,15 +4,8 @@ import type { Replacement } from '@/entities/types'
 /** Shared with the API's reports. */
 export { USAGE_UNIT_LABEL }
 
-/** Reasons for a swap (ТЗ, PRODUCT.md). 1С keeps the reference list; this mirrors it until sync. */
-export const REPLACEMENT_REASONS = [
-  'Плановая замена',
-  'Гарантийная замена',
-  'Поломка',
-  'Износ',
-  'Капитальный ремонт',
-  'По требованию заказчика',
-]
+/** Reasons for a swap: the client gives one in the replacement request; shared with the API. */
+export { REPLACEMENT_REASONS } from '@rvd/contracts'
 
 /** «2 241 м/ч», «15 300 км», or null when nothing was recorded. */
 export function formatUsage(r: Pick<Replacement, 'operatingHours' | 'usageUnit'>): string | null {

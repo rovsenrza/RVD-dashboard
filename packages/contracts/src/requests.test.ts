@@ -1,4 +1,9 @@
-import { MAX_REQUEST_POSITIONS, requestProblem, type RequestDraft } from './requests'
+import {
+  MAX_REQUEST_POSITIONS,
+  REPLACEMENT_REASONS,
+  requestProblem,
+  type RequestDraft,
+} from './requests'
 import type { Product, RequestPosition } from './types'
 
 const hose = (id: string, lifecycle: Product['lifecycle'] = 'in_operation') =>
@@ -79,5 +84,18 @@ describe('requestProblem', () => {
     expect(requestProblem(draft('manufacture', [line({ productId: 'h1' })]), ctx())).toMatch(
       /выберите «Замена»/,
     )
+  })
+
+  it('takes a replacement line’s reason from the list and its running hours as a whole number', () => {
+    const replace = (part: Partial<RequestPosition>) =>
+      requestProblem(draft('replace', [line({ productId: 'h1', ...part })]), ctx())
+    expect(
+      replace({ reason: REPLACEMENT_REASONS[3], operatingHours: 2241, usageUnit: 'hours' }),
+    ).toBeNull()
+    expect(replace({ reason: null, operatingHours: null })).toBeNull()
+    expect(replace({ reason: 'Просто так' })).toMatch(/причину замены из списка/)
+    expect(replace({ operatingHours: -1 })).toMatch(/целое число/)
+    expect(replace({ operatingHours: 12.5 })).toMatch(/целое число/)
+    expect(replace({ usageUnit: 'miles' as 'km' })).toMatch(/моточасах или километрах/)
   })
 })
