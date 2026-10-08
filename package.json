@@ -1,7 +1,7 @@
 {
   "name": "rvd-dashboard",
   "private": true,
-  "version": "1.0.0-rc.1",
+  "version": "1.0.0-rc.2",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -16,6 +16,7 @@
     "test:watch": "vitest",
     "test:visual": "playwright test",
     "test:visual:update": "playwright test --update-snapshots",
+    "guide": "node scripts/build-guide.mjs",
     "msw:init": "msw init public --save",
     "lint:arch": "bash scripts/check-arch.sh",
     "test:e2e": "playwright test -c playwright.live.config.ts"

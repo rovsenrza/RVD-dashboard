@@ -11,6 +11,12 @@
         ],
         "createdAt": "2026-09-16T13:37:15.258Z",
         "reason": "Sticky key column in a horizontally scrolling registry needs an opaque cell background; it is a table cell, not a card"
+      },
+      {
+        "rule": "design-system-font",
+        "value": "circe",
+        "createdAt": "2026-10-08T08:37:28.992Z",
+        "reason": "PRODUCT.md Brand Commitments: the customer's brand typeface Circe Regular/Bold (ВГИЗ brand book), already served by public/fonts/circe.css and used by the cabinet; DESIGN.md typography lags it"
       }
     ]
   }

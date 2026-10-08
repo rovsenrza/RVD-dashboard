@@ -44,7 +44,8 @@ export function PageHeader({
           <div
             data-sticky-actions={stickyActions || undefined}
             className={cn(
-              'flex items-center gap-2',
+              // Actions that do not fit a phone's row wrap rather than push the page sideways.
+              'flex flex-wrap items-center gap-2',
               stickyActions &&
                 'max-sm:fixed max-sm:inset-x-0 max-sm:bottom-0 max-sm:z-15 max-sm:bg-sheet max-sm:px-4 max-sm:pt-3 max-sm:pb-[max(0.75rem,env(safe-area-inset-bottom))] max-sm:shadow-[0_-1px_0_var(--color-line)] max-sm:[&>*]:flex-1',
             )}

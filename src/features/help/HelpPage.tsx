@@ -1,12 +1,15 @@
 import { Fragment, useEffect, useState, type ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
-import { Headset } from 'lucide-react'
+import { FileText, Headset } from 'lucide-react'
 import { ProductStatusBadge, STATUS_COLOR } from '@/entities/product'
 import { DEFAULT_SETTINGS, INSPECTION_LABEL } from '@/entities/settings'
 import type { ProductStatus } from '@/entities/types'
 import { ROLE_LABEL } from '@/entities/user'
 import { Button, Kbd, PageHeader } from '@/shared/ui'
 import { ContactDialog } from '@/features/support/ContactDialog'
+
+/** The user guide for client staff, built from docs/guide by `npm run guide`. */
+const GUIDE_URL = '/docs/rvd-kabinet-instrukciya.pdf'
 
 const SECTIONS = [
   { id: 'statuses', title: 'Статусы изделия' },
@@ -65,10 +68,19 @@ export function HelpPage() {
     if (hash) document.getElementById(hash.slice(1))?.scrollIntoView({ block: 'start' })
   }, [hash])
 
-  const contactButton = (
-    <Button variant="secondary" icon={Headset} onClick={() => setContact(true)}>
-      Связаться со специалистом
-    </Button>
+  const actions = (
+    <>
+      <Button
+        variant="ghost"
+        icon={FileText}
+        onClick={() => window.open(GUIDE_URL, '_blank', 'noopener')}
+      >
+        Инструкция (PDF)
+      </Button>
+      <Button variant="secondary" icon={Headset} onClick={() => setContact(true)}>
+        Связаться со специалистом
+      </Button>
+    </>
   )
 
   return (
@@ -77,7 +89,7 @@ export function HelpPage() {
       <PageHeader
         title="Помощь"
         description="Как читать кабинет и куда обращаться, если что-то не так"
-        actions={contactButton}
+        actions={actions}
       />
       <div className="grid items-start gap-6 xl:grid-cols-[12rem_minmax(0,1fr)]">
         <nav aria-label="Разделы помощи" className="sticky top-0 max-xl:hidden">
@@ -139,8 +151,8 @@ export function HelpPage() {
             <ul>
               <li>
                 <b>«Создать заявку на замену»</b> на карточке изделия — изделие и его характеристики
-                уже в заявке, остаётся указать количество и комментарий. С карточки техники («Заявка
-                на замену») её изделия предлагаются первыми.
+                уже в заявке; по желанию укажите причину замены и наработку — они попадут в историю
+                замен. С карточки техники («Заявка на замену») её изделия предлагаются первыми.
               </li>
               <li>
                 <b>«Заказать такой же»</b> на карточке изделия — заявка на изготовление по его
@@ -204,11 +216,12 @@ export function HelpPage() {
 
           <Section id="access">
             <p>
-              Каждый видит только данные своей компании. {ROLE_LABEL.mechanic} и{' '}
-              {ROLE_LABEL.engineer.toLowerCase()} работают с изделиями, техникой, заявками и
-              уведомлениями; {ROLE_LABEL.manager.toLowerCase()} — ещё и с отчётами и сравнением
-              техники; {ROLE_LABEL.admin.toLowerCase()} компании заводит пользователей и настраивает
-              кабинет.
+              Каждый видит только данные своей компании, а если у компании несколько филиалов —
+              своих филиалов: какие, назначает администратор, переключить филиал можно в шапке.{' '}
+              {ROLE_LABEL.mechanic} и {ROLE_LABEL.engineer.toLowerCase()} работают с изделиями,
+              техникой, заявками и уведомлениями; {ROLE_LABEL.manager.toLowerCase()} — ещё и с
+              отчётами и сравнением техники; {ROLE_LABEL.admin.toLowerCase()} компании заводит
+              пользователей и настраивает кабинет.
             </p>
             <p>
               Сменить пароль — в меню пользователя справа вверху. Забыли пароль — попросите
