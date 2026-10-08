@@ -13,8 +13,9 @@ Options -Indexes
 </IfModule>
 
 <IfModule mod_headers.c>
-  # The same policy as deploy/nginx.conf: scripts only from the site (the theme is theme.js).
-  Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; media-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
+  # The same policy as deploy/nginx.conf: scripts and styles only from the site (the theme is
+  # theme.js). Not the cross-origin isolation headers: here the API may live on another origin.
+  Header always set Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; media-src 'self' blob:; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none'"
   Header always set X-Content-Type-Options "nosniff"
   Header always set X-Frame-Options "DENY"
   Header always set Referrer-Policy "no-referrer"

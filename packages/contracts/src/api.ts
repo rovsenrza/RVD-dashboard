@@ -1,6 +1,10 @@
 import { z } from 'zod'
 import type { Product } from './types'
 
+// No compiled parsers: the cabinet's CSP has no 'unsafe-eval', and Zod's probe for it (`Function('')`)
+// made the browser report a violation on every screen that reads an answer.
+z.config({ jitless: true })
+
 /** A page of a list; `total` counts every match, not just this page. */
 export interface Paginated<T> {
   items: T[]

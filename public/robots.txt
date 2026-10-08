@@ -1,0 +1,3 @@
+# The client cabinet is private: nothing here is for search engines.
+User-agent: *
+Disallow: /
