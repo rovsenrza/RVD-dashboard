@@ -21,6 +21,12 @@ export interface RawItem {
   СрокПолезногоИспользования: string
   СрокГарантии: string
   Клиент_Key: string
+  /**
+   * The machine the item belongs to (`Catalog_Техника`); «Без привязки к технике» when none.
+   * The 1С developer (2026-10-08): the item and the register are the truth — not «Выпуск»,
+   * whose machine and client have disagreed with the item's.
+   */
+  Owner_Key: string
   Диаметр: number
   КоличествоОплетокНавивок: string
   НоменклатурныйНомер: string
@@ -49,17 +55,11 @@ export interface RawStatusRecord {
   Статус: string
 }
 
-/**
- * «Выпуск», read only for its machine: the register keeps no garage number,
- * so a hose sits on the machine named by the document that recorded its
- * status; the history names it by number. Its own status, date and branch are
- * not used (the branch is not even filled in the working base).
- */
+/** «Выпуск», read only for its number, by which the history names the document that recorded a status. */
 export interface RawRelease {
   Ref_Key: string
   /** Zero-padded: "000000123" */
   Number: string
-  ГаражныйНомер_Key: string
 }
 
 /** «Заказ клиента», read for its number: before «Выпуск» took over, orders set statuses too. */

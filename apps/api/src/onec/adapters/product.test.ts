@@ -6,7 +6,6 @@ import {
   components,
   equipment,
   item,
-  release,
   statusRecord,
 } from '../__fixtures__/builders.ts'
 import { toProducts, type ProductSources } from './product.ts'
@@ -16,7 +15,6 @@ const TODAY = new Date('2026-09-30T12:00:00')
 const sources = (over: Partial<ProductSources> = {}): ProductSources => ({
   items: [item()],
   statuses: [],
-  releases: [],
   catalogNumbers: [],
   components,
   equipment: [equipment()],
@@ -54,14 +52,10 @@ describe('dates and lifecycle come from the statuses register', () => {
     statusRecord({ Recorder: 'b', Period: '2026-01-20T09:00:00', Статус: 'Отгружен' }),
     statusRecord({ Recorder: 'c', Period: '2026-02-01T15:30:00', Статус: 'ВЭксплуатации' }),
   ]
-  const docs = [
-    release({ Ref_Key: 'a' }),
-    release({ Ref_Key: 'b' }),
-    release({ Ref_Key: 'c', ГаражныйНомер_Key: 'eq-1' }),
-  ]
+  const onEq1 = [item({ Owner_Key: 'eq-1' })]
 
-  it('takes shipment, installation and stage from the register, the machine from its document', () => {
-    const p = one({ statuses: chain, releases: docs })
+  it('takes shipment, installation and stage from the register, the machine from the item', () => {
+    const p = one({ items: onEq1, statuses: chain })
     expect(p).toMatchObject({
       manufacturedAt: '2026-01-10',
       shippedAt: '2026-01-20',
@@ -74,6 +68,7 @@ describe('dates and lifecycle come from the statuses register', () => {
   it('believes the register when a document recorded a later shipment than its header says', () => {
     // As in the working base: «Выпуск» of 18.08, «НаСкладе» in its header, recorded «Отгружен» on 27.08.
     const p = one({
+      items: onEq1,
       statuses: [
         statusRecord({ Recorder: 'd', Period: '2026-08-18T10:00:00', Статус: 'НаСкладе' }),
         statusRecord({
@@ -83,13 +78,13 @@ describe('dates and lifecycle come from the statuses register', () => {
           Статус: 'Отгружен',
         }),
       ],
-      releases: [release({ Ref_Key: 'd', ГаражныйНомер_Key: 'eq-1' })],
     })
     expect(p).toMatchObject({ lifecycle: 'shipped', shippedAt: '2026-08-27', equipmentId: 'eq-1' })
   })
 
-  it('takes a status an order set, and the machine from the last document that names one', () => {
+  it('takes a status an order set', () => {
     const p = one({
+      items: onEq1,
       statuses: [
         ...chain.slice(0, 2),
         statusRecord({
@@ -99,7 +94,6 @@ describe('dates and lifecycle come from the statuses register', () => {
           Статус: 'Отгружен',
         }),
       ],
-      releases: [release({ Ref_Key: 'a', ГаражныйНомер_Key: 'eq-1' }), release({ Ref_Key: 'b' })],
     })
     expect(p).toMatchObject({ lifecycle: 'shipped', shippedAt: '2026-03-01', equipmentId: 'eq-1' })
   })
@@ -107,9 +101,8 @@ describe('dates and lifecycle come from the statuses register', () => {
   it('ignores records that are no longer active', () => {
     const p = one({
       statuses: [...chain.slice(0, 2), { ...chain[2], Active: false }],
-      releases: docs,
     })
-    expect(p).toMatchObject({ installedAt: null, lifecycle: 'shipped', equipmentId: null })
+    expect(p).toMatchObject({ installedAt: null, lifecycle: 'shipped' })
   })
 
   it('orders the records of one moment by their line in the document', () => {
@@ -123,19 +116,18 @@ describe('dates and lifecycle come from the statuses register', () => {
     expect(p.lifecycle).toBe('shipped')
   })
 
-  it('puts an item on a machine only from shipment on, however early the document names one', () => {
-    const named = [release({ ГаражныйНомер_Key: 'eq-1' })]
+  it('puts an item on a machine only from shipment on, however early it names one', () => {
     const inStock = statusRecord({ Статус: 'НаСкладе' })
-    expect(one({ statuses: [inStock], releases: named }).equipmentId).toBeNull()
-    expect(
-      one({ statuses: [{ ...inStock, Статус: 'Отгружен' }], releases: named }).equipmentId,
-    ).toBe('eq-1')
+    expect(one({ items: onEq1, statuses: [inStock] }).equipmentId).toBeNull()
+    expect(one({ items: onEq1, statuses: [{ ...inStock, Статус: 'Отгружен' }] }).equipmentId).toBe(
+      'eq-1',
+    )
   })
 
   it('puts no hose on the «Без привязки к технике» placeholder', () => {
     const p = one({
+      items: [item({ Owner_Key: 'stub' })],
       statuses: [statusRecord({ Статус: 'Отгружен' })],
-      releases: [release({ ГаражныйНомер_Key: 'stub' })],
       equipment: [
         equipment(),
         equipment({ Ref_Key: 'stub', Description: 'Без привязки к технике' }),
@@ -151,11 +143,11 @@ describe('dates and lifecycle come from the statuses register', () => {
   it('keeps the stage and the machine when 1С records a status the cabinet does not know yet', () => {
     // The 1С repair package will write a repair line into the status history of a hose.
     const p = one({
+      items: onEq1,
       statuses: [
         statusRecord({ Recorder: 'a', Period: '2026-06-01T09:00:00', Статус: 'Отгружен' }),
         statusRecord({ Recorder: 'r', Period: '2026-09-10T09:00:00', Статус: 'Ремонт' }),
       ],
-      releases: [release({ Ref_Key: 'a', ГаражныйНомер_Key: 'eq-1' })],
     })
     expect(p).toMatchObject({ lifecycle: 'shipped', shippedAt: '2026-06-01', equipmentId: 'eq-1' })
   })
@@ -163,8 +155,8 @@ describe('dates and lifecycle come from the statuses register', () => {
   it('maps the empty status to manufacturing, and a machine missing from the catalogue to none', () => {
     expect(one({ statuses: [statusRecord({ Статус: '' })] }).lifecycle).toBe('manufacturing')
     const p = one({
+      items: [item({ Owner_Key: 'not-in-catalogue' })],
       statuses: [statusRecord({ Статус: 'Отгружен' })],
-      releases: [release({ ГаражныйНомер_Key: 'not-in-catalogue' })],
     })
     expect(p).toMatchObject({ lifecycle: 'shipped', equipmentId: null })
   })

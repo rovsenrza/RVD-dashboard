@@ -1,8 +1,9 @@
 import { guid, type ODataClient } from './client.ts'
 import type { ProductSources } from './adapters/product.ts'
-import type { RawNamed, RawOrder, RawStatusRecord } from './raw.ts'
+import type { RawNamed, RawOrder, RawRelease, RawStatusRecord } from './raw.ts'
 
 export interface Sources extends ProductSources {
+  releases: RawRelease[]
   orders: RawOrder[]
   brands: RawNamed[]
   types: RawNamed[]
@@ -25,7 +26,7 @@ const STATUS_FIELDS = [
   'Изделие_Key',
   'Статус',
 ]
-const RELEASE_FIELDS = ['Ref_Key', 'Number', 'ГаражныйНомер_Key']
+const RELEASE_FIELDS = ['Ref_Key', 'Number']
 const ORDER_FIELDS = ['Ref_Key', 'Number']
 /**
  * How long a `$filter` of keys may get once encoded. 1С is published through IIS, which
@@ -121,7 +122,7 @@ export async function fetchSourcesFor(client: ODataClient, ids: string[]): Promi
     ...new Set(statuses.filter((s) => s.Recorder_Type.endsWith(type)).map((s) => s.Recorder)),
   ]
   const [releases, orders] = await Promise.all([
-    byKeys<ProductSources['releases'][number]>(
+    byKeys<RawRelease>(
       client,
       'Document_Выпуск',
       'Ref_Key',

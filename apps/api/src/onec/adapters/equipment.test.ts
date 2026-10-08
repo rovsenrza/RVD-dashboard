@@ -1,36 +1,29 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
-import { equipment, item, release, statusRecord } from '../__fixtures__/builders.ts'
+import { equipment, item, statusRecord } from '../__fixtures__/builders.ts'
 import { toEquipment } from './equipment.ts'
 import { toProducts } from './product.ts'
 
 const TODAY = new Date('2026-09-30T12:00:00')
 
-/** The register's record of a hose going onto a machine, and the «Выпуск» that names the machine. */
-const onMachine = (id: string, status: string, machine: string, date: string) => ({
-  statuses: [
-    statusRecord({ Recorder: `${id}-${status}`, Изделие_Key: id, Статус: status, Period: date }),
-  ],
-  releases: [release({ Ref_Key: `${id}-${status}`, ГаражныйНомер_Key: machine })],
-})
+/** The register's record of a hose reaching a stage. */
+const step = (id: string, status: string, date: string) =>
+  statusRecord({ Recorder: `${id}-${status}`, Изделие_Key: id, Статус: status, Period: date })
 
 describe('toEquipment', () => {
   const build = () => {
-    const items = [item({ Ref_Key: 'h1' }), item({ Ref_Key: 'h2' }), item({ Ref_Key: 'h3' })]
-    const steps = [
-      onMachine('h1', 'ВЭксплуатации', 'eq-1', '2026-08-01T00:00:00'), // ok
-      onMachine('h2', 'ВЭксплуатации', 'eq-1', '2025-09-01T00:00:00'), // overdue
-      onMachine('h3', 'ВЭксплуатации', 'eq-1', '2026-08-10T00:00:00'),
-      onMachine('h3', 'Списан', 'eq-1', '2026-09-01T00:00:00'),
+    const items = ['h1', 'h2', 'h3'].map((id) => item({ Ref_Key: id, Owner_Key: 'eq-1' }))
+    const statuses = [
+      step('h1', 'ВЭксплуатации', '2026-08-01T00:00:00'), // ok
+      step('h2', 'ВЭксплуатации', '2025-09-01T00:00:00'), // overdue
+      step('h3', 'ВЭксплуатации', '2026-08-10T00:00:00'),
+      step('h3', 'Списан', '2026-09-01T00:00:00'),
     ]
-    const statuses = steps.flatMap((s) => s.statuses)
-    const releases = steps.flatMap((s) => s.releases)
     const equipmentRows = [equipment(), equipment({ Ref_Key: 'eq-2', DeletionMark: true })]
     const products = toProducts(
       {
         items,
         statuses,
-        releases,
         catalogNumbers: [],
         components: [],
         equipment: equipmentRows,

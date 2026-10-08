@@ -10,7 +10,6 @@ import type {
   RawComponent,
   RawEquipment,
   RawItem,
-  RawRelease,
   RawStatusRecord,
 } from '../raw.ts'
 import { toComposition } from './catalog.ts'
@@ -47,7 +46,6 @@ export const stageOf = (status: string | null | undefined): ProductLifecycle | n
 export interface ProductSources {
   items: RawItem[]
   statuses: RawStatusRecord[]
-  releases: RawRelease[]
   catalogNumbers: RawCatalogNumber[]
   components: RawComponent[]
   equipment: RawEquipment[]
@@ -85,8 +83,7 @@ const lastWith = (records: RawStatusRecord[], status: string) =>
 /**
  * 1С keeps no dates on the item itself: shipment and installation are when the
  * statuses register recorded «Отгружен» and «ВЭксплуатации», the stage is its
- * latest record, the machine is the garage number on the «Выпуск» that
- * recorded the item's status (newest first), health is computed here
+ * latest record, the machine is the item's owner, health is computed here
  * (docs/1c/mapping.md).
  */
 export function toProducts(src: ProductSources, options: ProductOptions = {}): Product[] {
@@ -99,7 +96,6 @@ export function toProducts(src: ProductSources, options: ProductOptions = {}): P
     src.equipment.filter((e) => !isPlaceholderMachine(e)),
     (e) => e.Ref_Key,
   )
-  const releases = byKey(src.releases, (r) => r.Ref_Key)
   const lifecycles = statusesByItem(src.statuses)
 
   return src.items
@@ -115,16 +111,10 @@ export function toProducts(src: ProductSources, options: ProductOptions = {}): P
       // repair line of its new package, say — records an event and must not move the hose.
       const stage = [...history].reverse().find((r) => isKnownStatus(r.Статус))
       const lifecycle = LIFECYCLE[cleanText(stage?.Статус)] ?? 'manufacturing'
-      // Every «Выпуск» names a machine, even while the item is still in the warehouse
-      // (the order's target); the item sits on it only from shipment on.
+      // The item names its machine from the order on, while still in the warehouse (the
+      // order's target); it sits on it only from shipment on.
       const onMachine = lifecycle === 'shipped' || lifecycle === 'in_operation'
-      const garage = onMachine
-        ? [...history]
-            .reverse()
-            .map((r) => releases.get(r.Recorder)?.ГаражныйНомер_Key)
-            .find((key) => key !== undefined && isRef(key))
-        : undefined
-      const machine = garage ? equipment.get(garage) : undefined
+      const machine = onMachine && isRef(item.Owner_Key) ? equipment.get(item.Owner_Key) : undefined
       const lines = item.Комплектующие?.length ? item.Комплектующие : (cat?.Комплектующие ?? [])
 
       const serviceLifeDays =

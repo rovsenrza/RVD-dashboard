@@ -75,7 +75,10 @@ export function toOrderPayload(r: OutgoingRequest): OrderPayload {
   }
 }
 
-/** «СтатусЗаказа» → the cabinet's request status; null for one it does not know yet (a refusal, say). */
+/**
+ * «СтатусЗаказа» → the cabinet's request status; null for one it does not know. «Отказ» is the
+ * status the 1С developer is adding (2026-10-08) for a request refused as a whole.
+ */
 export function requestStatusFrom1C(status: string | null | undefined): RequestStatus | null {
   switch ((status ?? '').trim()) {
     case 'Черновик':
@@ -86,6 +89,8 @@ export function requestStatusFrom1C(status: string | null | undefined): RequestS
       return 'in_progress'
     case 'Выполнен':
       return 'done'
+    case 'Отказ':
+      return 'rejected'
     default:
       return null
   }

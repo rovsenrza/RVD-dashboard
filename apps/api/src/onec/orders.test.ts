@@ -71,6 +71,7 @@ describe('the order payload', () => {
     expect(requestStatusFrom1C('КВыполнению')).toBe('new')
     expect(requestStatusFrom1C('ВРаботе')).toBe('in_progress')
     expect(requestStatusFrom1C('Выполнен')).toBe('done')
+    expect(requestStatusFrom1C('Отказ')).toBe('rejected')
     expect(requestStatusFrom1C('Отменён')).toBeNull()
   })
 })

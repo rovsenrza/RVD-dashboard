@@ -20,6 +20,7 @@ export const item = (over: Partial<RawItem> = {}): RawItem => ({
   СрокПолезногоИспользования: '365',
   СрокГарантии: '180',
   Клиент_Key: 'client-1',
+  Owner_Key: ZERO_GUID,
   Диаметр: 10,
   КоличествоОплетокНавивок: '2  ',
   НоменклатурныйНомер: '',
@@ -39,11 +40,10 @@ export const statusRecord = (over: Partial<RawStatusRecord> = {}): RawStatusReco
   ...over,
 })
 
-/** «Выпуск» as the adapters read it: its number and the machine it names. */
+/** «Выпуск» as the adapters read it: its number. */
 export const release = (over: Partial<RawRelease> = {}): RawRelease => ({
   Ref_Key: 'doc-1',
   Number: '000000001',
-  ГаражныйНомер_Key: ZERO_GUID,
   ...over,
 })
 
