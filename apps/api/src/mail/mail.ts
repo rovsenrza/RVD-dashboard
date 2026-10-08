@@ -103,6 +103,47 @@ export async function deliverSupport(
   return { sent, failed }
 }
 
+/**
+ * Data 1С keeps twice and differently (question 24), to the 1С support: one letter with
+ * what the rebuild found since the last one; each disagreement goes once. A failure is
+ * kept on the rows and tried again on the next run.
+ */
+export async function deliverDataIssues(db: Db, mailer: Mailer, to: string): Promise<number> {
+  const { rows } = await db.query<{ key: string; text: string }>(
+    `select key, text from data_issues
+     where resolved_at is null and notified_at is null
+     order by found_at, text limit 100`,
+  )
+  if (!rows.length) return 0
+  const keys = rows.map((r) => r.key)
+  try {
+    await mailer.send({
+      to,
+      subject: `РВД Кабинет: обнаружено расхождение данных в 1С (${rows.length})`,
+      text: [
+        'Синхронизация кабинета нашла в 1С данные, которые хранятся дважды и расходятся.',
+        'Истина — изделие и регистр статусов; расходится копия в технике или в «Выпуске».',
+        '',
+        ...rows.map((r) => `• ${r.text}`),
+        '',
+        'О каждом расхождении письмо приходит один раз. Исправленное в 1С кабинет снимет сам',
+        'при ночной синхронизации.',
+      ].join('\n'),
+    })
+  } catch (error) {
+    await db.query('update data_issues set notify_error = $2 where key = any($1)', [
+      keys,
+      error instanceof Error ? error.message : String(error),
+    ])
+    throw error
+  }
+  await db.query(
+    'update data_issues set notified_at = now(), notify_error = null where key = any($1)',
+    [keys],
+  )
+  return rows.length
+}
+
 /** The day a notice fired: `lead` days before its date, or the day 1С closed the request. */
 const firedOn = (n: CabinetNotification) =>
   n.dueDate && n.lead !== null
@@ -183,6 +224,8 @@ export interface MailJobOptions {
   intervalMs: number
   /** Where messages to the specialist go (question 15); unset — they wait */
   supportTo?: string
+  /** Where letters about data 1С keeps twice and differently go (question 24); unset — they wait */
+  dataIssuesTo?: string
   /** Local hour from which the day's digest goes out */
   digestHour: number
   cabinetUrl?: string
@@ -197,6 +240,7 @@ export function startMail(db: Db, mailer: Mailer, options: MailJobOptions) {
     busy = true
     try {
       if (options.supportTo) await deliverSupport(db, mailer, options.supportTo)
+      if (options.dataIssuesTo) await deliverDataIssues(db, mailer, options.dataIssuesTo)
       const now = new Date()
       if (now.getHours() >= options.digestHour)
         await sendDigests(db, mailer, now.toLocaleDateString('sv-SE'), options.cabinetUrl)

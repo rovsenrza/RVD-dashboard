@@ -66,6 +66,7 @@ if (mailer)
   startMail(db, mailer, {
     intervalMs: 60_000,
     supportTo: config.SUPPORT_EMAIL,
+    dataIssuesTo: config.DATA_ISSUES_EMAIL,
     digestHour: config.NOTIFY_HOUR,
     cabinetUrl: config.CABINET_URL,
     onError: (error) => app.log.error({ err: error }, 'почта не отправлена'),

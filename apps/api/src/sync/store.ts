@@ -1,6 +1,7 @@
 import type { PoolClient } from 'pg'
 import type { CatalogNumber, Equipment, LifecycleRecord, Product } from '@rvd/contracts'
 import type { Db } from '../db/pool.ts'
+import type { Discrepancy } from '../onec/adapters/discrepancies.ts'
 
 /** What the cache filters by but the contract does not carry: who owns the item, its 1С version. */
 export interface StoredProduct {
@@ -220,5 +221,31 @@ export async function patchCache(db: Db, patch: CachePatch, durationMs: number):
         )
     await writeProducts(tx, patch.products, patch.history ?? new Map(), garages)
     await countState(tx, durationMs)
+  })
+}
+
+/**
+ * Keeps `data_issues` to what the rebuild just found (question 24): a new disagreement is
+ * added, one still there keeps its date and letter, one gone is closed. One that comes back
+ * after it was closed is found anew and goes out in a letter again.
+ */
+export async function recordDataIssues(db: Db, found: Discrepancy[]): Promise<void> {
+  await inTransaction(db, async (tx) => {
+    await tx.query(
+      `insert into data_issues (key, kind, product_id, text)
+         select key, kind, "productId", text
+         from jsonb_to_recordset($1::jsonb) as r(key text, kind text, "productId" text, text text)
+       on conflict (key) do update set
+         text = excluded.text,
+         found_at = case when data_issues.resolved_at is null then data_issues.found_at else now() end,
+         notified_at = case when data_issues.resolved_at is null then data_issues.notified_at end,
+         notify_error = case when data_issues.resolved_at is null then data_issues.notify_error end,
+         resolved_at = null`,
+      [JSON.stringify(found)],
+    )
+    await tx.query(
+      'update data_issues set resolved_at = now() where resolved_at is null and not (key = any($1))',
+      [found.map((d) => d.key)],
+    )
   })
 }

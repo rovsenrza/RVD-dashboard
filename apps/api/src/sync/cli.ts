@@ -21,7 +21,7 @@ try {
   const r = check ? await runCheck(db, client) : await runSync(db, client)
   console.log(
     r.mode === 'full'
-      ? `synced ${r.products} products and ${r.equipment} machines in ${(r.ms / 1000).toFixed(1)}s`
+      ? `synced ${r.products} products and ${r.equipment} machines in ${(r.ms / 1000).toFixed(1)}s; ${r.discrepancies} data discrepancies in 1С`
       : `checked: ${r.refreshed} products read again, ${r.removed} removed in ${(r.ms / 1000).toFixed(1)}s`,
   )
 } catch (error) {

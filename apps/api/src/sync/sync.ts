@@ -1,10 +1,12 @@
 import type { Db } from '../db/pool.ts'
 import { toCatalogNumber } from '../onec/adapters/catalog.ts'
+import { findDiscrepancies } from '../onec/adapters/discrepancies.ts'
 import { toEquipment } from '../onec/adapters/equipment.ts'
 import { toHistory } from '../onec/adapters/history.ts'
 import { toProducts } from '../onec/adapters/product.ts'
 import type { ODataClient } from '../onec/client.ts'
 import {
+  fetchClients,
   fetchRegisterSince,
   fetchSources,
   fetchSourcesFor,
@@ -13,7 +15,7 @@ import {
 } from '../onec/sources.ts'
 import { fetchOrderStates, refreshRequestStatuses } from '../requests/statuses.ts'
 import { readHealth, recordSuccess } from './health.ts'
-import { patchCache, storeCache, type Cache } from './store.ts'
+import { patchCache, recordDataIssues, storeCache, type Cache } from './store.ts'
 
 export interface SyncResult {
   /** `full` rebuilt the cache; `check` patched what changed */
@@ -26,6 +28,8 @@ export interface SyncResult {
   removed: number
   /** Requests whose 1С status or shipment changed */
   requestUpdates: number
+  /** Data 1С keeps twice and differently (question 24); only a rebuild looks */
+  discrepancies?: number
   ms: number
 }
 
@@ -68,7 +72,10 @@ function adapt(sources: Sources): Cache {
 const statusesOf = (db: Db, client: ODataClient) =>
   refreshRequestStatuses(db, (refs) => fetchOrderStates(client, refs))
 
-/** Full sync: read 1С, adapt, replace the cache. Nightly, and whenever a check cannot do. */
+/**
+ * Full sync: read 1С, adapt, replace the cache. Nightly, and whenever a check cannot do.
+ * Having every item at hand, it also looks for data 1С keeps twice and differently.
+ */
 export async function runSync(
   db: Db,
   client: ODataClient,
@@ -76,11 +83,13 @@ export async function runSync(
   states: ODataClient = client,
 ): Promise<SyncResult> {
   const started = Date.now()
-  const sources = await fetchSources(client)
+  const [sources, clients] = await Promise.all([fetchSources(client), fetchClients(client)])
   const cache = adapt(sources)
   await storeCache(db, cache, Date.now() - started)
   await recordSuccess(db, true, markOf(sources.statuses))
   const requestUpdates = await statusesOf(db, states)
+  const discrepancies = findDiscrepancies({ ...sources, clients })
+  await recordDataIssues(db, discrepancies)
   return {
     mode: 'full',
     products: cache.products.length,
@@ -88,6 +97,7 @@ export async function runSync(
     refreshed: cache.products.length,
     removed: 0,
     requestUpdates,
+    discrepancies: discrepancies.length,
     ms: Date.now() - started,
   }
 }

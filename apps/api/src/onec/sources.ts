@@ -26,7 +26,7 @@ const STATUS_FIELDS = [
   'Изделие_Key',
   'Статус',
 ]
-const RELEASE_FIELDS = ['Ref_Key', 'Number']
+const RELEASE_FIELDS = ['Ref_Key', 'Number', 'ГаражныйНомер_Key', 'Клиент_Key']
 const ORDER_FIELDS = ['Ref_Key', 'Number']
 /**
  * How long a `$filter` of keys may get once encoded. 1С is published through IIS, which
@@ -96,6 +96,10 @@ async function byKeys<T>(
     out.push(...(await client.all<T>(entity, { filter, select })))
   return out
 }
+
+/** The clients' names, for the letter about data 1С keeps twice and differently (question 24). */
+export const fetchClients = (client: ODataClient) =>
+  client.all<RawNamed>('Catalog_Клиенты', { select: ['Ref_Key', 'Description'] })
 
 /** Every item's version, cheap enough to read on each check (4 269 items: under a second). */
 export const fetchVersions = (client: ODataClient) =>

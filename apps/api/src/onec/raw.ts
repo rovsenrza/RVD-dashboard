@@ -55,11 +55,17 @@ export interface RawStatusRecord {
   Статус: string
 }
 
-/** «Выпуск», read only for its number, by which the history names the document that recorded a status. */
+/**
+ * «Выпуск»: its number names, in the history, the document that recorded a status. Its
+ * machine and client repeat the item's and are read only to report where they disagree
+ * (question 24) — the item is the truth.
+ */
 export interface RawRelease {
   Ref_Key: string
   /** Zero-padded: "000000123" */
   Number: string
+  ГаражныйНомер_Key: string
+  Клиент_Key: string
 }
 
 /** «Заказ клиента», read for its number: before «Выпуск» took over, orders set statuses too. */
