@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Download, FileSpreadsheet, Upload } from 'lucide-react'
-import type { CabinetUser, Equipment, ProductPage } from '@/entities/types'
+import type { CabinetUser, Equipment, ProductPage, UserCreated } from '@/entities/types'
 import { useSession } from '@/app/session'
 import { api } from '@/shared/api/client'
 import { keys, type UserDraft } from '@/shared/api/queries'
@@ -40,7 +40,7 @@ async function each<T>(
 }
 
 export function ImportTab() {
-  const { branches } = useSession()
+  const { branches, demo } = useSession()
   const qc = useQueryClient()
   const toast = useToast()
   const [open, setOpen] = useState<Open | null>(null)
@@ -92,32 +92,35 @@ export function ImportTab() {
             )
           }
         />
-        <ImportCard
-          title="Установка изделий на технику"
-          description="Какое изделие на какой машине и в каком месте стоит. Даты установки, изделия и технику ведёт поставщик в 1С — их здесь не меняют и не создают."
-          columns={INSTALL_COLUMNS}
-          busy={reading}
-          onTemplate={() =>
-            downloadTemplate(
-              'Шаблон — установка изделий.xlsx',
-              INSTALL_COLUMNS.map((c) => c.header + (c.required ? '*' : '')),
-              ['48703', 'НТ04', 'Ковш', 'К-1003'],
-            )
-          }
-          onFile={(file) =>
-            load(
-              file,
-              async (sheet) =>
-                checkInstallations(
-                  sheet,
-                  // The whole company, not the branch picked in the header.
-                  (await api.get<ProductPage>('/products?limit=5000')).items,
-                  await api.get<Equipment[]>('/equipment'),
-                ),
-              'installations',
-            )
-          }
-        />
+        {/* Live, products move between machines only after question 14. */}
+        {demo && (
+          <ImportCard
+            title="Установка изделий на технику"
+            description="Какое изделие на какой машине и в каком месте стоит. Даты установки, изделия и технику ведёт поставщик в 1С — их здесь не меняют и не создают."
+            columns={INSTALL_COLUMNS}
+            busy={reading}
+            onTemplate={() =>
+              downloadTemplate(
+                'Шаблон — установка изделий.xlsx',
+                INSTALL_COLUMNS.map((c) => c.header + (c.required ? '*' : '')),
+                ['48703', 'НТ04', 'Ковш', 'К-1003'],
+              )
+            }
+            onFile={(file) =>
+              load(
+                file,
+                async (sheet) =>
+                  checkInstallations(
+                    sheet,
+                    // The whole company, not the branch picked in the header.
+                    (await api.get<ProductPage>('/products?limit=5000')).items,
+                    await api.get<Equipment[]>('/equipment'),
+                  ),
+                'installations',
+              )
+            }
+          />
+        )}
       </div>
 
       {open?.kind === 'users' && (
@@ -127,7 +130,15 @@ export function ImportTab() {
           rows={open.rows}
           onClose={() => setOpen(null)}
           onImport={async (ready) => {
-            const outcome = await each(ready, (draft) => api.post('/admin/users', draft))
+            // A letter that did not go leaves a password nobody sees: the row says so, and
+            // the administrator resets it from the user's row.
+            const outcome = await each(ready, async (draft) => {
+              const { delivery } = await api.post<UserCreated>('/admin/users', draft)
+              if (delivery.kind === 'password')
+                throw new Error(
+                  'Пользователь добавлен, но письмо не ушло — выдайте пароль через «Сбросить пароль»',
+                )
+            })
             refresh(keys.users, keys.branches)
             toast(
               `Добавлено пользователей: ${outcome.done}`,
