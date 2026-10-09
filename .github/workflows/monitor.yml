@@ -1,7 +1,8 @@
 # Outside monitor of the live cabinet (Д31). Every 10 minutes scripts/monitor.mjs checks the page,
 # the API and its database, how fresh the 1С data is and the certificate; a problem that is still
 # there a minute later opens an issue labelled «monitor», which GitHub e-mails to the owner, and the
-# first clean check comments on it and closes it — one letter when it breaks, one when it is back.
+# first clean check comments on it and closes it — one letter when it breaks, one when it is back;
+# the same two letters go to the customer's IT by SMTP.
 # GitHub may start a scheduled run late, and stops the schedule after 60 days without commits.
 name: Monitor
 
@@ -45,6 +46,7 @@ jobs:
           cat result.txt
 
       - name: Open or close the alert
+        id: alert
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -55,11 +57,38 @@ jobs:
           now=$(TZ=Europe/Moscow date '+%d.%m.%Y %H:%M МСК')
           open=$(gh issue list --label monitor --state open --json number --jq '.[0].number // empty')
           if [ "$OK" = true ]; then
-            if [ -n "$open" ]; then gh issue close "$open" --comment "Восстановлено $now: $(cat result.txt)"; fi
+            if [ -n "$open" ]; then
+              gh issue close "$open" --comment "Восстановлено $now: $(cat result.txt)"
+              echo "mail=Кабинет восстановлен $now" >> "$GITHUB_OUTPUT"
+            fi
           elif [ -z "$open" ]; then
+            echo "mail=Кабинет: проблема с $now" >> "$GITHUB_OUTPUT"
             gh label create monitor --color B60205 --description 'Внешний мониторинг кабинета' --force
             printf '@%s %s — проблема с %s, подтверждена повторной проверкой через минуту:\n\n%s\n\nПроверка: %s\nЧто делать — docs/OPERATIONS.md, «Наблюдение». Issue закроется сам при первой чистой проверке.\n' \
               "$OWNER" "$CABINET_URL" "$now" "$(cat result.txt)" "$RUN_URL" > body.md
             gh issue create --label monitor --title "Кабинет: проблема с $now" --body-file body.md
           fi
           exit 0
+
+      # The same news by mail to the customer's IT, through the cabinet's own box. The address and the
+      # box live in repository secrets (the repository is public); without them the step is skipped.
+      - name: Mail the customer's IT
+        if: steps.alert.outputs.mail != ''
+        env:
+          SMTP_URL: ${{ secrets.ALERT_SMTP_URL }}
+          SMTP_USER: ${{ secrets.ALERT_SMTP_USER }}
+          SMTP_PASS: ${{ secrets.ALERT_SMTP_PASS }}
+          MAIL_TO: ${{ secrets.ALERT_EMAIL }}
+          SUBJECT: ${{ steps.alert.outputs.mail }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "$SMTP_URL" ] || [ -z "$MAIL_TO" ]; then echo "почта для оповещений не задана"; exit 0; fi
+          {
+            printf 'From: =?UTF-8?B?%s?= <%s>\r\n' "$(printf 'ВГИЗ | РВД Личный кабинет' | base64 -w0)" "$SMTP_USER"
+            printf 'To: <%s>\r\n' "$MAIL_TO"
+            printf 'Subject: =?UTF-8?B?%s?=\r\n' "$(printf '%s' "$SUBJECT" | base64 -w0)"
+            printf 'MIME-Version: 1.0\r\nContent-Type: text/plain; charset=UTF-8\r\nContent-Transfer-Encoding: 8bit\r\n\r\n'
+            printf '%s\n\n%s\n\nПроверка: %s\n' "$SUBJECT" "$(cat result.txt)" "$RUN_URL"
+          } > mail.txt
+          curl -sS --ssl-reqd --url "$SMTP_URL" --user "$SMTP_USER:$SMTP_PASS" \
+            --mail-from "$SMTP_USER" --mail-rcpt "$MAIL_TO" --upload-file mail.txt
