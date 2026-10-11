@@ -1,6 +1,6 @@
 import { createColumnHelper } from '@tanstack/react-table'
 import type { Product } from '@/entities/types'
-import { ProductStatusBadge } from '@/entities/product'
+import { ProductStatusBadge, serviceDates } from '@/entities/product'
 import { formatDate } from '@/shared/lib/utils'
 import { valueOr } from '@/shared/ui'
 
@@ -50,6 +50,13 @@ export const productColumns = [
     header: 'Статус',
     meta: { mobile: 'aside' },
     cell: (c) => <ProductStatusBadge status={c.getValue()} />,
+  }),
+  // The start of «Пора менять»; the server sorts by the same rule under this id.
+  col.accessor((p) => serviceDates(p)?.plannedAt ?? null, {
+    id: 'plannedAt',
+    header: 'Плановая замена',
+    meta: { mobile: 'hide' },
+    cell: (c) => valueOr(formatDate(c.getValue())),
   }),
   col.accessor('installPlace', { header: 'Место установки', cell: (c) => valueOr(c.getValue()) }),
 ]

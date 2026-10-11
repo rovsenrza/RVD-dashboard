@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { ColumnDef, SortingState } from '@tanstack/react-table'
 import { RefreshCw, SlidersHorizontal } from 'lucide-react'
 import type { Product, ProductLifecycle, ProductSortKey, ProductStatus } from '@/entities/types'
-import { LIFECYCLE_LABEL, STATUS_LABEL } from '@/entities/product'
+import { LIFECYCLE_LABEL, STATUS_LABEL, serviceDates } from '@/entities/product'
 import { MAX_REQUEST_POSITIONS } from '@/entities/request/rules'
 import { useSession } from '@/app/session'
 import {
@@ -42,6 +42,12 @@ const EXPORT_COLUMNS: ExportColumn<Product>[] = [
   { header: 'Производитель', value: (p) => p.manufacturer, width: 14 },
   { header: 'Отгружено', value: (p) => p.shippedAt, type: 'date', width: 11 },
   { header: 'Установлено', value: (p) => p.installedAt, type: 'date', width: 11 },
+  {
+    header: 'Плановая замена',
+    value: (p) => serviceDates(p)?.plannedAt ?? null,
+    type: 'date',
+    width: 11,
+  },
   { header: 'Место установки', value: (p) => p.installPlace, width: 20 },
   { header: 'Срок эксплуатации, дн.', value: (p) => p.serviceLifeDays, width: 12 },
   { header: 'Состояние', value: (p) => STATUS_LABEL[p.status], width: 16 },
