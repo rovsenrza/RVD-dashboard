@@ -10,10 +10,9 @@ import type { CabinetSettings, LifetimePhase, Product, ProductStatus } from './t
 export type StatusRules = Pick<CabinetSettings, 'warnRule' | 'warnPercent' | 'warnDays'>
 
 /**
- * ТЗ conflicted on «Внимание» (PLAN.md §5, q. 4): «последние 20 %» of the service
- * life, or a fixed stretch before the planned replacement. The customer settled
- * it on 2026-10-03: the last 30 days before the planned replacement. The percent
- * rule stays available to the administrator.
+ * The «Внимание» setting is no longer read: the customer (2026-10-11) laid the
+ * whole life out on the warranty instead. Its fields stay in the settings so
+ * the stored rows and the action log keep their shape.
  */
 export const DEFAULT_RULES: StatusRules = { warnRule: 'days', warnPercent: 20, warnDays: 30 }
 export const WARN_PERCENT_RANGE = [5, 50] as const
@@ -32,67 +31,67 @@ export interface ServiceDates {
   start: string
   basis: ServiceBasis
   warrantyUntil: string
-  /** «Внимание» from this day */
+  /** «Внимание» from this day: half the warranty */
   warnFrom: string
-  /** Planned replacement: start + service life; «Требуется замена» from this day */
+  /** Planned replacement, «Пора менять» from this day: three quarters of the warranty */
   plannedAt: string
+  /** The end of the stretch past the warranty, as long as «Пора менять»; the timeline stops here */
+  endsAt: string
 }
 
 const day = (d: Date) => formatISO(d, { representation: 'date' })
 const plus = (iso: string, days: number) => day(addDays(parseISO(iso), days))
 
-/** How many days before the planned replacement «Внимание» begins, never past the start. */
-export function warnSpan(lifeDays: number, rules: StatusRules) {
-  const span =
-    rules.warnRule === 'percent' ? Math.round((lifeDays * rules.warnPercent) / 100) : rules.warnDays
-  return Math.min(Math.max(span, 0), lifeDays)
-}
+/**
+ * The customer's life of a hose (2026-10-11), all of it measured on the warranty:
+ * green the first 50 %, yellow the next 25 %, red the last 25 %, then grey past
+ * the warranty for as long as the red, after which the timeline stops.
+ */
+export const warnDay = (warrantyDays: number) => Math.round(warrantyDays * 0.5)
+export const plannedDay = (warrantyDays: number) => Math.round(warrantyDays * 0.75)
 
-export function serviceDates(p: ServiceFacts, rules: StatusRules): ServiceDates | null {
+export function serviceDates(p: ServiceFacts, _rules?: StatusRules): ServiceDates | null {
   const start = p.installedAt || p.shippedAt
-  if (!start) return null
+  if (!start || p.warrantyDays <= 0) return null
+  const w = p.warrantyDays
   return {
     start,
     basis: p.installedAt ? 'installed' : 'shipped',
-    warrantyUntil: plus(start, p.warrantyDays),
-    warnFrom: plus(start, p.serviceLifeDays - warnSpan(p.serviceLifeDays, rules)),
-    plannedAt: plus(start, p.serviceLifeDays),
+    warrantyUntil: plus(start, w),
+    warnFrom: plus(start, warnDay(w)),
+    plannedAt: plus(start, plannedDay(w)),
+    endsAt: plus(start, 2 * w - plannedDay(w)),
   }
 }
 
 /**
- * Worst condition wins: past the planned date → replace; in the «Внимание»
- * stretch → warn, even under warranty; past the warranty → no_warranty.
+ * From the planned day on the hose is to be replaced, and stays so past the
+ * warranty: the grey stretch is a phase of the timeline, not a better status.
  * Every boundary day belongs to the later phase, as in `lifetimePhases`.
  */
-export function statusOf(p: ServiceFacts, rules: StatusRules, today = new Date()): ProductStatus {
+export function statusOf(p: ServiceFacts, rules?: StatusRules, today = new Date()): ProductStatus {
   const d = serviceDates(p, rules)
   if (!d) return 'no_warranty'
   const t = day(today)
   if (t >= d.plannedAt) return 'replace'
   if (t >= d.warnFrom) return 'warn'
-  if (t >= d.warrantyUntil) return 'no_warranty'
   return 'ok'
 }
 
-/** The same rule laid out on a time axis: back-to-back phases, the last one open-ended. */
+/** The same rule laid out on a time axis: back-to-back phases, ending where the timeline stops. */
 export function lifetimePhases(d: ServiceDates): LifetimePhase[] {
-  const warrantyFirst = d.warrantyUntil < d.warnFrom
   return [
-    { status: 'ok', from: d.start, to: warrantyFirst ? d.warrantyUntil : d.warnFrom },
-    ...(warrantyFirst
-      ? [{ status: 'no_warranty' as const, from: d.warrantyUntil, to: d.warnFrom }]
-      : []),
+    { status: 'ok', from: d.start, to: d.warnFrom },
     { status: 'warn', from: d.warnFrom, to: d.plannedAt },
-    { status: 'replace', from: d.plannedAt, to: null },
+    { status: 'replace', from: d.plannedAt, to: d.warrantyUntil },
+    { status: 'no_warranty', from: d.warrantyUntil, to: d.endsAt },
   ]
 }
 
-/** Days to the planned replacement; negative when overdue, null without a start date. */
+/** Days to the planned replacement; negative when overdue, null without a start date or warranty. */
 export function daysLeft(p: ServiceFacts, today = new Date()) {
-  const start = p.installedAt || p.shippedAt
-  if (!start) return null
-  return differenceInCalendarDays(parseISO(plus(start, p.serviceLifeDays)), today)
+  const d = serviceDates(p)
+  return d ? differenceInCalendarDays(parseISO(d.plannedAt), today) : null
 }
 
 /** Server-side check of a settings patch; the form checks the same ranges. */
@@ -108,7 +107,7 @@ export function rulesProblem(patch: Partial<StatusRules>): string | null {
   return null
 }
 
-/** The rule in words, for settings, the action log and hints. */
+/** The stored setting in words, for the action log. */
 export function warnRuleLabel(rules: StatusRules) {
   return rules.warnRule === 'percent'
     ? `последние ${rules.warnPercent} % срока эксплуатации`

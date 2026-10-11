@@ -423,7 +423,7 @@ export interface ProductLifetime {
   /** The day it came off the machine (written off); null while in service */
   endedAt: string | null
   warrantyUntil: string
-  /** Planned replacement: installation + service life */
+  /** Planned replacement, «Пора менять»: three quarters of the warranty */
   plannedAt: string
   phases: LifetimePhase[]
 }

@@ -8,7 +8,7 @@ import { Button, Card, EmptyState, QueryState, Skeleton, Tooltip } from '@/share
 
 /** Phase names as a life stage, not as the badge on the hose today. */
 const PHASE_LABEL: Record<ProductStatus, string> = {
-  ok: 'На гарантии',
+  ok: 'В норме',
   no_warranty: 'После гарантии',
   warn: 'Внимание',
   replace: 'Пора менять',
@@ -26,7 +26,8 @@ const range = (p: LifetimePhase) =>
   p.to ? `${formatDate(p.from)} — ${formatDate(p.to)}` : `с ${formatDate(p.from)}`
 
 /**
- * «Срок службы» (Д11): the hose's life as one bar of phases on a time axis.
+ * «Срок службы» (Д11): the hose's life as one bar of phases on a time axis, all
+ * measured on the warranty (the customer's layout, 2026-10-11).
  * Lived time is solid, what is ahead is the soft tint of the same phase; the
  * marker is today, or the day it came off the machine. Colour is never alone:
  * the legend names each phase with its dates and marks the current one.
@@ -51,7 +52,7 @@ export function ProductLifetime({
               inset
               icon={CalendarClock}
               title="Срок службы не считается"
-              description="Для него нужны дата отгрузки или установки и срок эксплуатации — их ведёт поставщик в 1С."
+              description="Для него нужны дата отгрузки или установки и срок гарантии — их ведёт поставщик в 1С."
             />
           )
         }
@@ -62,10 +63,9 @@ export function ProductLifetime({
 
 function Timeline({ life, onAskDate }: { life: Lifetime; onAskDate?: () => void }) {
   const now = life.endedAt ?? today()
-  const lifeDays = days(life.startedAt, life.plannedAt)
-  // Room after the planned date for the «пора менять» stretch, or up to today when overdue.
-  const tail = Math.max(30, Math.round(lifeDays * 0.12))
-  const total = Math.max(lifeDays + tail, days(life.startedAt, now) + 14)
+  // The axis ends with the stretch past the warranty; once there, the marker stays at the end.
+  const end = life.phases.at(-1)?.to ?? life.plannedAt
+  const total = Math.max(1, days(life.startedAt, end))
   const at = (date: string) =>
     Math.min(100, Math.max(0, (days(life.startedAt, date) / total) * 100))
   const nowAt = at(now)

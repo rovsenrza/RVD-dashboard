@@ -158,11 +158,8 @@ export function toProducts(src: ProductSources, options: ProductOptions = {}): P
         installedAt,
         warrantyDays,
         serviceLifeDays,
-        // No service life on record (0 in 1С) gives no planned date to measure against.
-        status:
-          serviceLifeDays > 0
-            ? statusOf({ installedAt, shippedAt, serviceLifeDays, warrantyDays }, rules, today)
-            : 'no_warranty',
+        // No warranty on record (0 in 1С) gives no life to measure: statusOf says no_warranty.
+        status: statusOf({ installedAt, shippedAt, serviceLifeDays, warrantyDays }, rules, today),
         lifecycle,
         replacedProductId: isRef(item.ЗаменяемоеИзделие_Key) ? item.ЗаменяемоеИзделие_Key : null,
         equipmentId: machine?.Ref_Key ?? null,

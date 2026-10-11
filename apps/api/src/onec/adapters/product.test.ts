@@ -239,7 +239,7 @@ describe('catalogue number', () => {
 describe('health and ownership', () => {
   it('computes the status for the given day from the installation date', () => {
     const installed = statusRecord({ Статус: 'ВЭксплуатации', Period: '2026-01-01T00:00:00' })
-    expect(one({ statuses: [installed] }).status).toBe('no_warranty') // past 180 days of warranty
+    expect(one({ statuses: [installed] }).status).toBe('replace') // past 135 of 180 days
     expect(one({ statuses: [{ ...installed, Period: '2026-08-01T00:00:00' }] }).status).toBe('ok')
     expect(one({ statuses: [{ ...installed, Period: '2025-09-01T00:00:00' }] }).status).toBe(
       'replace',
@@ -260,10 +260,10 @@ describe('health and ownership', () => {
     ).toBeNull()
   })
 
-  it('does not call an item overdue when 1С gives it no service life', () => {
-    const shipped = statusRecord({ Статус: 'Отгружен', Period: '2026-08-15T00:00:00' })
-    const p = one({ items: [item({ СрокПолезногоИспользования: '0' })], statuses: [shipped] })
-    expect(p).toMatchObject({ serviceLifeDays: 0, status: 'no_warranty' })
+  it('does not call an item overdue when 1С gives it no warranty', () => {
+    const shipped = statusRecord({ Статус: 'Отгружен', Period: '2025-08-15T00:00:00' })
+    const p = one({ items: [item({ СрокГарантии: '0' })], statuses: [shipped] })
+    expect(p).toMatchObject({ warrantyDays: 0, status: 'no_warranty' })
   })
 
   it('reads no warranty as zero days', () => {

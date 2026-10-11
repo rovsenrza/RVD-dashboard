@@ -11,22 +11,13 @@ describe('mock administration', () => {
     expect(settings).toMatchObject({ warnRule: 'days', warnDays: 30 })
   })
 
-  it('re-derives hose health and the machine counts built on it from the «Внимание» threshold', () => {
+  it('keeps hose health and machine counts whatever the old «Внимание» setting says', () => {
     const hoses = warnHoses()
     const machines = warnOnMachines()
-    applySettings({ warnDays: 120 })
-    expect(warnHoses()).toBeGreaterThan(hoses)
-    expect(warnOnMachines()).toBeGreaterThan(machines)
-    applySettings({ warnDays: 30 })
+    applySettings({ warnRule: 'percent', warnPercent: 50, warnDays: 120 })
     expect(warnHoses()).toBe(hoses)
-  })
-
-  it('switches between the days and the percent rule', () => {
-    const hoses = warnHoses()
-    applySettings({ warnRule: 'percent', warnPercent: 50 })
-    expect(warnHoses()).toBeGreaterThan(hoses)
-    applySettings({ warnRule: 'days' })
-    expect(warnHoses()).toBe(hoses)
+    expect(warnOnMachines()).toBe(machines)
+    applySettings({ warnRule: 'days', warnDays: 30 })
   })
 
   it('keeps every stored status equal to the rule applied today', () => {

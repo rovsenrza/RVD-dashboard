@@ -58,7 +58,7 @@ export async function dashboardSummary(
   const { rows: upcoming } = await db.query<DashboardSummary['upcoming'][number]>(
     `with p as (
        select products.*, ${STATUS_SQL} as status, ${PLANNED_AT} as planned_at from products
-       where lifecycle <> 'written_off' and equipment_id is not null and service_life_days > 0
+       where lifecycle <> 'written_off' and equipment_id is not null and warranty_days > 0
          and ($5::text[] is null or client_id = any($5))
      )
      select p.id as "productId", p.serial_number as "serialNumber",

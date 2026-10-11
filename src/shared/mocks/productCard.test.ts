@@ -19,14 +19,15 @@ const send = (path: string, method: string, body?: unknown) =>
   })
 
 describe('service life', () => {
-  it('runs warranty → after warranty → attention → replacement, back to back', () => {
-    const p = products.find((x) => x.installedAt && x.warrantyDays < x.serviceLifeDays * 0.8)!
+  it('runs ok → attention → replacement → past the warranty, back to back, and stops', () => {
+    const p = products.find((x) => x.installedAt && x.warrantyDays > 0)!
     const life = productLifetime(p)!
-    expect(life.phases.map((x) => x.status)).toEqual(['ok', 'no_warranty', 'warn', 'replace'])
+    expect(life.phases.map((x) => x.status)).toEqual(['ok', 'warn', 'replace', 'no_warranty'])
     for (let i = 1; i < life.phases.length; i++)
       expect(life.phases[i].from).toBe(life.phases[i - 1].to)
-    expect(life.phases.at(-1)!.to).toBeNull()
-    expect(life.phases.at(-1)!.from).toBe(life.plannedAt)
+    expect(life.phases[2].from).toBe(life.plannedAt)
+    expect(life.phases[3].from).toBe(life.warrantyUntil)
+    expect(life.phases.at(-1)!.to).not.toBeNull()
   })
 
   it('counts from shipment for a hose that was never installed', async () => {

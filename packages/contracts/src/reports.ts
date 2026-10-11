@@ -179,8 +179,8 @@ export function buildReport(id: ReportId, data: ReportData, params: ReportParams
     machine: p.equipmentId ? (garage.get(p.equipmentId) ?? null) : null,
     place: p.installPlace,
   })
-  // A hose with no service life on record (0 in 1С) has no planned date to measure against.
-  const planned = (p: Product) => (p.serviceLifeDays > 0 ? (dates(p)?.plannedAt ?? null) : null)
+  // A hose with no warranty on record (0 in 1С) has no planned date: `dates` gives null.
+  const planned = (p: Product) => dates(p)?.plannedAt ?? null
 
   let columns: ReportColumn[]
   let rows: Row[]
