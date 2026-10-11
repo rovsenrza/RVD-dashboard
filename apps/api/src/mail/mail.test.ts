@@ -51,7 +51,7 @@ describe.skipIf(!hasDb)('letters, once there is a mail server', () => {
               serialNumber: '101',
               shippedAt: '2025-10-17',
               lifecycle: 'shipped',
-              warrantyDays: 180,
+              warrantyDays: 487, // ¾ of it is 365: planned 17.10.2026
             }),
             clientId: 'k1',
           },

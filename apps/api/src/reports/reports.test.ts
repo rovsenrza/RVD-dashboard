@@ -45,10 +45,10 @@ describe.skipIf(!hasDb)('reports and the model comparison on the server', () => 
       db,
       {
         products: [
-          // Overdue since 01.09.2026.
-          { product: hose('h1', '11', '2025-09-01'), clientId: 'k1' },
-          // Planned 01.12.2026, warranty until 01.10.2027.
-          { product: hose('h2', '12', '2025-12-01', { warrantyDays: 669 }), clientId: 'k1' },
+          // ¾ of 487 days of warranty is 365: overdue since 01.09.2026.
+          { product: hose('h1', '11', '2025-09-01', { warrantyDays: 487 }), clientId: 'k1' },
+          // Planned 01.12.2026, past half the warranty: «Внимание».
+          { product: hose('h2', '12', '2025-12-01', { warrantyDays: 487 }), clientId: 'k1' },
           // Replaces h1, shipped two days ago.
           {
             product: hose('h3', '13', '2026-10-01', { replacedProductId: 'h1' }),
@@ -93,7 +93,7 @@ describe.skipIf(!hasDb)('reports and the model comparison on the server', () => 
     const registry = await report('/reports/registry')
     expect(registry.rows.map((r) => [r.serial, r.machine, r.installed, r.status])).toEqual([
       ['11', 'НТ08', '2025-09-01', 'replace'],
-      ['12', 'НТ08', '2025-12-01', 'ok'],
+      ['12', 'НТ08', '2025-12-01', 'warn'],
       ['13', 'НТ08', '2026-10-01', 'ok'],
     ])
     expect(registry.rows[0].left).toBe(-32)

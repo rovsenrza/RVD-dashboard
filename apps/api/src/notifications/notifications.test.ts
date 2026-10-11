@@ -46,7 +46,8 @@ describe.skipIf(!hasDb)('notifications on the server', () => {
     // Accounts older than the window, so it is the window that bounds the list.
     await db.query("update users set created_at = '2026-01-01'")
     const hose = (id: string, over: Partial<Product>) =>
-      product({ lifecycle: 'shipped', warrantyDays: 180, serviceLifeDays: 365, ...over, id })
+      // ¾ of 487 days of warranty is 365: the planned replacement a year after shipment.
+      product({ lifecycle: 'shipped', warrantyDays: 487, serviceLifeDays: 365, ...over, id })
     await storeCache(
       db,
       {

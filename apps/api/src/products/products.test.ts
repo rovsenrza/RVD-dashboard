@@ -155,9 +155,13 @@ describe.skipIf(!hasDb)('products in the cache', () => {
     expect(life).toMatchObject({
       basis: 'installed',
       startedAt: '2026-08-01',
-      plannedAt: '2027-08-01',
+      plannedAt: '2026-12-14',
     })
-    expect(life.phases.at(-1)).toEqual({ status: 'replace', from: '2027-08-01', to: null })
+    expect(life.phases.at(-1)).toEqual({
+      status: 'no_warranty',
+      from: '2027-01-28',
+      to: '2027-03-14',
+    })
     expect(await get('/products/p4/lifetime')).toBeNull()
     expect((await app.inject('/products/nope/lifetime')).statusCode).toBe(404)
   })
@@ -216,8 +220,7 @@ describe.skipIf(!hasDb)('products in the cache', () => {
       const sqlStatus = new Map(body.items.map((p: Product) => [p.id, p.status]))
       let mismatches = 0
       for (const { product: p } of synthetic) {
-        const expected =
-          p.serviceLifeDays > 0 ? statusOf(p, rules, new Date(`${TODAY}T12:00:00`)) : 'no_warranty'
+        const expected = statusOf(p, rules, new Date(`${TODAY}T12:00:00`))
         if (sqlStatus.get(p.id) !== expected) mismatches++
       }
       await check.close()

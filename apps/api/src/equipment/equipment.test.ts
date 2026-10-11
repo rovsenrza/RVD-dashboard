@@ -75,7 +75,8 @@ describe.skipIf(!hasDb)('machines and the dashboard from the cache', () => {
     expect(machines[1]).toMatchObject({
       hoseCount: 2,
       statusBreakdown: { ok: 1, warn: 0, replace: 1, no_warranty: 0 },
-      nextPlannedReplacement: '2026-09-01',
+      // ¾ of 180 days of warranty after h2's shipment
+      nextPlannedReplacement: '2026-01-14',
     })
     expect(machines[0]).toMatchObject({
       hoseCount: 0,
@@ -104,15 +105,15 @@ describe.skipIf(!hasDb)('machines and the dashboard from the cache', () => {
       needsReplacement: 1,
       periodDays: 30,
       replacementsInPeriod: 0,
-      // Shipped since 31.08: h1, h4. A month ago only h2 was in service, and it was «Внимание».
-      deltas: { shippedTotal: 2, replacements: 0, onWarranty: 2, needsReplacement: 1 },
+      // Shipped since 31.08: h1, h4. A month ago only h2 was in service, already to be replaced.
+      deltas: { shippedTotal: 2, replacements: 0, onWarranty: 2, needsReplacement: 0 },
       statusBreakdown: { ok: 2, warn: 0, replace: 1, no_warranty: 0 },
       // The last 12 months, each one present even without a swap.
       replacementsByMonth: Array.from({ length: 12 }, (_, i) => ({
         month: i < 3 ? `2025-${10 + i}` : `2026-0${i - 2}`,
         count: 0,
       })),
-      upcoming: [{ productId: 'h1', serialNumber: '11', equipment: 'НТ08', dueDate: '2027-09-01' }],
+      upcoming: [{ productId: 'h1', serialNumber: '11', equipment: 'НТ08', dueDate: '2027-01-14' }],
     })
   })
 })

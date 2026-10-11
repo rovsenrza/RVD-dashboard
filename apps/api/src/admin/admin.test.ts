@@ -51,8 +51,7 @@ describe.skipIf(!hasDb)('company settings and the action log on the server', () 
       password: 'лютик-пароль-1',
       role: 'admin',
     })
-    // 149 days left of 365 on 03.10.2026, under warranty: fine by «last 30 days», «Внимание»
-    // by «last 50 %».
+    // 216 days of 365 of warranty on 03.10.2026: past half, «Внимание» whatever the old setting.
     const hose = (id: string, serialNumber: string) =>
       product({
         id,
@@ -105,10 +104,10 @@ describe.skipIf(!hasDb)('company settings and the action log on the server', () 
     expect(await log(admin)).toEqual([])
   })
 
-  it('reads every status by the company’s own rule, and only that company’s', async () => {
+  it('keeps the old «Внимание» setting stored and logged, but no longer applies it', async () => {
     const status = async (token: string, id: string) =>
       (await call('GET', `/products/${id}`, token)).json().status
-    expect(await status(engineer, 'h1')).toBe('ok')
+    expect(await status(engineer, 'h1')).toBe('warn')
 
     const saved = await call('PATCH', '/admin/settings', admin, {
       warnRule: 'percent',
@@ -124,8 +123,8 @@ describe.skipIf(!hasDb)('company settings and the action log on the server', () 
     })
     expect(await status(engineer, 'h1')).toBe('warn')
     expect((await call('GET', '/dashboard/summary', engineer)).json().expiringSoon).toBe(1)
-    // Another company keeps its own rule.
-    expect(await status(theirAdmin, 'h2')).toBe('ok')
+    // Another company keeps its own settings.
+    expect(await status(theirAdmin, 'h2')).toBe('warn')
     expect((await call('GET', '/admin/settings', theirAdmin)).json()).toEqual(DEFAULT_SETTINGS)
 
     const [entry] = await log(admin)
