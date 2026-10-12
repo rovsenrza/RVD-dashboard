@@ -86,6 +86,13 @@ export interface ServerPaging {
   pending?: boolean
 }
 
+/**
+ * The table still pages, sorts and searches `data` itself, but its page and
+ * sort live with the caller (e.g. in the address, see `useListParams`), so they
+ * survive leaving the page. The caller resets the page when the search changes.
+ */
+export type ListPaging = Omit<ServerPaging, 'total' | 'pending'>
+
 /** Keeps a tick from also clicking (or Enter-opening) the row around it. */
 const stop = {
   onClick: (e: { stopPropagation: () => void }) => e.stopPropagation(),
@@ -117,6 +124,8 @@ export interface DataTableProps<T> {
   selection?: TableSelection<T>
   /** Paging, sorting and search done by the server; see ServerPaging. */
   server?: ServerPaging
+  /** Page and sort kept by the caller; see ListPaging. Ignored with `server`. */
+  paging?: ListPaging
 }
 
 const PAGE_SIZES = [10, 20, 50]
@@ -137,7 +146,10 @@ export function DataTable<T>({
   handle,
   selection,
   server,
+  paging,
 }: DataTableProps<T>) {
+  // One source for page and sort: the server's, the caller's, or the table's own.
+  const held = server ?? paging
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnVisibility, setColumnVisibility] = useState<VisibilityState>(() =>
     Object.fromEntries(hiddenByDefault.map((id) => [id, false])),
@@ -146,28 +158,31 @@ export function DataTable<T>({
     data,
     columns,
     state: {
-      sorting: server?.sorting ?? sorting,
+      sorting: held?.sorting ?? sorting,
       globalFilter: server ? undefined : globalFilter,
       columnVisibility,
-      ...(server && { pagination: { pageIndex: server.pageIndex, pageSize: server.pageSize } }),
+      ...(held && { pagination: { pageIndex: held.pageIndex, pageSize: held.pageSize } }),
     },
-    onSortingChange: server
+    onSortingChange: held
       ? (update) =>
-          server.onSortingChange(typeof update === 'function' ? update(server.sorting) : update)
+          held.onSortingChange(typeof update === 'function' ? update(held.sorting) : update)
       : setSorting,
     onColumnVisibilityChange: setColumnVisibility,
-    // Only when the server pages: a key set to undefined would replace the table's own handler.
+    // Only when the page is held outside: a key set to undefined would replace the table's own handler.
+    ...(held && {
+      autoResetPageIndex: false,
+      onPaginationChange: (update) => {
+        const now = { pageIndex: held.pageIndex, pageSize: held.pageSize }
+        const next = typeof update === 'function' ? update(now) : update
+        if (next.pageSize !== now.pageSize) held.onPageSizeChange(next.pageSize)
+        else if (next.pageIndex !== now.pageIndex) held.onPageChange(next.pageIndex)
+      },
+    }),
     ...(server && {
       manualPagination: true,
       manualSorting: true,
       manualFiltering: true,
       rowCount: server.total,
-      onPaginationChange: (update) => {
-        const now = { pageIndex: server.pageIndex, pageSize: server.pageSize }
-        const next = typeof update === 'function' ? update(now) : update
-        if (next.pageSize !== now.pageSize) server.onPageSizeChange(next.pageSize)
-        else if (next.pageIndex !== now.pageIndex) server.onPageChange(next.pageIndex)
-      },
     }),
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),

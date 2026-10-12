@@ -48,10 +48,32 @@ export function readOrigin(fallback: Origin): Origin {
   return fallback
 }
 
+const listKey = (path: string) => `rvd.list:${path}`
+
+/**
+ * The address a section list was last seen at, page and search included, for a
+ * back link that leads to the list from deeper than one step (a machine, then
+ * a hose on it, then back to the machine).
+ */
+export function listAddress(path: string): string {
+  try {
+    return sessionStorage.getItem(listKey(path)) ?? path
+  } catch {
+    return path
+  }
+}
+
 /** Mount once in the layout. */
 export function useTrackOrigin() {
   const { pathname, search } = useLocation()
   useEffect(() => {
+    // A section's own list: one path segment, as /equipment or /products.
+    if (/^\/[^/]+\/?$/.test(pathname))
+      try {
+        sessionStorage.setItem(listKey(pathname.replace(/\/$/, '')), pathname + search)
+      } catch {
+        /* storage unavailable: back goes to page one */
+      }
     const origin = originOf(pathname, search)
     if (!origin) return
     try {

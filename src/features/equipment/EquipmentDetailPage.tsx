@@ -17,6 +17,7 @@ import {
 } from '@/shared/ui'
 import { formatDate } from '@/shared/lib/utils'
 import { replacementColumns } from '@/features/replacements/columns'
+import { listAddress } from '@/shared/lib/origin'
 import { RequestForm } from '@/features/requests/components/RequestForm'
 import { EquipmentEditForm } from './components/EquipmentEditForm'
 import { HosesByPlace } from './components/HosesByPlace'
@@ -36,7 +37,7 @@ export function EquipmentDetailPage() {
         <div>
           <PageHeader
             stickyActions
-            backTo="/equipment"
+            backTo={listAddress('/equipment')}
             backLabel="К списку техники"
             title={`${e.garageNumber} · ${e.brand} ${e.model}`}
             description={`${e.type} · ${e.hoseCount} РВД на технике`}

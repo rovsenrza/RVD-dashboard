@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useRef } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { ColumnDef } from '@tanstack/react-table'
 import type { Equipment } from '@/entities/types'
@@ -15,6 +15,7 @@ import {
   type DataTableHandle,
 } from '@/shared/ui'
 import type { ExportColumn } from '@/shared/lib/export'
+import { useListParams } from '@/shared/lib/listParams'
 import { equipmentColumns } from './columns'
 import { EquipmentTree } from './components/EquipmentTree'
 
@@ -51,7 +52,9 @@ const matches = (e: Equipment, q: string) =>
 export function EquipmentPage() {
   const query = useEquipment()
   const navigate = useNavigate()
-  const [filter, setFilter] = useState('')
+  // Page, sort and search live in the address, so «К списку техники» comes back to them.
+  const list = useListParams(10)
+  const filter = list.q
   const { branch } = useSession()
   const table = useRef<DataTableHandle<Equipment>>(null)
   const [params, setParams] = useSearchParams()
@@ -67,7 +70,7 @@ export function EquipmentPage() {
     <SearchInput
       id="equipment-search"
       value={filter}
-      onChange={(e) => setFilter(e.target.value)}
+      onChange={(e) => list.setQ(e.target.value)}
       placeholder="Номер, модель, подразделение…"
     />
   )
@@ -118,6 +121,14 @@ export function EquipmentPage() {
               data={data}
               columns={equipmentColumns as ColumnDef<Equipment, unknown>[]}
               pageSize={10}
+              paging={{
+                pageIndex: list.pageIndex,
+                pageSize: list.pageSize,
+                sorting: list.sorting,
+                onPageChange: list.setPage,
+                onPageSizeChange: list.setPageSize,
+                onSortingChange: list.setSorting,
+              }}
               handle={table}
               onRowClick={(e) => navigate(`/equipment/${e.id}`)}
               stickyFirstColumn

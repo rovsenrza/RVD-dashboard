@@ -1,6 +1,11 @@
 import { useMemo, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
-import type { ColumnDef, SortingState } from '@tanstack/react-table'
+import {
+  useNavigate,
+  useSearchParams,
+  createSearchParams,
+  type URLSearchParamsInit,
+} from 'react-router-dom'
+import type { ColumnDef } from '@tanstack/react-table'
 import { RefreshCw, SlidersHorizontal } from 'lucide-react'
 import type {
   Equipment,
@@ -34,6 +39,7 @@ import {
 } from '@/shared/ui'
 import type { ExportColumn } from '@/shared/lib/export'
 import { RequestForm } from '@/features/requests/components/RequestForm'
+import { LIST_KEYS, useListParams } from '@/shared/lib/listParams'
 import { machineName, productColumns } from './columns'
 import { ProductFilters } from './components/ProductFilters'
 import { FILTER_KEYS, type FilterKey, type FilterValues } from './filters'
@@ -83,11 +89,11 @@ export function ProductsPage() {
   const columns = useMemo(() => productColumns(machines), [machines])
   const catalog = useCatalogNumbers()
   const [params, setParams] = useSearchParams()
-  const [search, setSearch] = useState('')
-  const q = useDebounced(search.trim())
-  const [tab, setTab] = useState<Tab>('active')
-  const [sorting, setSorting] = useState<SortingState>([])
-  const [pageSize, setPageSize] = useState(10)
+  // Page, sort, search and tab live in the address, so a hose's back link returns to them.
+  const list = useListParams(10)
+  const q = useDebounced(list.q.trim())
+  const tab: Tab = list.tab === 'archive' ? 'archive' : 'active'
+  const { sorting, pageSize, pageIndex } = list
   const [filtersOpen, setFiltersOpen] = useState(false)
   const navigate = useNavigate()
   const { branch } = useSession()
@@ -119,11 +125,6 @@ export function ProductsPage() {
     }),
     [active, q, tab, pageSize, sorting],
   )
-  const askKey = JSON.stringify(ask)
-  const [paging, setPaging] = useState({ key: askKey, index: 0 })
-  // Adjusted while rendering, so clearing a search lands on page one, not on the page before it.
-  if (paging.key !== askKey) setPaging({ key: askKey, index: 0 })
-  const pageIndex = paging.key === askKey ? paging.index : 0
   const page = useProductPage({ ...ask, page: pageIndex + 1 })
   const everyRow = useProductRows(ask)
 
@@ -154,7 +155,15 @@ export function ProductsPage() {
 
   const removeFilter = (key: FilterKey) => {
     params.delete(key)
+    params.delete('page')
     setParams(params)
+  }
+  // New filters keep the list's sort, search, size and tab, and start from page one.
+  const applyFilters = (next: URLSearchParamsInit) => {
+    const merged = createSearchParams(next)
+    for (const key of LIST_KEYS)
+      if (key !== 'page' && params.get(key)) merged.set(key, params.get(key)!)
+    setParams(merged)
   }
 
   return (
@@ -193,7 +202,7 @@ export function ProductsPage() {
         open={filtersOpen}
         onClose={() => setFiltersOpen(false)}
         values={active}
-        onApply={setParams}
+        onApply={applyFilters}
       />
       <QueryState query={page} skeleton={<TableSkeleton />}>
         {(data) => (
@@ -209,9 +218,9 @@ export function ProductsPage() {
               pageIndex,
               pageSize,
               sorting,
-              onPageChange: (index) => setPaging({ key: askKey, index }),
-              onPageSizeChange: setPageSize,
-              onSortingChange: setSorting,
+              onPageChange: list.setPage,
+              onPageSizeChange: list.setPageSize,
+              onSortingChange: list.setSorting,
               pending: page.isPlaceholderData,
             }}
             selection={{
@@ -231,7 +240,7 @@ export function ProductsPage() {
                     { key: 'archive', label: 'Архив', count: data.counts.archive },
                   ]}
                   value={tab}
-                  onChange={setTab}
+                  onChange={(t) => list.setTab(t === 'archive' ? 'archive' : null)}
                   className="border-b-0"
                 />
                 <p className="text-ui text-ink-muted">
@@ -249,8 +258,8 @@ export function ProductsPage() {
             search={
               <SearchInput
                 id="products-search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                value={list.q}
+                onChange={(e) => list.setQ(e.target.value)}
                 placeholder="Серийный, каталожный, ваш номер, техника…"
               />
             }
