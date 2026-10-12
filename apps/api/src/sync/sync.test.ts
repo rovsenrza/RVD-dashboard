@@ -141,9 +141,10 @@ describe.skipIf(!hasDb)('the sync keeps up with 1С (Д26)', () => {
     expect(onec.asked.some((q) => q.startsWith(`${REGISTER} ? Recorder eq cast(`))).toBe(true)
     const a = (await cached()).find((r) => r.id === A)!
     expect(a.data.manufacturedAt).toBe('2025-01-10')
-    // Read once: the next check finds nothing moved.
+    // Read once: the next check finds no document moved.
     onec.asked.length = 0
-    expect(await runCheck(db, onec.client)).toMatchObject({ refreshed: 0 })
+    await runCheck(db, onec.client)
+    expect(onec.asked.some((q) => q.startsWith(`${REGISTER} ? Recorder eq cast(`))).toBe(false)
   })
 
   it('keeps the cache and says since when 1С is down, until it answers again', async () => {

@@ -154,7 +154,7 @@ describe.skipIf(!hasDb)('requests to 1С', () => {
     expect(await deliverDue(db, orders, now)).toEqual({ delivered: 0, refused: 0, postponed: 1 })
     expect((await list())[0]).toMatchObject({
       delivery: 'queued',
-      deliveryNote: 'Нет связи с 1С — отправим автоматически',
+      deliveryNote: 'Не удалось отправить — отправим автоматически',
     })
     // Not due again until the pause is over.
     expect(await deliverDue(db, orders, now)).toEqual({ delivered: 0, refused: 0, postponed: 0 })

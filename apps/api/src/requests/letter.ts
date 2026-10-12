@@ -60,8 +60,7 @@ export class MailOrderService implements OrderService {
         p.operatingHours != null
           ? `наработка ${p.operatingHours} ${USAGE_UNIT_LABEL[p.usageUnit ?? 'hours']}`
           : null
-      return [
-        `${i + 1}.`,
+      const parts = [
         f.serial ? `взамен изделия № ${f.serial}` : null,
         `каталожный № ${p.catalogNumber ?? f.catalog ?? '—'}`,
         f.garage ? `техника ${f.garage}` : null,
@@ -70,8 +69,7 @@ export class MailOrderService implements OrderService {
         p.reason ? `причина: ${p.reason}` : null,
         usage,
       ]
-        .filter(Boolean)
-        .join(', ')
+      return `${i + 1}. ${parts.filter(Boolean).join(', ')}`
     })
     const client = r.client_name ?? r.company ?? payload.client
     await this.mailer.send({
