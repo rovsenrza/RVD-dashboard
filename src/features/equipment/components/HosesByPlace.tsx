@@ -52,6 +52,16 @@ export function HosesByPlace({ equipmentId }: { equipmentId: string }) {
           <EmptyState inset title="На этой технике нет изделий" />
         ) : (
           <div className="grid gap-4">
+            {/* Column names, once for every place; on a phone the rows stack and need none. */}
+            <div
+              aria-hidden
+              className="-mx-2 grid grid-cols-[8rem_minmax(0,1fr)_9rem_10rem] gap-x-3 border-b border-line px-2 pb-2 text-caption font-medium tracking-wide text-ink-muted whitespace-nowrap uppercase max-sm:hidden"
+            >
+              <span>Серийный №</span>
+              <span>Каталожный №</span>
+              <span>Статус</span>
+              <span className="text-right">До замены</span>
+            </div>
             {byPlace(hoses).map(({ place, hoses: list }) => (
               <section key={place}>
                 <h3 className="flex items-baseline gap-2 text-ui font-medium">
@@ -65,7 +75,7 @@ export function HosesByPlace({ equipmentId }: { equipmentId: string }) {
                     <li key={p.id}>
                       <Link
                         to={`/products/${p.id}`}
-                        className="-mx-2 grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-0.5 rounded-lg px-2 py-2 text-ui transition-colors duration-100 hover:bg-row-hover sm:grid-cols-[6.5rem_minmax(0,1fr)_auto_10rem]"
+                        className="-mx-2 grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-0.5 rounded-lg px-2 py-2 text-ui transition-colors duration-100 hover:bg-row-hover sm:grid-cols-[8rem_minmax(0,1fr)_9rem_10rem]"
                       >
                         <span className="font-medium text-brand-deep tabular">
                           № {p.serialNumber}
@@ -73,7 +83,9 @@ export function HosesByPlace({ equipmentId }: { equipmentId: string }) {
                         <span className="truncate text-ink-secondary max-sm:text-right">
                           {p.catalogNumber ?? p.type}
                         </span>
-                        <ProductStatusBadge status={p.status} />
+                        <span>
+                          <ProductStatusBadge status={p.status} />
+                        </span>
                         <span className="text-label max-sm:text-right sm:text-right">
                           <Left p={p} />
                         </span>
