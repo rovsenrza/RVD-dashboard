@@ -106,9 +106,9 @@ describe.skipIf(!hasDb)('letters, once there is a mail server', () => {
     expect(await sendDigests(db, mailer, TODAY, 'https://rvd.example.ru/')).toBe(1)
     const letter = outbox.pop()!
     expect(letter.to).toBe('e@r.ru')
-    expect(letter.subject).toBe('РВД Кабинет: EHS 101')
+    expect(letter.subject).toBe('РВД Кабинет: № 101')
     expect(letter.text).toContain(
-      '• EHS 101: Плановая замена 17.10.2026 — через 14 дней. Пора заказать рукав',
+      '• № 101: Плановая замена 17.10.2026 — через 14 дней. Пора заказать рукав',
     )
     expect(letter.text).toContain('https://rvd.example.ru/notifications')
     // Once a day, however often the job runs.
