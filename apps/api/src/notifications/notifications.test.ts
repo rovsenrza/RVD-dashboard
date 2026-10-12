@@ -106,7 +106,7 @@ describe.skipIf(!hasDb)('notifications on the server', () => {
       ['planned_replacement', 'h2', 14],
     ])
     expect(notices[0]).toMatchObject({
-      title: 'EHS 11 · НТ08',
+      title: '№ 11 · НТ08',
       message: 'Плановая замена 17.10.2026 — через 14 дней. Пора заказать рукав',
       dueDate: '2026-10-17',
       read: false,

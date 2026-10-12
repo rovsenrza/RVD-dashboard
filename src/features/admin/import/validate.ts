@@ -1,6 +1,6 @@
 import { format } from 'date-fns'
 import type { Branch, CabinetUser, Equipment, Product, UserRole } from '@/entities/types'
-import { INSTALL_PLACES } from '@/entities/product'
+import { INSTALL_PLACES, sameSerial } from '@/entities/product'
 import { ROLE_LABEL, ROLE_ORDER, isBranchBound } from '@/entities/user'
 import type { InstallationPatch, UserDraft } from '@/shared/api/queries'
 import type { Cell } from './excel'
@@ -8,6 +8,8 @@ import type { Cell } from './excel'
 export interface ImportColumn {
   key: string
   header: string
+  /** Older names of the header that templates already filled in may carry */
+  aliases?: string[]
   required?: boolean
 }
 
@@ -42,7 +44,9 @@ function checkSheet<T>(
   const [head, ...body] = sheet
   if (!head) return { error: 'Файл пустой' }
   const index = new Map(head.map((h, i) => [norm(text(h)), i]))
-  const missing = columns.filter((c) => c.required && !index.has(norm(c.header)))
+  const at = (c: ImportColumn) =>
+    [c.header, ...(c.aliases ?? [])].map((h) => index.get(norm(h))).find((i) => i !== undefined)
+  const missing = columns.filter((c) => c.required && at(c) === undefined)
   if (missing.length)
     return {
       error: `Нет колонок: ${missing.map((c) => `«${c.header}»`).join(', ')}. Возьмите шаблон.`,
@@ -51,9 +55,8 @@ function checkSheet<T>(
   body.forEach((raw, i) => {
     if (raw.every((c) => text(c) === '')) return
     const get = (key: string) => {
-      const col = columns.find((c) => c.key === key)!
-      const at = index.get(norm(col.header))
-      return at === undefined ? null : (raw[at] ?? null)
+      const i = at(columns.find((c) => c.key === key)!)
+      return i === undefined ? null : (raw[i] ?? null)
     }
     const errors: string[] = []
     for (const c of columns)
@@ -123,7 +126,7 @@ export function checkUsers(
  * simply not read.
  */
 export const INSTALL_COLUMNS: ImportColumn[] = [
-  { key: 'ehs', header: 'EHS №', required: true },
+  { key: 'ehs', header: 'Серийный №', aliases: ['EHS №'], required: true },
   { key: 'garage', header: 'Гаражный №', required: true },
   { key: 'place', header: 'Место установки', required: true },
   { key: 'client', header: 'Внутренний №' },
@@ -143,8 +146,8 @@ export function checkInstallations(
   const seen = new Map<string, number>()
   return checkSheet(sheet, INSTALL_COLUMNS, (get, errors, line) => {
     const ehs = text(get('ehs')).replace(/^(ehs|esm)[\s:№#-]*/i, '')
-    const product = products.find((p) => p.serialNumber === ehs)
-    if (!product) errors.push(`изделие EHS ${ehs} не найдено`)
+    const product = products.find((p) => sameSerial(p.serialNumber, ehs))
+    if (!product) errors.push(`изделие № ${ehs} не найдено`)
     else if (seen.has(ehs)) errors.push(`изделие повторяется: строка ${seen.get(ehs)}`)
     else seen.set(ehs, line)
 
@@ -159,7 +162,7 @@ export function checkInstallations(
     const client = text(get('client'))
     return {
       productId: product.id,
-      label: `EHS ${product.serialNumber}`,
+      label: `№ ${product.serialNumber}`,
       patch: {
         equipmentId: machine.id,
         installPlace: place,

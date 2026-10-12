@@ -15,6 +15,7 @@ const SORT: Record<ProductSortKey, (p: Product) => Value[]> = {
   manufacturer: (p) => [p.manufacturer],
   shippedAt: (p) => [p.shippedAt],
   installedAt: (p) => [p.installedAt],
+  manufacturedAt: (p) => [p.manufacturedAt, p.serialNumber.length, p.serialNumber],
   plannedAt: (p) => [serviceDates(p, settings)?.plannedAt ?? null],
   status: (p) => [['replace', 'warn', 'no_warranty', 'ok'].indexOf(p.status)],
   lifecycle: (p) => [p.lifecycle],

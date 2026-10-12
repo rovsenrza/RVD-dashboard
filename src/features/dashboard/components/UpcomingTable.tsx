@@ -9,7 +9,7 @@ type Row = DashboardSummary['upcoming'][number]
 const col = createColumnHelper<Row>()
 const columns = [
   col.accessor('serialNumber', {
-    header: 'EHS №',
+    header: 'Серийный №',
     cell: (c) => (
       <Link
         to={`/products/${c.row.original.productId}`}

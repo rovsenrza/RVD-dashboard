@@ -52,6 +52,7 @@ export const PRODUCT_SORT_KEYS = [
   'manufacturer',
   'shippedAt',
   'installedAt',
+  'manufacturedAt',
   'plannedAt',
   'status',
   'lifecycle',

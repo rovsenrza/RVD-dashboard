@@ -83,10 +83,10 @@ describe.skipIf(!hasDb)('letters, once there is a mail server', () => {
     expect(await deliverSupport(db, mailer, 'service@supplier.ru')).toEqual({ sent: 1, failed: 0 })
     expect(outbox.pop()).toEqual({
       to: 'service@supplier.ru',
-      subject: 'РВД Кабинет: Исправить дату установки, EHS 101',
+      subject: 'РВД Кабинет: Исправить дату установки, № 101',
       text: [
         'Тема: Исправить дату установки',
-        'Изделие: EHS 101',
+        'Изделие: № 101',
         'Верная дата установки: 20.10.2025 (в кабинете: 17.10.2025)',
         'От: Инженер <e@r.ru>, ООО Ромашка',
         '\nПоставили позже',

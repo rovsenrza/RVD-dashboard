@@ -9,7 +9,7 @@ import { AttachmentStrip } from '@/features/attachments/AttachmentStrip'
 const hose = (id: string | null, serial: string | null) =>
   id && serial ? (
     <Link to={`/products/${id}`} className="font-medium text-brand-deep hover:underline">
-      EHS {serial}
+      № {serial}
     </Link>
   ) : (
     <span className="text-ink-muted">изделие не из кабинета</span>

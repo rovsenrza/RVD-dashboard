@@ -40,7 +40,7 @@ function useHits(q: string): Hit[] {
     const productHits = (products.data ?? []).slice(0, MAX_PER_GROUP).map<Hit>((p) => ({
       id: p.id,
       to: `/products/${p.id}`,
-      title: `EHS ${p.serialNumber}`,
+      title: `№ ${p.serialNumber}`,
       subtitle: [p.type, p.catalogNumber].filter(Boolean).join(' · '),
       group: 'product',
     }))

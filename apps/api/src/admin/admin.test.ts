@@ -196,7 +196,7 @@ describe.skipIf(!hasDb)('company settings and the action log on the server', () 
       target: { kind: 'request', id: res.json().id, label: 'Новая заявка' },
       changes: [
         { field: 'Тип', before: null, after: 'Замена' },
-        { field: 'Изделия', before: null, after: 'EHS 101' },
+        { field: 'Изделия', before: null, after: '№ 101' },
         { field: 'Количество', before: null, after: '1' },
       ],
     })

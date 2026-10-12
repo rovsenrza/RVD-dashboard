@@ -20,7 +20,7 @@ export function ProductDetails({
     {
       title: 'Идентификация',
       rows: [
-        ['Серийный № (EHS)', p.serialNumber],
+        ['Серийный №', p.serialNumber],
         ['Ваш внутренний №', p.clientNumber],
         ['Каталожный № (OEM)', p.catalogNumber],
         ['Номенклатурный №', p.nomenclatureNumber],

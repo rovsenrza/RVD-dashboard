@@ -47,7 +47,7 @@ describe('matchCode', () => {
   it('opens the hose by EHS or internal number', () => {
     expect(matchCode('48703', products, equipment)).toEqual({
       to: '/products/p1',
-      label: 'EHS 48703',
+      label: '№ 48703',
     })
     expect(matchCode('к-1003', products, equipment)?.to).toBe('/products/p1')
   })

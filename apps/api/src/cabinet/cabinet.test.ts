@@ -106,7 +106,7 @@ describe.skipIf(!hasDb)('what the customer alone knows, kept by the server', () 
     expect(entry).toMatchObject({
       action: 'installation.update',
       actor: { name: 'Инженер' },
-      target: { label: 'EHS 101' },
+      target: { label: '№ 101' },
       changes: [
         { field: 'Место установки', before: null, after: 'Стрела' },
         { field: 'Внутренний №', before: null, after: 'K-1042' },

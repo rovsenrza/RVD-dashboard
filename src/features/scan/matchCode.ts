@@ -1,3 +1,4 @@
+import { sameSerial } from '@/entities/product'
 import type { Equipment, Product } from '@/entities/types'
 
 export interface CodeMatch {
@@ -48,12 +49,13 @@ export function matchCode(
   const same = (v: string | null | undefined) => v?.trim().toLowerCase() === code
 
   const hose =
-    products.find((p) => same(p.serialNumber)) ?? products.find((p) => same(p.clientNumber))
-  if (hose) return { to: `/products/${hose.id}`, label: `EHS ${hose.serialNumber}` }
+    products.find((p) => sameSerial(p.serialNumber, code)) ??
+    products.find((p) => same(p.clientNumber))
+  if (hose) return { to: `/products/${hose.id}`, label: `№ ${hose.serialNumber}` }
 
   const sharing = products.filter((p) => same(p.catalogNumber))
   if (sharing.length === 1)
-    return { to: `/products/${sharing[0].id}`, label: `EHS ${sharing[0].serialNumber}` }
+    return { to: `/products/${sharing[0].id}`, label: `№ ${sharing[0].serialNumber}` }
   if (sharing.length > 1 && sharing[0].catalogNumberId)
     return {
       to: `/products?catalog=${encodeURIComponent(sharing[0].catalogNumberId)}`,

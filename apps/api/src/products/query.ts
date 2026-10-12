@@ -22,6 +22,7 @@ const ORDER: Record<ProductSortKey, string[]> = {
   manufacturer: [`data->>'manufacturer'`],
   shippedAt: ['shipped_at'],
   installedAt: ['installed_at'],
+  manufacturedAt: [`data->>'manufacturedAt'`, 'length(serial_number)', 'serial_number'],
   plannedAt: ['planned_at'],
   status: [`array_position(array['replace','warn','no_warranty','ok'], status)`],
   lifecycle: ['lifecycle'],

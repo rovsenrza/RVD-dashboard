@@ -43,7 +43,7 @@ const inDays = (n: number) => `через ${n} ${plural(n, 'день', 'дня',
 
 /** «EHS 48703 · HT08»: the hose and the machine it is on. */
 export const hoseNoticeTitle = (serialNumber: string, garageNumber: string | null) =>
-  `EHS ${serialNumber}${garageNumber ? ` · ${garageNumber}` : ''}`
+  `№ ${serialNumber}${garageNumber ? ` · ${garageNumber}` : ''}`
 
 /** What a hose notice says, by its kind, date (ISO) and lead. */
 export function hoseNoticeText(

@@ -121,7 +121,7 @@ export const handlers = [
     if (changes.length)
       record({
         action: 'installation.update',
-        target: { kind: 'product', id: p.id, label: `EHS ${p.serialNumber}` },
+        target: { kind: 'product', id: p.id, label: `№ ${p.serialNumber}` },
         changes,
       })
     return HttpResponse.json(p)
@@ -276,7 +276,7 @@ export const handlers = [
     if (product)
       record({
         action: 'attachment.create',
-        target: { kind: 'product', id: product.id, label: `EHS ${product.serialNumber}` },
+        target: { kind: 'product', id: product.id, label: `№ ${product.serialNumber}` },
         changes: filesChange([result]),
       })
     return HttpResponse.json(result, { status: 201 })
@@ -306,7 +306,7 @@ export const handlers = [
     deleteAttachment(stored.meta.id)
     record({
       action: 'attachment.delete',
-      target: { kind: 'product', id: product.id, label: `EHS ${product.serialNumber}` },
+      target: { kind: 'product', id: product.id, label: `№ ${product.serialNumber}` },
       changes: [{ field: 'Файлы', before: stored.meta.fileName, after: null }],
     })
     return new HttpResponse(null, { status: 204 })

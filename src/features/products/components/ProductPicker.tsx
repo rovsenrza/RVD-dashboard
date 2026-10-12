@@ -32,7 +32,7 @@ export function ProductPicker({
   disabled,
   required,
   invalid,
-  placeholder = 'EHS, ваш номер или выберите из подсказки',
+  placeholder = 'Серийный №, ваш номер или выберите из подсказки',
 }: {
   id: string
   labelOf: (p: Product) => string
@@ -74,8 +74,8 @@ export function ProductPicker({
       findProduct(suggestions, value, labelOf) ??
       findProduct(await find({ q: wanted, limit: 50 }), value, labelOf)
     if (!hit) return onMiss('Такого изделия нет среди ваших')
-    if (taken?.has(hit.id)) return onMiss(`EHS ${hit.serialNumber} уже выбрано`)
-    if (!eligible(hit)) return onMiss(`EHS ${hit.serialNumber} сюда не подходит`)
+    if (taken?.has(hit.id)) return onMiss(`№ ${hit.serialNumber} уже выбрано`)
+    if (!eligible(hit)) return onMiss(`№ ${hit.serialNumber} сюда не подходит`)
     onPick(hit)
     setTyped('')
     onMiss(undefined)

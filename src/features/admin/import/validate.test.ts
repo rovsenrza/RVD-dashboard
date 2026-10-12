@@ -90,7 +90,7 @@ describe('installation import', () => {
     { id: 'p2', serialNumber: '48704' },
   ] as Product[]
   const equipment = [{ id: 'e1', garageNumber: 'НТ04' }] as Equipment[]
-  const header = ['EHS №', 'Гаражный №', 'Место установки', 'Внутренний №']
+  const header = ['Серийный №', 'Гаражный №', 'Место установки', 'Внутренний №']
 
   it('builds the installation patch: machine, place and internal number', () => {
     const rows = rowsOf(
@@ -103,12 +103,12 @@ describe('installation import', () => {
     expect(rows.map((r) => r.value)).toEqual([
       {
         productId: 'p1',
-        label: 'EHS 48703',
+        label: '№ 48703',
         patch: { equipmentId: 'e1', installPlace: 'Ковш', clientNumber: 'К-1' },
       },
       {
         productId: 'p2',
-        label: 'EHS 48704',
+        label: '№ 48704',
         patch: { equipmentId: 'e1', installPlace: 'Рукоять' },
       },
     ])
@@ -118,7 +118,7 @@ describe('installation import', () => {
     const rows = rowsOf(
       checkInstallations(
         [
-          ['EHS №', 'Гаражный №', 'Место установки', 'Дата установки'],
+          ['Серийный №', 'Гаражный №', 'Место установки', 'Дата установки'],
           ['48703', 'НТ04', 'Ковш', '01.09.2026'],
         ],
         products,
@@ -143,7 +143,7 @@ describe('installation import', () => {
       ),
     )
     expect(rows[0].errors).toEqual([
-      'изделие EHS 49999 не найдено',
+      'изделие № 49999 не найдено',
       'техника ЕХ99 не найдена',
       'место — одно из: Стрела, левый контур; Рукоять; Ковш; Гидромотор хода; Насос, напор',
     ])

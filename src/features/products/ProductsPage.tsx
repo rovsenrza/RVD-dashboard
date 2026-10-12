@@ -2,7 +2,13 @@ import { useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import type { ColumnDef, SortingState } from '@tanstack/react-table'
 import { RefreshCw, SlidersHorizontal } from 'lucide-react'
-import type { Product, ProductLifecycle, ProductSortKey, ProductStatus } from '@/entities/types'
+import type {
+  Equipment,
+  Product,
+  ProductLifecycle,
+  ProductSortKey,
+  ProductStatus,
+} from '@/entities/types'
 import { LIFECYCLE_LABEL, STATUS_LABEL, serviceDates } from '@/entities/product'
 import { MAX_REQUEST_POSITIONS } from '@/entities/request/rules'
 import { useSession } from '@/app/session'
@@ -28,14 +34,14 @@ import {
 } from '@/shared/ui'
 import type { ExportColumn } from '@/shared/lib/export'
 import { RequestForm } from '@/features/requests/components/RequestForm'
-import { productColumns } from './columns'
+import { machineName, productColumns } from './columns'
 import { ProductFilters } from './components/ProductFilters'
 import { FILTER_KEYS, type FilterKey, type FilterValues } from './filters'
 
 type Tab = 'active' | 'archive'
 
-const EXPORT_COLUMNS: ExportColumn<Product>[] = [
-  { header: 'Серийный № (EHS)', value: (p) => p.serialNumber, width: 14 },
+const exportColumns = (machines: ReadonlyMap<string, Equipment>): ExportColumn<Product>[] => [
+  { header: 'Серийный №', value: (p) => p.serialNumber, width: 14 },
   { header: 'Ваш внутренний №', value: (p) => p.clientNumber, width: 14 },
   { header: 'Каталожный № (OEM)', value: (p) => p.catalogNumber, width: 18 },
   { header: 'Тип', value: (p) => p.type, width: 12 },
@@ -47,6 +53,16 @@ const EXPORT_COLUMNS: ExportColumn<Product>[] = [
     value: (p) => serviceDates(p)?.plannedAt ?? null,
     type: 'date',
     width: 11,
+  },
+  {
+    header: 'Марка / модель',
+    value: (p) => machineName(p.equipmentId ? machines.get(p.equipmentId) : undefined),
+    width: 16,
+  },
+  {
+    header: 'Гаражный №',
+    value: (p) => (p.equipmentId ? (machines.get(p.equipmentId)?.garageNumber ?? null) : null),
+    width: 12,
   },
   { header: 'Место установки', value: (p) => p.installPlace, width: 20 },
   { header: 'Срок эксплуатации, дн.', value: (p) => p.serviceLifeDays, width: 12 },
@@ -60,6 +76,11 @@ const EXPORT_COLUMNS: ExportColumn<Product>[] = [
  */
 export function ProductsPage() {
   const equipment = useEquipment()
+  const machines = useMemo(
+    () => new Map((equipment.data ?? []).map((e) => [e.id, e])),
+    [equipment.data],
+  )
+  const columns = useMemo(() => productColumns(machines), [machines])
   const catalog = useCatalogNumbers()
   const [params, setParams] = useSearchParams()
   const [search, setSearch] = useState('')
@@ -91,10 +112,10 @@ export function ProductsPage() {
       q: q || undefined,
       archive: tab === 'archive' ? '1' : '0',
       limit: pageSize,
-      ...(sorting[0] && {
-        sort: sorting[0].id as ProductSortKey,
-        dir: sorting[0].desc ? 'desc' : 'asc',
-      }),
+      // Unsorted, the newest-made hoses come first (customer, 2026-10-11).
+      ...(sorting[0]
+        ? { sort: sorting[0].id as ProductSortKey, dir: sorting[0].desc ? 'desc' : 'asc' }
+        : { sort: 'manufacturedAt', dir: 'desc' }),
     }),
     [active, q, tab, pageSize, sorting],
   )
@@ -162,7 +183,7 @@ export function ProductsPage() {
                 ),
                 q && `Поиск: «${q}»`,
               ]}
-              columns={EXPORT_COLUMNS}
+              columns={exportColumns(machines)}
               rows={everyRow}
             />
           </>
@@ -178,7 +199,7 @@ export function ProductsPage() {
         {(data) => (
           <DataTable
             data={data.items}
-            columns={productColumns as ColumnDef<Product, unknown>[]}
+            columns={columns as ColumnDef<Product, unknown>[]}
             onRowClick={(p) => navigate(`/products/${p.id}`)}
             stickyFirstColumn
             tools
@@ -199,7 +220,7 @@ export function ProductsPage() {
               onChange: pick,
               // A hose still being made has nothing to replace yet.
               canSelect: (p) => p.lifecycle !== 'manufacturing',
-              label: (p) => `Выбрать EHS ${p.serialNumber}`,
+              label: (p) => `Выбрать № ${p.serialNumber}`,
             }}
             emptyTitle={tab === 'archive' ? 'В архиве пока ничего нет' : 'Изделий пока нет'}
             toolbar={

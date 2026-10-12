@@ -30,7 +30,7 @@ describe('action log', () => {
     expect(lines[0]).toMatchObject({
       action: 'installation.update',
       actor: { name: 'Иванов Иван' },
-      target: { kind: 'product', label: `EHS ${hose.serialNumber}` },
+      target: { kind: 'product', label: `№ ${hose.serialNumber}` },
       changes: [{ field: 'Место установки', before, after: 'Ковш' }],
     })
   })

@@ -309,7 +309,7 @@ export function RequestForm({
                           <ProductStatusBadge status={p.status} />
                         )
                       }
-                      removeLabel={`Убрать EHS ${p.serialNumber}`}
+                      removeLabel={`Убрать № ${p.serialNumber}`}
                       onRemove={() => setPicked((all) => all.filter((x) => x.id !== p.id))}
                     />
                   )
@@ -320,14 +320,14 @@ export function RequestForm({
                       <div className="grid grid-cols-[minmax(0,1fr)_5.5rem] gap-1.5 pl-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,8.5rem)_5.5rem]">
                         <Select
                           className="col-span-2 sm:col-span-1"
-                          aria-label={`Причина замены EHS ${p.serialNumber}`}
+                          aria-label={`Причина замены № ${p.serialNumber}`}
                           value={u.reason}
                           onChange={(e) => patchUsage(p.id, { reason: e.target.value })}
                           placeholder="Причина не указана"
                           options={REPLACEMENT_REASONS.map((r) => ({ value: r, label: r }))}
                         />
                         <Input
-                          aria-label={`Наработка EHS ${p.serialNumber}`}
+                          aria-label={`Наработка № ${p.serialNumber}`}
                           inputMode="numeric"
                           placeholder="Наработка"
                           value={u.hours}
@@ -339,7 +339,7 @@ export function RequestForm({
                           }
                         />
                         <Select
-                          aria-label={`Единица наработки EHS ${p.serialNumber}`}
+                          aria-label={`Единица наработки № ${p.serialNumber}`}
                           value={u.unit}
                           onChange={(e) =>
                             patchUsage(p.id, { unit: e.target.value === 'km' ? 'km' : 'hours' })
@@ -362,7 +362,7 @@ export function RequestForm({
                   taken={taken}
                   disabled={hosesFull}
                   invalid={!!miss}
-                  placeholder={hoses.length ? 'Добавить ещё: EHS или ваш номер' : undefined}
+                  placeholder={hoses.length ? 'Добавить ещё: серийный № или ваш номер' : undefined}
                   onPick={(p) => setPicked((all) => [...all, p])}
                   onMiss={setMiss}
                 />

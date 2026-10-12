@@ -1,12 +1,16 @@
 import { createColumnHelper } from '@tanstack/react-table'
-import type { Product } from '@/entities/types'
+import type { Equipment, Product } from '@/entities/types'
 import { ProductStatusBadge, serviceDates } from '@/entities/product'
 import { formatDate } from '@/shared/lib/utils'
 import { valueOr } from '@/shared/ui'
 
 const col = createColumnHelper<Product>()
 
-export const productColumns = [
+/** «Komatsu PC200»: the machine a hose is on, by its make and model; the model waits for 1С. */
+export const machineName = (e: Equipment | undefined) =>
+  e ? [e.brand, e.model].filter(Boolean).join(' ') || null : null
+
+export const productColumns = (machines: ReadonlyMap<string, Equipment>) => [
   col.accessor('serialNumber', {
     header: 'Серийный №',
     cell: (c) => <span className="font-medium text-brand-deep">{c.getValue()}</span>,
@@ -50,6 +54,24 @@ export const productColumns = [
     header: 'Статус',
     meta: { mobile: 'aside' },
     cell: (c) => <ProductStatusBadge status={c.getValue()} />,
+  }),
+  // Which machine it is on, so a replacement reads against the machine (customer, 2026-10-11).
+  // The machines are known only to the browser here, so this column does not sort.
+  col.accessor((p) => machineName(p.equipmentId ? machines.get(p.equipmentId) : undefined), {
+    id: 'machine',
+    header: 'Марка / модель',
+    enableSorting: false,
+    meta: { mobile: 'hide' },
+    cell: (c) => {
+      const e = c.row.original.equipmentId ? machines.get(c.row.original.equipmentId) : undefined
+      if (!e) return valueOr(null)
+      return (
+        <span>
+          {valueOr(c.getValue())}
+          <span className="block text-label text-ink-muted">{e.garageNumber}</span>
+        </span>
+      )
+    },
   }),
   // The start of «Пора менять»; the server sorts by the same rule under this id.
   col.accessor((p) => serviceDates(p)?.plannedAt ?? null, {

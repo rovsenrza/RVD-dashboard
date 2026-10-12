@@ -152,7 +152,7 @@ export { commentProblem }
 const target = (p: Product) => ({
   kind: 'product' as const,
   id: p.id,
-  label: `EHS ${p.serialNumber}`,
+  label: `№ ${p.serialNumber}`,
 })
 const change = commentChange
 

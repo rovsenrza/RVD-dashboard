@@ -45,7 +45,7 @@ describe('messages to the specialist', () => {
     expect(await res.json()).toMatchObject({ topic: 'install_date', installedAt: right })
     expect(audit[0]).toMatchObject({
       action: 'support.message',
-      target: { kind: 'product', id: hose.id, label: `EHS ${hose.serialNumber}` },
+      target: { kind: 'product', id: hose.id, label: `№ ${hose.serialNumber}` },
       changes: [
         { field: 'Тема', after: 'Исправить дату установки' },
         { field: 'Дата установки', after: format(parseISO(right), 'dd.MM.yyyy') },

@@ -32,7 +32,7 @@ export function sendSupportMessage(
   record({
     action: 'support.message',
     target: product
-      ? { kind: 'product', id: product.id, label: `EHS ${product.serialNumber}` }
+      ? { kind: 'product', id: product.id, label: `№ ${product.serialNumber}` }
       : { kind: 'message', id: message.id, label: SUPPORT_TOPIC_LABEL[message.topic] },
     changes: supportChanges(message, product?.installedAt ?? product?.shippedAt ?? null),
   })

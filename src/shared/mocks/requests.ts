@@ -81,7 +81,7 @@ export function createRequest(raw: NewRequest): ServiceRequest | { error: string
 
   const hoses = positions.flatMap((l) => {
     const hose = l.productId ? productOf(l.productId) : undefined
-    return hose ? [`EHS ${hose.serialNumber}`] : []
+    return hose ? [`№ ${hose.serialNumber}`] : []
   })
   record({
     action: 'request.create',

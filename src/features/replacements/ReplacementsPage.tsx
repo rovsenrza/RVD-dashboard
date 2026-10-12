@@ -24,8 +24,8 @@ import { replacementColumns } from './columns'
 
 const EXPORT_COLUMNS: ExportColumn<Replacement>[] = [
   { header: 'Дата', value: (r) => r.date, type: 'date', width: 11 },
-  { header: 'Снятое изделие (EHS)', value: (r) => r.oldSerialNumber, width: 12 },
-  { header: 'Установленное изделие (EHS)', value: (r) => r.newSerialNumber, width: 14 },
+  { header: 'Снятое изделие (серийный №)', value: (r) => r.oldSerialNumber, width: 12 },
+  { header: 'Установленное изделие (серийный №)', value: (r) => r.newSerialNumber, width: 14 },
   { header: 'Техника (гаражный №)', value: (r) => r.garageNumber, width: 12 },
   { header: 'Причина', value: (r) => r.reason, width: 20 },
   { header: 'Наработка', value: (r) => r.operatingHours, width: 10 },

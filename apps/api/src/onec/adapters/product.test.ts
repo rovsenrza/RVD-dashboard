@@ -24,9 +24,9 @@ const sources = (over: Partial<ProductSources> = {}): ProductSources => ({
 const one = (over: Partial<ProductSources> = {}) => toProducts(sources(over), { today: TODAY })[0]
 
 describe('identity', () => {
-  it('shows the 1С code without its padding zeros', () => {
-    expect(one().serialNumber).toBe('3844')
-    expect(one({ items: [item({ Code: '00000000000000000099' })] }).serialNumber).toBe('99')
+  it('shows the 1С code as 1С does, padding zeros kept', () => {
+    expect(one().serialNumber).toBe('000003844')
+    expect(one({ items: [item({ Code: ' 000099 ' })] }).serialNumber).toBe('000099')
   })
 
   it('cleans the description of no-break spaces', () => {

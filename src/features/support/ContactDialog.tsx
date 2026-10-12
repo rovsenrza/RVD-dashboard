@@ -141,7 +141,7 @@ export function ContactDialog({
           ) : (
             <Field
               label={topic === 'install_date' ? 'Изделие' : 'Изделие, если вопрос о нём'}
-              hint="EHS, ваш номер или выберите из подсказки"
+              hint="Серийный №, ваш номер или выберите из подсказки"
               error={miss}
             >
               {(id) => (

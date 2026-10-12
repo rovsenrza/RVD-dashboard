@@ -65,7 +65,7 @@ describe('creating a request', () => {
     expect(audit[0].changes).toContainEqual({
       field: 'Изделия',
       before: null,
-      after: `EHS ${live.serialNumber}, EHS ${archived.serialNumber}`,
+      after: `№ ${live.serialNumber}, № ${archived.serialNumber}`,
     })
   })
 

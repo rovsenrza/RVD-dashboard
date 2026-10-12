@@ -25,7 +25,7 @@ import { UpcomingTable } from './components/UpcomingTable'
 
 type Upcoming = DashboardSummary['upcoming'][number]
 const UPCOMING_COLUMNS: ExportColumn<Upcoming>[] = [
-  { header: 'EHS №', value: (u) => u.serialNumber, width: 12 },
+  { header: 'Серийный №', value: (u) => u.serialNumber, width: 12 },
   { header: 'Техника', value: (u) => u.equipment, width: 14 },
   { header: 'Плановая замена', value: (u) => u.dueDate, type: 'date', width: 14 },
 ]

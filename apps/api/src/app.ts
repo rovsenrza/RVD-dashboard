@@ -573,7 +573,7 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
     const hoseTarget = (p: Product) => ({
       kind: 'product' as const,
       id: p.id,
-      label: `EHS ${p.serialNumber}`,
+      label: `№ ${p.serialNumber}`,
     })
     const localView = (p: Product) => ({
       'Место установки': p.installPlace,

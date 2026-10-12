@@ -45,7 +45,7 @@ describe('DataTable phone rows', () => {
     status: string
   }
   const hoseColumns: ColumnDef<Hose, unknown>[] = [
-    { accessorKey: 'ehs', header: 'EHS №' },
+    { accessorKey: 'ehs', header: 'Серийный №' },
     { accessorKey: 'place', header: 'Место' },
     { accessorKey: 'maker', header: 'Производитель', meta: { mobile: 'hide' } },
     { accessorKey: 'status', header: 'Статус', meta: { mobile: 'aside' } },
@@ -107,7 +107,7 @@ describe('DataTable selection', () => {
     ehs: String(48700 + i),
     made: i !== 2,
   }))
-  const hoseColumns: ColumnDef<Hose, unknown>[] = [{ accessorKey: 'ehs', header: 'EHS №' }]
+  const hoseColumns: ColumnDef<Hose, unknown>[] = [{ accessorKey: 'ehs', header: 'Серийный №' }]
 
   function Picking({ onRowClick = () => {} }: { onRowClick?: (h: Hose) => void }) {
     const [picked, setPicked] = useState<Set<string>>(() => new Set())

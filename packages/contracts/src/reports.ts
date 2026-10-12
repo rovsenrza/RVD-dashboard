@@ -125,7 +125,7 @@ const STATUS_COLUMNS = [
   col('no_warranty', 'Без гарантии', 'number', 10),
 ]
 const HOSE_COLUMNS = [
-  col('serial', 'EHS №', 'text', 10),
+  col('serial', 'Серийный №', 'text', 10),
   col('catalog', 'Каталожный № (OEM)', 'text', 18),
   col('machine', 'Техника', 'text', 10),
   col('place', 'Место установки', 'text', 20),
@@ -273,8 +273,8 @@ export function buildReport(id: ReportId, data: ReportData, params: ReportParams
     case 'replacements':
       columns = [
         col('date', 'Дата', 'date', 11),
-        col('old', 'Снято (EHS)', 'text', 11),
-        col('new', 'Установлено (EHS)', 'text', 13),
+        col('old', 'Снято (серийный №)', 'text', 11),
+        col('new', 'Установлено (серийный №)', 'text', 13),
         col('machine', 'Техника', 'text', 10),
         col('reason', 'Причина', 'text', 20),
         col('usage', 'Наработка', 'number', 10),

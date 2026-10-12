@@ -75,7 +75,7 @@ export async function deliverSupport(
   for (const m of rows) {
     const lines = [
       `Тема: ${SUPPORT_TOPIC_LABEL[m.topic]}`,
-      m.serial && `Изделие: EHS ${m.serial}`,
+      m.serial && `Изделие: № ${m.serial}`,
       m.installed_at &&
         `Верная дата установки: ${dmy(m.installed_at)}${m.shown_date ? ` (в кабинете: ${dmy(m.shown_date)})` : ''}`,
       `От: ${m.author_name} <${m.author_email}>${m.company ? `, ${m.company}` : ''}`,
@@ -84,7 +84,7 @@ export async function deliverSupport(
     try {
       await mailer.send({
         to,
-        subject: `РВД Кабинет: ${SUPPORT_TOPIC_LABEL[m.topic]}${m.serial ? `, EHS ${m.serial}` : ''}`,
+        subject: `РВД Кабинет: ${SUPPORT_TOPIC_LABEL[m.topic]}${m.serial ? `, № ${m.serial}` : ''}`,
         text: lines.join('\n'),
       })
       await db.query(

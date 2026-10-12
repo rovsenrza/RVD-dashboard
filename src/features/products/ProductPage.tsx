@@ -67,7 +67,7 @@ export function ProductPage() {
                   onClick={() =>
                     setRequesting({
                       kind: 'manufacture',
-                      catalogNumber: p.catalogNumber ?? `как EHS ${p.serialNumber}`,
+                      catalogNumber: p.catalogNumber ?? `как № ${p.serialNumber}`,
                     })
                   }
                   className="max-sm:flex-none!"

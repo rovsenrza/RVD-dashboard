@@ -62,5 +62,5 @@ export async function hoseLabels(db: Db, ids: (string | null)[]): Promise<string
     [wanted],
   )
   const serial = new Map(rows.map((r) => [r.id, r.serial_number]))
-  return wanted.flatMap((id) => (serial.has(id) ? [`EHS ${serial.get(id)}`] : []))
+  return wanted.flatMap((id) => (serial.has(id) ? [`№ ${serial.get(id)}`] : []))
 }

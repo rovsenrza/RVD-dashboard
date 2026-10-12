@@ -554,7 +554,7 @@ for (const p of products.filter((x) => live(x) && x.equipmentId).slice(0, 26)) {
   record(
     {
       action: 'installation.update',
-      target: { kind: 'product', id: p.id, label: `EHS ${p.serialNumber}` },
+      target: { kind: 'product', id: p.id, label: `№ ${p.serialNumber}` },
       changes: diff(before, now),
     },
     workTime(Math.floor(rand() * 40)),

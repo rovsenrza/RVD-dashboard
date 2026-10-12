@@ -68,7 +68,7 @@ export function HosesByPlace({ equipmentId }: { equipmentId: string }) {
                         className="-mx-2 grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-0.5 rounded-lg px-2 py-2 text-ui transition-colors duration-100 hover:bg-row-hover sm:grid-cols-[6.5rem_minmax(0,1fr)_auto_10rem]"
                       >
                         <span className="font-medium text-brand-deep tabular">
-                          EHS {p.serialNumber}
+                          № {p.serialNumber}
                         </span>
                         <span className="truncate text-ink-secondary max-sm:text-right">
                           {p.catalogNumber ?? p.type}

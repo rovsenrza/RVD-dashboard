@@ -17,7 +17,6 @@ import {
   byKey,
   cleanText,
   dateOnly,
-  displayCode,
   isPlaceholderMachine,
   isRef,
   orNull,
@@ -141,7 +140,8 @@ export function toProducts(src: ProductSources, options: ProductOptions = {}): P
 
       return {
         id: item.Ref_Key,
-        serialNumber: displayCode(item.Code),
+        // As 1С shows it, leading zeros kept (customer, 2026-10-11).
+        serialNumber: cleanText(item.Code),
         clientNumber: null,
         catalogNumberId: cat?.Ref_Key ?? null,
         catalogNumber: cat ? orNull(cat.Description) : null,

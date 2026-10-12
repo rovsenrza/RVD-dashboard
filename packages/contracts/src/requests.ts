@@ -27,12 +27,12 @@ export const MAX_OPERATING_HOURS = 1_000_000
 /** What is wrong with a replacement line's reason and running hours, or null; both may be left out. */
 function usageProblem(line: RequestPosition, serial: string): string | null {
   if (line.reason != null && !REPLACEMENT_REASONS.includes(line.reason))
-    return `EHS ${serial}: выберите причину замены из списка`
+    return `№ ${serial}: выберите причину замены из списка`
   const hours = line.operatingHours
   if (hours != null && !(Number.isInteger(hours) && hours >= 0 && hours <= MAX_OPERATING_HOURS))
-    return `EHS ${serial}: наработка — целое число от 0 до ${MAX_OPERATING_HOURS.toLocaleString('ru-RU')}`
+    return `№ ${serial}: наработка — целое число от 0 до ${MAX_OPERATING_HOURS.toLocaleString('ru-RU')}`
   if (line.usageUnit != null && line.usageUnit !== 'hours' && line.usageUnit !== 'km')
-    return `EHS ${serial}: наработка — в моточасах или километрах`
+    return `№ ${serial}: наработка — в моточасах или километрах`
   return null
 }
 
@@ -79,10 +79,10 @@ export function requestProblem(
     if (!hose)
       return `В заявке на ${draft.kind === 'repair' ? 'ремонт' : 'замену'} — только ваши изделия из реестра`
     if (hose.lifecycle === 'manufacturing')
-      return `Изделие EHS ${hose.serialNumber} ещё изготавливается`
+      return `Изделие № ${hose.serialNumber} ещё изготавливается`
     if (draft.kind === 'repair' && hose.lifecycle === 'written_off')
-      return `Изделие EHS ${hose.serialNumber} списано — в ремонт его не отправить`
-    if (seen.has(hose.id)) return `Изделие EHS ${hose.serialNumber} указано дважды`
+      return `Изделие № ${hose.serialNumber} списано — в ремонт его не отправить`
+    if (seen.has(hose.id)) return `Изделие № ${hose.serialNumber} указано дважды`
     seen.add(hose.id)
     const usage = draft.kind === 'replace' ? usageProblem(line, hose.serialNumber) : null
     if (usage) return usage
