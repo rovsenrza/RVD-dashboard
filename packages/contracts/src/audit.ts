@@ -31,6 +31,7 @@ export const REQUEST_KIND_LABEL: Record<RequestKind, string> = {
   replace: 'Замена',
   manufacture: 'Изготовление',
   repair: 'Ремонт',
+  order: 'Заказ в 1С',
 }
 
 /** A user as the log shows them; `branchName` turns a branch id into its name. */

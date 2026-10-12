@@ -193,8 +193,10 @@ export type RequestDelivery = 'queued' | 'delivered' | 'refused'
 /**
  * Тип заявки (заказчик, 2026-10-03): «Замена» — взамен изделий, которые уже
  * есть у компании; «Изготовление» и «Ремонт» — по номерам или по таблице Excel.
+ * `order` — заказ, заведённый в самой 1С, не в кабинете (заказчик, 2026-10-12:
+ * видеть все заказы, как в 1С); кабинет такой не создаёт, только показывает.
  */
-export type RequestKind = 'replace' | 'manufacture' | 'repair'
+export type RequestKind = 'replace' | 'manufacture' | 'repair' | 'order'
 
 /** Позиция заявки — в 1С это строка табличной части «Заказа клиента». */
 export interface RequestPosition {

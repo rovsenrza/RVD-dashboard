@@ -13,6 +13,7 @@ import {
   fetchVersions,
   type Sources,
 } from '../onec/sources.ts'
+import { fetchOrders, importOrders } from '../requests/orders1c.ts'
 import { fetchOrderStates, refreshRequestStatuses } from '../requests/statuses.ts'
 import { readHealth, recordSuccess } from './health.ts'
 import { patchCache, recordDataIssues, storeCache, type Cache } from './store.ts'
@@ -28,6 +29,8 @@ export interface SyncResult {
   removed: number
   /** Requests whose 1С status or shipment changed */
   requestUpdates: number
+  /** Orders made in 1С itself, written to «Заявки» (new or changed) */
+  orders: number
   /** Data 1С keeps twice and differently (question 24); only a rebuild looks */
   discrepancies?: number
   ms: number
@@ -72,6 +75,12 @@ function adapt(sources: Sources): Cache {
 const statusesOf = (db: Db, client: ODataClient) =>
   refreshRequestStatuses(db, (refs) => fetchOrderStates(client, refs))
 
+/** A check looks back this many days for orders made in 1С; the nightly rebuild reads them all. */
+const ORDER_DAYS = 3
+
+const ordersOf = (db: Db, client: ODataClient, since?: string) =>
+  fetchOrders(client, since).then((orders) => importOrders(db, orders))
+
 /**
  * Full sync: read 1С, adapt, replace the cache. Nightly, and whenever a check cannot do.
  * Having every item at hand, it also looks for data 1С keeps twice and differently.
@@ -87,6 +96,7 @@ export async function runSync(
   const cache = adapt(sources)
   await storeCache(db, cache, Date.now() - started)
   await recordSuccess(db, true, markOf(sources.statuses))
+  const orders = await ordersOf(db, client)
   const requestUpdates = await statusesOf(db, states)
   const discrepancies = findDiscrepancies({ ...sources, clients })
   await recordDataIssues(db, discrepancies)
@@ -97,6 +107,7 @@ export async function runSync(
     refreshed: cache.products.length,
     removed: 0,
     requestUpdates,
+    orders,
     discrepancies: discrepancies.length,
     ms: Date.now() - started,
   }
@@ -147,6 +158,8 @@ export async function runCheck(
     equipment = patch.equipment?.length ?? 0
   }
   await recordSuccess(db, false, markOf(lines))
+  const since = new Date(Date.now() - ORDER_DAYS * 86_400_000).toISOString().slice(0, 10)
+  const orders = await ordersOf(db, client, since)
   const requestUpdates = await statusesOf(db, states)
   return {
     mode: 'check',
@@ -155,6 +168,7 @@ export async function runCheck(
     refreshed: affected.length,
     removed: removed.length,
     requestUpdates,
+    orders,
     ms: Date.now() - started,
   }
 }

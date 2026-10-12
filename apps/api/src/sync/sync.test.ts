@@ -29,14 +29,18 @@ function fakeOneC(sets: Record<string, Row[]>) {
   const asked: string[] = []
   let down = false
   const matches = (filter: string) => (row: Row) =>
-    filter.split(' or ').some((part) => {
-      const field = (name: string) => (row as Record<string, unknown>)[name]
-      const key = part.match(/^(\S+) eq guid'([^']+)'$/)
-      if (key) return field(key[1]) === key[2]
-      const since = part.match(/^(\S+) ge datetime'([^']+)'$/)
-      if (since) return String(field(since[1])) >= since[2]
-      throw new Error(`the fake 1С cannot filter by ${part}`)
-    })
+    filter.split(' or ').some((any) =>
+      any.split(' and ').every((part) => {
+        const field = (name: string) => (row as Record<string, unknown>)[name]
+        const key = part.match(/^(\S+) eq guid'([^']+)'$/)
+        if (key) return field(key[1]) === key[2]
+        const flag = part.match(/^(\S+) eq (true|false)$/)
+        if (flag) return Boolean(field(flag[1])) === (flag[2] === 'true')
+        const since = part.match(/^(\S+) ge datetime'([^']+)'$/)
+        if (since) return String(field(since[1])) >= since[2]
+        throw new Error(`the fake 1С cannot filter by ${part}`)
+      }),
+    )
   const fetch = (async (url: string) => {
     if (down) throw new TypeError('fetch failed')
     const u = new URL(url)

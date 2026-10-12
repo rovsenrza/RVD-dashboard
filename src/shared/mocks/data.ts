@@ -358,6 +358,38 @@ export const requests: ServiceRequest[] = Array.from({ length: 12 }, (_, i) => {
   }
 })
 
+// Orders the manager made in 1С before the cabinet existed (customer, 2026-10-12): history,
+// closed and shipped, shown beside the cabinet's own. Fixed, so the requests above keep theirs.
+requests.push(
+  ...products.slice(0, 5).map((p, i): ServiceRequest => {
+    const cat = catalogNumbers.find((c) => c.id === p.catalogNumberId)
+    return {
+      id: `1c-order-${i + 1}`,
+      number: `СВЦБ-${String(4390 + i).padStart(5, '0')}`,
+      branchId: p.branchId,
+      productId: null,
+      kind: 'order',
+      positions: [
+        {
+          productId: null,
+          catalogNumberId: cat?.id ?? null,
+          catalogNumber: cat?.name ?? null,
+          equipmentId: p.equipmentId,
+          quantity: 1,
+        },
+      ],
+      quantity: 1,
+      comment: null,
+      status: 'done',
+      shipmentStatus: 'shipped',
+      createdAt: iso(subDays(NOW, 200 + i * 37)),
+      attachments: [],
+      delivery: 'delivered',
+      deliveryNote: null,
+    }
+  }),
+)
+
 export function dashboardSummary(branch: string | null = null, days = 30): DashboardSummary {
   // Retired hoses live in the archive; the dashboard is about what is in hand.
   const scopedProducts = products.filter(
