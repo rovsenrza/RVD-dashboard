@@ -5,10 +5,11 @@ import { STATUS_LABEL } from '@/entities/product'
 /** The report list lives in @rvd/contracts, shared with the API that builds them. */
 export { buildReport, REPORTS, reportMeta, type ReportMeta } from '@rvd/contracts'
 
-export type PeriodPreset = '30' | '90' | '365' | 'custom'
+export type PeriodPreset = 'all' | '30' | '90' | '365' | 'custom'
 
 /** Short enough for four segments on a phone; the dates under the control say which way. */
 export const PRESET_LABEL: Record<PeriodPreset, string> = {
+  all: 'Всё время',
   '30': '30 дней',
   '90': 'Квартал',
   '365': 'Год',
@@ -19,12 +20,12 @@ const day = (d: Date) => formatISO(d, { representation: 'date' })
 
 /** A preset period as ISO dates, ending today (past) or starting today (future). */
 export function presetPeriod(
-  preset: Exclude<PeriodPreset, 'custom'>,
-  dir: 'past' | 'future',
+  preset: Exclude<PeriodPreset, 'custom' | 'all'>,
+  dir: 'past' | 'future' | 'shipped',
   today = new Date(),
 ) {
   const n = Number(preset)
-  return dir === 'past'
+  return dir !== 'future'
     ? { from: day(subDays(today, n)), to: day(today) }
     : { from: day(today), to: day(addDays(today, n)) }
 }

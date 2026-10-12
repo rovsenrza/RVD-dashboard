@@ -26,3 +26,18 @@ for (const [list, back] of [
     await expect(page.getByText(/^Показано 11–/)).toBeVisible()
   })
 }
+
+test('reports «на сегодня» narrow to hoses shipped in a period', async ({ page }) => {
+  await page.addInitScript(() => {
+    localStorage.setItem('rvd.session', '1')
+    localStorage.setItem('rvd.role', 'manager')
+  })
+  await page.goto('/reports')
+  const count = async () =>
+    Number((await page.getByText(/строк/).first().innerText()).match(/\d+/)![0])
+  await expect(page.getByRole('radio', { name: 'Всё время' })).toBeChecked()
+  const all = await count()
+  await page.getByRole('radio', { name: '30 дней' }).click()
+  await expect(page).toHaveURL(/period=30/)
+  await expect.poll(count).toBeLessThan(all)
+})

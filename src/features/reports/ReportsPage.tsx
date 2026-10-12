@@ -35,8 +35,11 @@ import { downloadReportXlsx, printUrl, rowCount } from './reportFiles'
 
 type Row = Record<string, ReportValue>
 
-const PRESETS: PeriodPreset[] = ['30', '90', '365', 'custom']
-const periodKind = (dir: 'past' | 'future' | null) =>
+type Kind = 'past' | 'future' | 'shipped'
+/** «На сегодня» reports start from everything and may be narrowed by shipment date. */
+const presetsOf = (kind: Kind): PeriodPreset[] =>
+  kind === 'shipped' ? ['all', '30', '90', '365', 'custom'] : ['30', '90', '365', 'custom']
+const periodKind = (dir: Kind) =>
   dir === 'past' ? 'За период' : dir === 'future' ? 'На период вперёд' : 'На сегодня'
 
 /** The preview reads like the paper: statuses as badges, dates and numbers formatted. */
@@ -67,16 +70,19 @@ export function ReportsPage() {
   const [saving, setSaving] = useState(false)
 
   const meta = reportMeta(params.get('r')) ?? REPORTS[0]
-  const preset = PRESETS.find((p) => p === params.get('period')) ?? '30'
+  const presets = presetsOf(meta.period)
+  const preset = presets.find((p) => p === params.get('period')) ?? presets[0]
   const from = params.get('from') ?? ''
   const to = params.get('to') ?? ''
   const period = useMemo(() => {
-    if (!meta.period) return null
+    if (preset === 'all') return null
     if (preset !== 'custom') return presetPeriod(preset, meta.period)
     return from && to && from <= to ? { from, to } : null
   }, [meta.period, preset, from, to])
 
-  const query = useReport(allowed && (!meta.period || period) ? meta.id : null, {
+  // Every preset but «Всё время» needs its dates before the report can run.
+  const ready = preset === 'all' || period !== null
+  const query = useReport(allowed && ready ? meta.id : null, {
     branch: branch?.id ?? null,
     from: period?.from,
     to: period?.to,
@@ -102,7 +108,7 @@ export function ReportsPage() {
     next === 'custom'
       ? // Start the custom range from what was on screen, not from empty fields.
         set({ period: 'custom', from: period?.from ?? null, to: period?.to ?? null })
-      : set({ period: next === '30' ? null : next, from: null, to: null })
+      : set({ period: next === presets[0] ? null : next, from: null, to: null })
 
   const xlsx = async (report: Report) => {
     setSaving(true)
@@ -192,15 +198,18 @@ export function ReportsPage() {
               </div>
             </div>
 
-            {meta.period && (
+            {
               <div className="mt-4 flex flex-wrap items-end gap-3">
                 <SegmentedControl
-                  label="Период"
+                  label={meta.period === 'shipped' ? 'Отгружены за период' : 'Период'}
                   value={preset}
                   onChange={choosePreset}
-                  options={PRESETS.map((p) => ({ value: p, label: PRESET_LABEL[p] }))}
+                  options={presets.map((p) => ({ value: p, label: PRESET_LABEL[p] }))}
                   className="max-sm:w-full"
                 />
+                {meta.period === 'shipped' && preset !== 'custom' && (
+                  <span className="pb-2 text-label text-ink-muted">по дате отгрузки</span>
+                )}
                 {preset === 'custom' && (
                   <div className="grid grid-cols-2 gap-3 max-sm:w-full sm:w-80">
                     <Field label="С">
@@ -226,10 +235,10 @@ export function ReportsPage() {
                   </div>
                 )}
               </div>
-            )}
+            }
 
             <div className="mt-5">
-              {meta.period && !period ? (
+              {!ready ? (
                 <EmptyState
                   inset
                   title="Укажите период"

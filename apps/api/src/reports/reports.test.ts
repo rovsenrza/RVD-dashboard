@@ -97,6 +97,9 @@ describe.skipIf(!hasDb)('reports and the model comparison on the server', () => 
       ['13', 'НТ08', '2026-10-01', 'ok'],
     ])
     expect(registry.rows[0].left).toBe(-32)
+    // Narrowed to what was shipped in a period: h1 (01.09.2025) falls out.
+    const lately = await report('/reports/registry?from=2025-11-01&to=2026-10-03')
+    expect(lately.rows.map((r) => r.serial)).toEqual(['12', '13'])
   })
 
   it('lists what is due and what the next quarter needs', async () => {

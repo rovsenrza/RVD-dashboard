@@ -22,8 +22,12 @@ export interface ReportMeta {
   id: ReportId
   title: string
   description: string
-  /** Which way the period runs from today; null — a report «на сегодня» without a period. */
-  period: 'past' | 'future' | null
+  /**
+   * Which way the period runs from today. `shipped`: a report «на сегодня» that
+   * may be narrowed to the hoses shipped in a period (customer, 2026-10-11);
+   * without one it covers them all.
+   */
+  period: 'past' | 'future' | 'shipped'
 }
 
 /** ТЗ §4, in the order a manager works through them: state now, what is coming, what happened. */
@@ -32,20 +36,20 @@ export const REPORTS: ReportMeta[] = [
     id: 'registry',
     title: 'Реестр РВД',
     description: 'Все изделия филиала — на технике и на складе — с состоянием и сроками.',
-    period: null,
+    period: 'shipped',
   },
   {
     id: 'warranty',
     title: 'На гарантии',
     description:
       'Изделия в эксплуатации с действующей гарантией: до какого числа и сколько дней осталось.',
-    period: null,
+    period: 'shipped',
   },
   {
     id: 'due',
     title: 'Требуют замены',
     description: 'Изделия, выработавшие срок эксплуатации, — на сколько дней просрочена замена.',
-    period: null,
+    period: 'shipped',
   },
   {
     id: 'plan',
@@ -162,7 +166,12 @@ export function buildReport(id: ReportId, data: ReportData, params: ReportParams
     meta.period && params.from && params.to ? { from: params.from, to: params.to } : null
   const inBranch = <T extends { branchId: string }>(rows: T[]) =>
     branch ? rows.filter((r) => r.branchId === branch) : rows
-  const hoses = inBranch(data.products)
+  // «На сегодня» reports narrowed to what was shipped in the period, when one is given.
+  const shippedIn = (p: Product) =>
+    meta.period !== 'shipped' ||
+    !period ||
+    (p.shippedAt !== null && p.shippedAt >= period.from && p.shippedAt <= period.to)
+  const hoses = inBranch(data.products).filter(shippedIn)
   const machines = inBranch(data.equipment)
   const garage = new Map(data.equipment.map((m) => [m.id, m.garageNumber]))
   const machineIds = new Set<string | null>(machines.map((m) => m.id))
