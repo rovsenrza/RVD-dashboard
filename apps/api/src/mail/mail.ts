@@ -19,6 +19,9 @@ export interface Mail {
   to: string
   subject: string
   text: string
+  /** Where the answer goes: the person who wrote, not the cabinet's mailbox */
+  replyTo?: string
+  attachments?: { filename: string; content: Buffer }[]
 }
 
 export interface Mailer {

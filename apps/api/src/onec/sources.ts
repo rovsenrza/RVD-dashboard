@@ -63,13 +63,18 @@ export async function fetchSources(client: ODataClient): Promise<Sources> {
   return { items, statuses, releases, orders, ...reference } as Sources
 }
 
-/** `field eq guid'…' or …` over all `keys`, cut so each filter fits the URL once encoded. */
-export function keyFilters(field: string, keys: string[]): string[] {
+/**
+ * `field eq guid'…' or …` over all `keys`, cut so each filter fits the URL once encoded.
+ * A composite field (a register's `Recorder`) compares only as `cast(guid'…', 'Type')`.
+ */
+export function keyFilters(field: string, keys: string[], castTo?: string): string[] {
   const filters: string[] = []
   let batch: string[] = []
   let size = 0
   for (const key of keys) {
-    const clause = `${field} eq ${guid(key)}`
+    const clause = castTo
+      ? `${field} eq cast(${guid(key)}, '${castTo}')`
+      : `${field} eq ${guid(key)}`
     const cost = encodeURIComponent(batch.length ? ` or ${clause}` : clause).length
     if (batch.length && size + cost > FILTER_BUDGET) {
       filters.push(batch.join(' or '))
@@ -104,6 +109,25 @@ export const fetchClients = (client: ODataClient) =>
 /** Every item's version, cheap enough to read on each check (4 269 items: under a second). */
 export const fetchVersions = (client: ODataClient) =>
   client.all<ItemVersion>('Catalog_Изделия', { select: ['Ref_Key', 'DataVersion', 'DeletionMark'] })
+
+/** Every «Выпуск» document's version: a reposted one, even with an old date, shows as a new one. */
+export const fetchReleaseVersions = (client: ODataClient) =>
+  client.all<{ Ref_Key: string; DataVersion: string }>('Document_Выпуск', {
+    select: ['Ref_Key', 'DataVersion'],
+  })
+
+/** The items the given documents record statuses for. */
+export async function itemsRecordedBy(client: ODataClient, documents: string[]): Promise<string[]> {
+  const lines: Pick<RawStatusRecord, 'Изделие_Key'>[] = []
+  for (const filter of keyFilters('Recorder', documents, 'Document_Выпуск'))
+    lines.push(
+      ...(await client.all<Pick<RawStatusRecord, 'Изделие_Key'>>(REGISTER, {
+        filter,
+        select: ['Изделие_Key'],
+      })),
+    )
+  return [...new Set(lines.map((l) => l.Изделие_Key))]
+}
 
 /** The register lines recorded from `since` (1С's own time, `YYYY-MM-DDTHH:mm:ss`) on. */
 export const fetchRegisterSince = (client: ODataClient, since: string) =>

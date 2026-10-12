@@ -63,7 +63,8 @@ export function createRequest(raw: NewRequest): ServiceRequest | { error: string
   const id = `req-${requests.length + 1}`
   const created: ServiceRequest = {
     id,
-    number: `СВЦБ-${String(5200 + requests.length).padStart(5, '0')}`,
+    // Mailed to the manager at once (customer, 2026-10-12): no 1С order, so no number yet.
+    number: null,
     branchId: body.branchId,
     productId: positions.length === 1 ? positions[0].productId : null,
     kind: body.kind,

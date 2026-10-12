@@ -53,7 +53,9 @@ export async function deliverDue(
           r.id,
         )
         await client.query(
-          `update requests set delivery = 'delivered', onec_ref = $2, number = $3, status = $4,
+          // A letter to the manager makes no order yet: no key, no number (empty from the mail service).
+          `update requests set delivery = 'delivered', onec_ref = nullif($2, ''),
+             number = nullif($3, ''), status = $4,
              attempts = attempts + 1, last_error = null where id = $1`,
           [r.id, order.ref, order.number, requestStatusFrom1C(order.status) ?? 'new'],
         )

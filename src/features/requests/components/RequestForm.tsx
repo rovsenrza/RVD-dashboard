@@ -221,7 +221,7 @@ export function RequestForm({
           toast(
             created.number
               ? `Заявка ${created.number} создана`
-              : 'Заявка принята — отправляем её в 1С',
+              : 'Заявка принята — отправляем её менеджеру',
           )
           onCreated?.()
           onClose()
@@ -239,7 +239,7 @@ export function RequestForm({
       open
       onClose={onClose}
       title="Новая заявка"
-      description="Заявка уйдёт в 1С как заказ клиента."
+      description="Заявка уйдёт менеджеру поставщика, он оформит заказ в 1С."
       footer={
         <>
           <Button variant="secondary" size="sm" onClick={onClose}>
@@ -525,7 +525,7 @@ export function RequestForm({
             </Field>
 
             {needsBranch && (
-              <Field label="Филиал" hint="Заявка уходит в 1С от одного филиала">
+              <Field label="Филиал" hint="Заявка уходит от одного филиала">
                 {(id) => (
                   <Select
                     id={id}

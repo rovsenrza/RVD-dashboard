@@ -46,6 +46,8 @@ const schema = z.object({
   MAIL_FROM: z.string().default('РВД Кабинет <no-reply@localhost>'),
   /** Where «Связаться со специалистом» goes (question 15); unset — messages wait in the cabinet */
   SUPPORT_EMAIL: z.email().optional(),
+  /** Where requests go as letters for the manager (customer, 2026-10-12); SUPPORT_EMAIL if unset */
+  REQUESTS_EMAIL: z.email().optional(),
   /** The 1С support, told of data 1С keeps twice and differently (question 24) */
   DATA_ISSUES_EMAIL: z.email().optional(),
   /** Local hour from which the day's notification digest goes out */

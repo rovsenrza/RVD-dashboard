@@ -27,7 +27,13 @@ const TAB_LABEL: Record<Tab, string | null> = { all: null, open: 'В работ�
 const EXPORT_COLUMNS: ExportColumn<ServiceRequest>[] = [
   {
     header: '№',
-    value: (r) => r.number ?? (r.delivery === 'refused' ? 'Не принята 1С' : 'Отправляется в 1С'),
+    value: (r) =>
+      r.number ??
+      (r.delivery === 'refused'
+        ? 'Не принята'
+        : r.delivery === 'delivered'
+          ? 'Отправлена менеджеру'
+          : 'Отправляется'),
     width: 16,
   },
   { header: 'Создана', value: (r) => r.createdAt, type: 'date', width: 11 },

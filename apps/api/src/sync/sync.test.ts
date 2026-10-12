@@ -34,6 +34,8 @@ function fakeOneC(sets: Record<string, Row[]>) {
         const field = (name: string) => (row as Record<string, unknown>)[name]
         const key = part.match(/^(\S+) eq guid'([^']+)'$/)
         if (key) return field(key[1]) === key[2]
+        const cast = part.match(/^(\S+) eq cast\(guid'([^']+)', '[^']+'\)$/)
+        if (cast) return field(cast[1]) === cast[2]
         const flag = part.match(/^(\S+) eq (true|false)$/)
         if (flag) return Boolean(field(flag[1])) === (flag[2] === 'true')
         const since = part.match(/^(\S+) ge datetime'([^']+)'$/)
@@ -75,7 +77,7 @@ describe.skipIf(!hasDb)('the sync keeps up with 1С (Д26)', () => {
       statusRecord({ Изделие_Key: A, Recorder: DOC, Period: '2026-01-10T09:00:00' }),
       statusRecord({ Изделие_Key: B, Recorder: DOC, Period: '2026-01-11T09:00:00' }),
     ],
-    Document_Выпуск: [release({ Ref_Key: DOC })],
+    Document_Выпуск: [{ ...release({ Ref_Key: DOC }), DataVersion: 'r1' }],
     Catalog_Комплектующие: components,
     Catalog_Техника: [equipment()],
     Catalog_КаталожныеНомера: [
@@ -122,8 +124,26 @@ describe.skipIf(!hasDb)('the sync keeps up with 1С (Д26)', () => {
     // Nothing read whole but the versions and the small reference sets.
     expect(onec.asked).toContain('Catalog_Изделия')
     expect(onec.asked).toContain(`${REGISTER} ? Period ge datetime'2026-01-11T08:00:00'`)
-    expect(onec.asked.filter((q) => q === REGISTER || q === 'Document_Выпуск')).toEqual([])
+    expect(onec.asked.filter((q) => q === REGISTER)).toEqual([])
     expect((await readHealth(db)).register_mark).toBe('2026-02-01T09:00:00')
+  })
+
+  it('sees a «Выпуск» reposted with an old date, though no line is newer than the mark', async () => {
+    // The customer's test of 2026-10-12: a release moved a year back, the item untouched.
+    const [line] = onec.sets[REGISTER] as Record<string, unknown>[]
+    line.Period = '2025-01-10T09:00:00'
+    const [doc] = onec.sets.Document_Выпуск as Record<string, unknown>[]
+    doc.DataVersion = 'r2'
+    onec.asked.length = 0
+
+    const result = await runCheck(db, onec.client)
+    expect(result).toMatchObject({ mode: 'check', refreshed: 2 })
+    expect(onec.asked.some((q) => q.startsWith(`${REGISTER} ? Recorder eq cast(`))).toBe(true)
+    const a = (await cached()).find((r) => r.id === A)!
+    expect(a.data.manufacturedAt).toBe('2025-01-10')
+    // Read once: the next check finds nothing moved.
+    onec.asked.length = 0
+    expect(await runCheck(db, onec.client)).toMatchObject({ refreshed: 0 })
   })
 
   it('keeps the cache and says since when 1С is down, until it answers again', async () => {

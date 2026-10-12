@@ -10,7 +10,9 @@ import {
   fetchRegisterSince,
   fetchSources,
   fetchSourcesFor,
+  fetchReleaseVersions,
   fetchVersions,
+  itemsRecordedBy,
   type Sources,
 } from '../onec/sources.ts'
 import { fetchOrders, importOrders } from '../requests/orders1c.ts'
@@ -72,6 +74,19 @@ function adapt(sources: Sources): Cache {
   }
 }
 
+type DocumentVersion = { Ref_Key: string; DataVersion: string }
+
+/** Remembers the «Выпуск» versions just read, so the next check sees only what moved after. */
+async function storeDocumentVersions(db: Db, docs: DocumentVersion[]) {
+  if (!docs.length) return
+  await db.query(
+    `insert into onec_documents (ref, version)
+     select r.ref, r.version from jsonb_to_recordset($1::jsonb) as r(ref text, version text)
+     on conflict (ref) do update set version = excluded.version`,
+    [JSON.stringify(docs.map((d) => ({ ref: d.Ref_Key, version: d.DataVersion })))],
+  )
+}
+
 const statusesOf = (db: Db, client: ODataClient) =>
   refreshRequestStatuses(db, (refs) => fetchOrderStates(client, refs))
 
@@ -92,9 +107,14 @@ export async function runSync(
   states: ODataClient = client,
 ): Promise<SyncResult> {
   const started = Date.now()
-  const [sources, clients] = await Promise.all([fetchSources(client), fetchClients(client)])
+  const [sources, clients, documents] = await Promise.all([
+    fetchSources(client),
+    fetchClients(client),
+    fetchReleaseVersions(client),
+  ])
   const cache = adapt(sources)
   await storeCache(db, cache, Date.now() - started)
+  await storeDocumentVersions(db, documents)
   await recordSuccess(db, true, markOf(sources.statuses))
   const orders = await ordersOf(db, client)
   const requestUpdates = await statusesOf(db, states)
@@ -128,11 +148,20 @@ export async function runCheck(
   const started = Date.now()
   const { register_mark: mark } = await readHealth(db)
   if (!mark) return runSync(db, client, states)
-  const [versions, lines, cached] = await Promise.all([
+  const [versions, lines, cached, documents, seenDocuments] = await Promise.all([
     fetchVersions(client),
     fetchRegisterSince(client, earlier(mark, MARGIN_MS)),
     db.query<{ id: string; onec_version: string | null }>('select id, onec_version from products'),
+    fetchReleaseVersions(client),
+    db.query<{ ref: string; version: string }>('select ref, version from onec_documents'),
   ])
+  // A «Выпуск» reposted since the last run, even back-dated: its hoses are read again.
+  // Before the first rebuild stored any versions there is nothing to compare with.
+  const seen = new Map(seenDocuments.rows.map((r) => [r.ref, r.version]))
+  const moved = seen.size
+    ? documents.filter((d) => seen.get(d.Ref_Key) !== d.DataVersion).map((d) => d.Ref_Key)
+    : []
+  const reposted = moved.length ? await itemsRecordedBy(client, moved) : []
   const known = new Map(cached.rows.map((r) => [r.id, r.onec_version]))
   const live = new Set(versions.filter((v) => !v.DeletionMark).map((v) => v.Ref_Key))
   const affected = [
@@ -140,6 +169,7 @@ export async function runCheck(
       [
         ...versions.filter((v) => live.has(v.Ref_Key) && known.get(v.Ref_Key) !== v.DataVersion),
         ...lines.filter((l) => live.has(l.Изделие_Key)).map((l) => ({ Ref_Key: l.Изделие_Key })),
+        ...reposted.filter((id) => live.has(id)).map((id) => ({ Ref_Key: id })),
       ].map((v) => v.Ref_Key),
     ),
   ]
@@ -158,6 +188,10 @@ export async function runCheck(
     equipment = patch.equipment?.length ?? 0
   }
   await recordSuccess(db, false, markOf(lines))
+  await storeDocumentVersions(
+    db,
+    documents.filter((d) => seen.get(d.Ref_Key) !== d.DataVersion),
+  )
   const since = new Date(Date.now() - ORDER_DAYS * 86_400_000).toISOString().slice(0, 10)
   const orders = await ordersOf(db, client, since)
   const requestUpdates = await statusesOf(db, states)

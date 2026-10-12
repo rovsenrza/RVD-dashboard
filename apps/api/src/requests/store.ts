@@ -73,7 +73,7 @@ export function toServiceRequest(r: RequestRow): ServiceRequest {
       r.delivery === 'refused'
         ? r.last_error
         : r.delivery === 'queued' && r.attempts > 0
-          ? 'Нет связи с 1С — отправим автоматически'
+          ? 'Не удалось отправить — отправим автоматически'
           : null,
   }
 }

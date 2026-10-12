@@ -7,6 +7,7 @@ import { clamav, diskStore, eicarOnly } from './files/storage.ts'
 import { smtpMailer, startMail } from './mail/mail.ts'
 import { ODataClient } from './onec/client.ts'
 import { HttpOrderService } from './onec/orders.ts'
+import { MailOrderService } from './requests/letter.ts'
 import { startOutbox } from './requests/outbox.ts'
 import { startSync, type SyncScheduler } from './sync/scheduler.ts'
 
@@ -52,7 +53,13 @@ setInterval(
 )
 if (!secret)
   app.log.warn('Вход выключен (AUTH_DISABLED=true): все видят данные как демо-пользователь')
-if (config.ONEC_ORDERS_URL) {
+// Requests (customer, 2026-10-12): a letter to the manager, who makes the order in 1С by hand.
+// The 1С service stays for a stand-in or a later change of mind, used only without the mailbox.
+const requestsTo = config.REQUESTS_EMAIL ?? config.SUPPORT_EMAIL
+if (mailer && requestsTo) {
+  const orders = new MailOrderService(db, mailer, requestsTo, files)
+  outbox = startOutbox(db, orders, config.OUTBOX_INTERVAL_MS, (error) => app.log.error(error))
+} else if (config.ONEC_ORDERS_URL) {
   const orders = new HttpOrderService({
     url: config.ONEC_ORDERS_URL,
     user: config.ONEC_ORDERS_USER,

@@ -50,7 +50,7 @@ export function ProductRequests({ productId, branchId }: { productId: string; br
           <EmptyState
             inset
             title="Заявок по этому изделию не было"
-            description="Заявки на замену и ремонт этого рукава появятся здесь вместе со статусом в 1С."
+            description="Заявки на замену и ремонт этого рукава появятся здесь вместе со статусом."
           />
         )
       }}
