@@ -622,7 +622,10 @@ export const currentAuthor = () => shortName(users[0].name)
 // ── Model comparison (Д15) ─────────────────────────────────────────────────
 
 /** Per machine model: the same comparison the API runs over its cache (@rvd/contracts). */
-export const modelStats = (branch: string | null = null): ModelStats[] =>
+export const modelStats = (
+  branch: string | null = null,
+  by: 'model' | 'machine' = 'model',
+): ModelStats[] =>
   compareModels(
     {
       equipment: equipment.filter((x) => !branch || x.branchId === branch),
@@ -630,4 +633,5 @@ export const modelStats = (branch: string | null = null): ModelStats[] =>
       replacements,
     },
     iso(NOW),
+    by,
   )

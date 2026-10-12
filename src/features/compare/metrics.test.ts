@@ -2,7 +2,9 @@ import type { ModelStats } from '@/entities/types'
 import { bestOf, METRICS } from './metrics'
 
 const model = (name: string, patch: Partial<ModelStats>): ModelStats => ({
+  id: name,
   model: name,
+  garageNumber: null,
   type: 'Экскаватор',
   machines: 4,
   hoses: 40,
@@ -19,20 +21,20 @@ const metric = (label: string) => METRICS.find((m) => m.label === label)!
 
 describe('best model per metric', () => {
   it('marks the lower value where fewer is better, the higher where more is better', () => {
-    const a = model('A', { replacementsPerMachine: 1.5, avgServiceDays: 280 })
-    const b = model('B', { replacementsPerMachine: 2.5, avgServiceDays: 410 })
-    expect(bestOf(metric('Замен на единицу за 12 месяцев'), [a, b])).toBe('A')
+    const a = model('A', { replacements12m: 1, avgServiceDays: 280 })
+    const b = model('B', { replacements12m: 3, avgServiceDays: 410 })
+    expect(bestOf(metric('Замен за 12 месяцев'), [a, b])).toBe('A')
     expect(bestOf(metric('Средний срок службы до замены'), [a, b])).toBe('B')
   })
 
   it('names no winner on a tie, without data, or where «better» depends on context', () => {
     const a = model('A', {})
     const b = model('B', {})
-    expect(bestOf(metric('Замен на единицу за 12 месяцев'), [a, b])).toBeNull()
+    expect(bestOf(metric('Замен за 12 месяцев'), [a, b])).toBeNull()
     expect(
       bestOf(metric('Средний срок службы до замены'), [a, model('B', { avgServiceDays: null })]),
     ).toBeNull()
-    expect(bestOf(metric('Единиц техники'), [a, model('B', { machines: 9 })])).toBeNull()
+    expect(bestOf(metric('РВД на технике'), [a, model('B', { hoses: 9 })])).toBeNull()
   })
 
   it('ties models whose values read the same once rounded for display', () => {

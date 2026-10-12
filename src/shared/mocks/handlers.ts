@@ -243,7 +243,12 @@ export const handlers = [
     return report ? HttpResponse.json(report) : new HttpResponse(null, { status: 404 })
   }),
   http.get(api('/analytics/models'), ({ request }) =>
-    HttpResponse.json(modelStats(branchOf(request))),
+    HttpResponse.json(
+      modelStats(
+        branchOf(request),
+        new URL(request.url).searchParams.get('by') === 'machine' ? 'machine' : 'model',
+      ),
+    ),
   ),
   http.get(api('/replacements'), ({ request }) => {
     const branch = branchOf(request)

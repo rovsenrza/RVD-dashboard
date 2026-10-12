@@ -82,6 +82,7 @@ export async function companyModels(
   db: Db,
   clock: Clock,
   clients: string[] | undefined,
+  by: 'model' | 'machine' = 'model',
 ): Promise<ModelStats[]> {
-  return modelStats(await companyData(db, clock, clients), clock.today)
+  return modelStats(await companyData(db, clock, clients), clock.today, by)
 }

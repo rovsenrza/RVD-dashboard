@@ -133,5 +133,10 @@ describe.skipIf(!hasDb)('reports and the model comparison on the server', () => 
       failureShare: null,
       avgServiceDays: 395,
     })
+    // One machine at a time, named by its garage number.
+    const machines = (await get('/analytics/models?by=machine', manager)).json() as ModelStats[]
+    expect(machines).toEqual([
+      expect.objectContaining({ id: 'e1', model: 'БелАЗ', garageNumber: 'НТ08', machines: 1 }),
+    ])
   })
 })

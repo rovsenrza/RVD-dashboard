@@ -16,21 +16,25 @@ const round1 = (n: number) => Math.round(n * 10) / 10
  * Machine models side by side (Д15), for the mock and the API alike: what is on
  * each model's machines now (their counts, already worked out for today) and how
  * their hoses fared over the 365 days to `today`. Until 1С publishes its model
- * catalogue a machine is known by its brand alone, so brands are what compare.
+ * catalogue a machine is known by its brand alone. `by: 'machine'` compares single
+ * machines instead (customer, 2026-10-11: pick units by brand, model and garage №).
  */
 export function modelStats(
   data: { equipment: Equipment[]; products: Product[]; replacements: Replacement[] },
   today: string,
+  by: 'model' | 'machine' = 'model',
 ): ModelStats[] {
   const since = new Date(parseISO(today).getTime() - 365 * 86_400_000).toISOString().slice(0, 10)
   const product = new Map(data.products.map((p) => [p.id, p]))
   const groups = new Map<string, Equipment[]>()
+  const nameOf = (e: Equipment) =>
+    [e.brand, e.model].filter(Boolean).join(' ') || e.type || 'Без марки'
   for (const e of data.equipment) {
-    const key = [e.brand, e.model].filter(Boolean).join(' ') || e.type || 'Без марки'
+    const key = by === 'machine' ? e.id : nameOf(e)
     groups.set(key, [...(groups.get(key) ?? []), e])
   }
   return [...groups]
-    .map(([model, machines]): ModelStats => {
+    .map(([key, machines]): ModelStats => {
       const ids = new Set<string | null>(machines.map((m) => m.id))
       const breakdown: Record<ProductStatus, number> = {
         ok: 0,
@@ -54,7 +58,9 @@ export function modelStats(
       const usage = swaps.filter((r) => r.operatingHours !== null && r.usageUnit === unit)
       const reasoned = swaps.filter((r) => r.reason !== null)
       return {
-        model,
+        id: key,
+        model: nameOf(machines[0]),
+        garageNumber: by === 'machine' ? machines[0].garageNumber : null,
         type: machines[0].type,
         machines: machines.length,
         hoses: machines.reduce((sum, m) => sum + m.hoseCount, 0),
@@ -76,5 +82,10 @@ export function modelStats(
         topPlace: mostCommon(olds.map((p) => p?.installPlace ?? null)),
       }
     })
-    .sort((a, b) => b.machines - a.machines || a.model.localeCompare(b.model))
+    .sort(
+      (a, b) =>
+        b.machines - a.machines ||
+        a.model.localeCompare(b.model) ||
+        (a.garageNumber ?? '').localeCompare(b.garageNumber ?? '', 'ru', { numeric: true }),
+    )
 }

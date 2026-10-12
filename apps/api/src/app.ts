@@ -770,7 +770,12 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
     )
 
     app.get('/analytics/models', { preHandler: forManagers }, async (req) =>
-      companyModels(db, await clockOf(req), clientsOf(req)),
+      companyModels(
+        db,
+        await clockOf(req),
+        clientsOf(req),
+        (req.query as { by?: string }).by === 'machine' ? 'machine' : 'model',
+      ),
     )
 
     // Notifications (Д19): worked out per person from the cache, the company's lead days and

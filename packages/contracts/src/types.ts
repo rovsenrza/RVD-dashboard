@@ -352,8 +352,12 @@ export interface AuditEntry {
 
 /** Hoses on one machine model, for comparing models side by side (Д15). Computed server-side. */
 export interface ModelStats {
+  /** The machine's id when comparing machines, else the model's name */
+  id: string
   /** «Komatsu PC400» — brand and model, the way people name the machine */
   model: string
+  /** The one machine compared, by its garage number; null for a whole model */
+  garageNumber: string | null
   type: string
   machines: number
   /** Hoses on those machines now */

@@ -418,7 +418,11 @@ export const useModelStats = () => {
   const branch = useScope()
   return useQuery({
     queryKey: keys.modelStats(branch),
-    queryFn: () => api.get<ModelStats[]>(scoped('/analytics/models', branch)),
+    // Single machines, picked by brand, model and garage number (customer, 2026-10-11).
+    queryFn: () =>
+      api.get<ModelStats[]>(
+        `${scoped('/analytics/models', branch)}${branch ? '&' : '?'}by=machine`,
+      ),
   })
 }
 

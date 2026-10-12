@@ -18,12 +18,8 @@ export interface Metric {
 }
 
 export const METRICS: Metric[] = [
-  { label: 'Единиц техники', value: (m) => formatNumber(m.machines) },
+  // One machine per column (customer, 2026-10-11): counts per unit would only repeat the totals.
   { label: 'РВД на технике', value: (m) => formatNumber(m.hoses) },
-  {
-    label: 'РВД на единицу',
-    value: (m) => (m.machines ? (m.hoses / m.machines).toFixed(1).replace('.', ',') : '—'),
-  },
   {
     label: 'Требуют замены',
     value: (m) => `${m.breakdown.replace} · ${pct(m.breakdown.replace, m.hoses)} %`,
@@ -34,11 +30,10 @@ export const METRICS: Metric[] = [
     label: 'Внимание',
     value: (m) => `${m.breakdown.warn} · ${pct(m.breakdown.warn, m.hoses)} %`,
   },
-  { label: 'Замен за 12 месяцев', value: (m) => formatNumber(m.replacements12m) },
   {
-    label: 'Замен на единицу за 12 месяцев',
-    value: (m) => String(m.replacementsPerMachine).replace('.', ','),
-    score: (m) => m.replacementsPerMachine,
+    label: 'Замен за 12 месяцев',
+    value: (m) => formatNumber(m.replacements12m),
+    score: (m) => m.replacements12m,
     better: 'lower',
   },
   {
@@ -61,13 +56,13 @@ export const METRICS: Metric[] = [
   { label: 'Чаще всего меняют', value: (m) => m.topPlace ?? '—' },
 ]
 
-/** The model that does best on a metric, or null when there is no clear winner (a tie or no data). */
+/** The id of the one that does best on a metric, or null when there is no clear winner (a tie or no data). */
 export function bestOf(metric: Metric, models: ModelStats[]): string | null {
   if (!metric.score || !metric.better || models.length < 2) return null
   const scored = models
-    .map((m) => ({ model: m.model, s: metric.score!(m) }))
-    .filter((x): x is { model: string; s: number } => x.s !== null)
+    .map((m) => ({ id: m.id, s: metric.score!(m) }))
+    .filter((x): x is { id: string; s: number } => x.s !== null)
   if (scored.length < 2) return null
   scored.sort((a, b) => (metric.better === 'lower' ? a.s - b.s : b.s - a.s))
-  return scored[0].s === scored[1].s ? null : scored[0].model
+  return scored[0].s === scored[1].s ? null : scored[0].id
 }
