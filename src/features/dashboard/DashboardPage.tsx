@@ -19,7 +19,7 @@ import {
   Skeleton,
 } from '@/shared/ui'
 import { KpiGrid } from './components/KpiGrid'
-import { ReplacementsChart } from './components/ReplacementsChart'
+import { ProductsChart } from './components/ProductsChart'
 import { StatusDonut } from './components/StatusDonut'
 import { UpcomingTable } from './components/UpcomingTable'
 
@@ -82,7 +82,7 @@ export function DashboardPage() {
           <div className="space-y-5">
             <KpiGrid data={data} />
             <div className="grid gap-5 lg:grid-cols-3">
-              <ReplacementsChart data={data.replacementsByMonth} className="lg:col-span-2" />
+              <ProductsChart data={data.productsByMonth} className="lg:col-span-2" />
               <StatusDonut breakdown={data.statusBreakdown} />
             </div>
             <UpcomingTable rows={data.upcoming} />

@@ -12,6 +12,8 @@ import { byKey, cleanText, isPlaceholderMachine, isRef, orNull } from './common.
 export interface EquipmentSources {
   equipment: RawEquipment[]
   brands: RawNamed[]
+  /** Absent in older fixtures and stand-ins: no model then */
+  models?: RawNamed[]
   types: RawNamed[]
   /** Already adapted, so each machine's hoses and dates agree with the registry. */
   products: Product[]
@@ -29,6 +31,7 @@ const emptyBreakdown = (): Record<ProductStatus, number> => ({
 export function toEquipment(src: EquipmentSources): Equipment[] {
   const rules = src.rules ?? DEFAULT_RULES
   const brands = byKey(src.brands, (b) => b.Ref_Key)
+  const models = byKey(src.models ?? [], (m) => m.Ref_Key)
   const types = byKey(src.types, (t) => t.Ref_Key)
 
   const onMachine = new Map<string, Product[]>()
@@ -53,8 +56,7 @@ export function toEquipment(src: EquipmentSources): Equipment[] {
         branchId: e.Owner_Key,
         type: isRef(e.Тип_Key) ? cleanText(types.get(e.Тип_Key)?.Description) : '',
         brand: isRef(e.Марка_Key) ? cleanText(brands.get(e.Марка_Key)?.Description) : '',
-        // The model catalogue is not published yet; the garage number names the machine meanwhile.
-        model: '',
+        model: isRef(e.Модель_Key) ? cleanText(models.get(e.Модель_Key)?.Description) : '',
         // 9 machines have no garage number in 1С; their full name stands in, so none is blank.
         garageNumber: cleanText(e.ГаражныйНомер) || cleanText(e.Description),
         factoryNumber: null,

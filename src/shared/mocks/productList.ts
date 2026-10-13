@@ -70,7 +70,7 @@ export function productPage(all: Product[], query: ProductListQuery): ProductPag
       (!query.equipment || p.equipmentId === query.equipment) &&
       (!query.catalog || p.catalogNumberId === query.catalog) &&
       (!query.branch || p.branchId === query.branch) &&
-      (!query.installed || (query.installed === '1') === (p.installedAt !== null)),
+      (!query.installed || (query.installed === '1') === (p.equipmentId !== null)),
   )
   const tab = query.archive
     ? matches.filter((p) => archived(p) === (query.archive === '1'))

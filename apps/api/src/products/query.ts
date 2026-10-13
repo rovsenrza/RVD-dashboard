@@ -70,8 +70,9 @@ export async function listProducts(
   // A branch is one of the company's 1С clients: the route turns `branch` into `clients`.
   if (query.clients) add('client_id = any(?)', query.clients)
   if (query.client) add('client_id = ?', query.client)
-  if (query.installed === '1') where.push('installed_at is not null')
-  if (query.installed === '0') where.push('installed_at is null')
+  // «На технике»: on a machine, as the dashboard counts «В эксплуатации».
+  if (query.installed === '1') where.push('equipment_id is not null')
+  if (query.installed === '0') where.push('equipment_id is null')
   const tab = query.archive === '1' ? [IN_ARCHIVE] : query.archive === '0' ? [IN_WORK] : []
 
   const scope = `with p as (

@@ -19,7 +19,10 @@ describe('toEquipment', () => {
       step('h3', 'ВЭксплуатации', '2026-08-10T00:00:00'),
       step('h3', 'Списан', '2026-09-01T00:00:00'),
     ]
-    const equipmentRows = [equipment(), equipment({ Ref_Key: 'eq-2', DeletionMark: true })]
+    const equipmentRows = [
+      equipment({ Модель_Key: 'aaaaaaaa-0000-0000-0000-000000000001' }),
+      equipment({ Ref_Key: 'eq-2', DeletionMark: true }),
+    ]
     const products = toProducts(
       {
         items,
@@ -33,6 +36,7 @@ describe('toEquipment', () => {
     return toEquipment({
       equipment: equipmentRows,
       brands: [{ Ref_Key: 'brand-1', Description: 'FAW' }],
+      models: [{ Ref_Key: 'aaaaaaaa-0000-0000-0000-000000000001', Description: ' J6P ' }],
       types: [{ Ref_Key: 'type-1', Description: 'Самосвал' }],
       products,
     })
@@ -44,6 +48,7 @@ describe('toEquipment', () => {
     expect(eq).toMatchObject({
       id: 'eq-1',
       brand: 'FAW',
+      model: 'J6P',
       type: 'Самосвал',
       garageNumber: 'р414вв154',
       inventoryNumber: null,

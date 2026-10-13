@@ -1,4 +1,4 @@
-import type { DashboardSummary, Replacement } from '@rvd/contracts'
+import type { Replacement } from '@rvd/contracts'
 import type { Db } from '../db/pool.ts'
 
 /**
@@ -93,7 +93,7 @@ export interface ReplacementTotals {
   /** Against the same number of days before those */
   delta: number
   /** The last 12 months, this one included, empty months as zero */
-  byMonth: DashboardSummary['replacementsByMonth']
+  byMonth: { month: string; count: number }[]
 }
 
 /** The dashboard's swap figures, by the same rule as the journal. */

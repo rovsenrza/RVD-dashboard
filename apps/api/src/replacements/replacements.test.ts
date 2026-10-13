@@ -17,12 +17,19 @@ describe.skipIf(!hasDb)('the replacement journal from 1С links', () => {
   beforeAll(async () => {
     ;({ db, drop } = await isolatedDb())
     const k1 = [
-      product({ id: 'old1', serialNumber: '11', equipmentId: 'e1', shippedAt: '2026-03-01' }),
+      product({
+        id: 'old1',
+        serialNumber: '11',
+        equipmentId: 'e1',
+        shippedAt: '2026-03-01',
+        manufacturedAt: '2026-02-20',
+      }),
       product({
         id: 'new1',
         serialNumber: '12',
         equipmentId: 'e1',
         shippedAt: '2026-09-20',
+        manufacturedAt: '2026-09-15',
         replacedProductId: 'old1',
       }),
       // Installed on no machine 1С knows; installation dates the swap over shipment.
@@ -124,12 +131,16 @@ describe.skipIf(!hasDb)('the replacement journal from 1С links', () => {
     // Since 31.08: new1; the 30 days before: new2.
     expect(summary.replacementsInPeriod).toBe(1)
     expect(summary.deltas.replacements).toBe(0)
-    expect(summary.replacementsByMonth).toHaveLength(12)
-    expect(summary.replacementsByMonth[0]).toEqual({ month: '2025-10', count: 0 })
-    expect(summary.replacementsByMonth.slice(-2)).toEqual([
-      { month: '2026-08', count: 1 },
-      { month: '2026-09', count: 1 },
-    ])
+    // Hoses made per month: old1 in February, new1 (made to replace it) in September.
+    const months = summary.productsByMonth as { month: string; made: number; replaced: number }[]
+    expect(months).toHaveLength(12)
+    expect(months[0]).toEqual({ month: '2025-10', made: 0, replaced: 0 })
+    expect(months.find((m) => m.month === '2026-02')).toEqual({
+      month: '2026-02',
+      made: 1,
+      replaced: 0,
+    })
+    expect(months.at(-1)).toEqual({ month: '2026-09', made: 0, replaced: 1 })
   })
 
   it('counts them over the period the dashboard picks', async () => {

@@ -275,7 +275,11 @@ export interface DashboardSummary {
     needsReplacement: number
   }
   statusBreakdown: Record<ProductStatus, number>
-  replacementsByMonth: { month: string; count: number }[]
+  /**
+   * Hoses made for the company per month, last 12 months: `replaced` were made to replace one
+   * of theirs (1С's «Заменяемое изделие»), `made` the rest. A repair mark waits for 1С.
+   */
+  productsByMonth: { month: string; made: number; replaced: number }[]
   upcoming: { productId: string; serialNumber: string; equipment: string; dueDate: string }[]
 }
 

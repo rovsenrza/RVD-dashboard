@@ -99,7 +99,8 @@ describe.skipIf(!hasDb)('machines and the dashboard from the cache', () => {
   it('sums the dashboard by the same rule, with the change over 30 days', async () => {
     expect(await get('/dashboard/summary')).toEqual({
       shippedTotal: 3,
-      inOperation: 0,
+      // On a machine: h1 and h2; h4 is in stock.
+      inOperation: 2,
       onWarranty: 2,
       expiringSoon: 0,
       needsReplacement: 1,
@@ -108,10 +109,11 @@ describe.skipIf(!hasDb)('machines and the dashboard from the cache', () => {
       // Shipped since 31.08: h1, h4. A month ago only h2 was in service, already to be replaced.
       deltas: { shippedTotal: 2, replacements: 0, onWarranty: 2, needsReplacement: 0 },
       statusBreakdown: { ok: 2, warn: 0, replace: 1, no_warranty: 0 },
-      // The last 12 months, each one present even without a swap.
-      replacementsByMonth: Array.from({ length: 12 }, (_, i) => ({
+      // The last 12 months, each one present; these hoses carry no manufacture date.
+      productsByMonth: Array.from({ length: 12 }, (_, i) => ({
         month: i < 3 ? `2025-${10 + i}` : `2026-0${i - 2}`,
-        count: 0,
+        made: 0,
+        replaced: 0,
       })),
       upcoming: [{ productId: 'h1', serialNumber: '11', equipment: 'НТ08', dueDate: '2027-01-14' }],
     })

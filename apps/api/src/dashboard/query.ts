@@ -38,11 +38,12 @@ export async function dashboardSummary(
        select ${STATUS_SQL} as status,
          case when coalesce(installed_at, shipped_at) <= $1::date - $6::int
               then ${statusAt('($1::date - $6::int)')} end as status_then,
-         installed_at, shipped_at
+         installed_at, shipped_at, equipment_id
        from products where lifecycle <> 'written_off' and ($5::text[] is null or client_id = any($5))
      )
      select count(*)::int as shipped_total,
-       count(*) filter (where installed_at is not null)::int as in_operation,
+       -- On a machine is in service: 1С rarely records the installation itself (customer, 2026-10-13).
+       count(*) filter (where equipment_id is not null)::int as in_operation,
        count(*) filter (where status = 'ok')::int as ok,
        count(*) filter (where status = 'warn')::int as warn,
        count(*) filter (where status = 'replace')::int as replace,
@@ -70,6 +71,27 @@ export async function dashboardSummary(
     params,
   )
   const swaps = await replacementTotals(db, clock.today, clients, days)
+  // Hoses made for the company per month, the last 12 months to today: those made to replace
+  // one of theirs apart from the rest (customer, 2026-10-13: «изделия по месяцам»).
+  const { rows: made } = await db.query<{ month: string; made: number; replaced: number }>(
+    `with m as (
+       select to_char(d, 'YYYY-MM') as month
+       from generate_series(date_trunc('month', $1::date) - interval '11 months',
+                            date_trunc('month', $1::date), interval '1 month') as d
+     ),
+     p as (
+       select to_char((data->>'manufacturedAt')::date, 'YYYY-MM') as month,
+         data->>'replacedProductId' is not null as replaced
+       from products
+       where data->>'manufacturedAt' is not null and ($2::text[] is null or client_id = any($2))
+     )
+     select m.month,
+       count(p.month) filter (where not p.replaced)::int as made,
+       count(p.month) filter (where p.replaced)::int as replaced
+     from m left join p on p.month = m.month
+     group by m.month order by m.month`,
+    [clock.today, clients ?? null],
+  )
   return {
     shippedTotal: t.shipped_total,
     inOperation: t.in_operation,
@@ -85,7 +107,7 @@ export async function dashboardSummary(
       needsReplacement: t.replace - t.replace_then,
     },
     statusBreakdown: { ok: t.ok, warn: t.warn, replace: t.replace, no_warranty: t.no_warranty },
-    replacementsByMonth: swaps.byMonth,
+    productsByMonth: made,
     upcoming,
   }
 }

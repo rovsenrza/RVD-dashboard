@@ -1,4 +1,4 @@
-import { addDays, formatISO, parseISO, setHours, setMinutes, subDays } from 'date-fns'
+import { addDays, formatISO, parseISO, setHours, setMinutes, subDays, subMonths } from 'date-fns'
 import type {
   ModelStats,
   AuditEntry,
@@ -404,11 +404,6 @@ export function dashboardSummary(branch: string | null = null, days = 30): Dashb
 
   const breakdown: Record<ProductStatus, number> = { ok: 0, warn: 0, replace: 0, no_warranty: 0 }
   for (const p of scopedProducts) breakdown[p.status]++
-  const byMonth = new Map<string, number>()
-  for (const r of scopedReplacements) {
-    const m = r.date.slice(0, 7)
-    byMonth.set(m, (byMonth.get(m) ?? 0) + 1)
-  }
   const upcoming = scopedProducts
     .filter((p) => p.installedAt && p.status !== 'replace')
     .map((p) => ({
@@ -435,7 +430,7 @@ export function dashboardSummary(branch: string | null = null, days = 30): Dashb
 
   return {
     shippedTotal: scopedProducts.length,
-    inOperation: scopedProducts.filter((p) => p.installedAt).length,
+    inOperation: scopedProducts.filter((p) => p.equipmentId).length,
     onWarranty: scopedProducts.filter((p) => p.status === 'ok').length,
     expiringSoon: breakdown.warn,
     needsReplacement: breakdown.replace,
@@ -450,10 +445,13 @@ export function dashboardSummary(branch: string | null = null, days = 30): Dashb
       needsReplacement: breakdown.replace - countThen('replace'),
     },
     statusBreakdown: breakdown,
-    replacementsByMonth: [...byMonth.entries()]
-      .sort(([a], [b]) => a.localeCompare(b))
-      .slice(-12)
-      .map(([month, count]) => ({ month, count })),
+    // The API's rule: hoses made per month over the last 12, those made to replace one apart.
+    productsByMonth: Array.from({ length: 12 }, (_, i) => {
+      const month = iso(subMonths(NOW, 11 - i)).slice(0, 7)
+      const inMonth = scopedProducts.filter((p) => p.manufacturedAt?.slice(0, 7) === month)
+      const replaced = inMonth.filter((p) => p.replacedProductId).length
+      return { month, made: inMonth.length - replaced, replaced }
+    }),
     upcoming,
   }
 }

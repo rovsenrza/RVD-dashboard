@@ -6,6 +6,8 @@ export interface Sources extends ProductSources {
   releases: RawRelease[]
   orders: RawOrder[]
   brands: RawNamed[]
+  /** Machine models — published by 1С on 2026-10-13 */
+  models: RawNamed[]
   types: RawNamed[]
 }
 
@@ -38,14 +40,15 @@ export const FILTER_BUDGET = 1500
 
 /** The small reference sets — catalogue numbers, components, machines — read whole each time. */
 async function fetchReference(client: ODataClient) {
-  const [catalogNumbers, components, equipment, brands, types] = await Promise.all([
+  const [catalogNumbers, components, equipment, brands, models, types] = await Promise.all([
     client.all('Catalog_КаталожныеНомера'),
     client.all('Catalog_Комплектующие'),
     client.all('Catalog_Техника'),
     client.all('Catalog_Марки'),
+    client.all<RawNamed>('Catalog_Модели', { select: ['Ref_Key', 'Description'] }),
     client.all('Catalog_ТипТехники'),
   ])
-  return { catalogNumbers, components, equipment, brands, types }
+  return { catalogNumbers, components, equipment, brands, models, types }
 }
 
 /**
