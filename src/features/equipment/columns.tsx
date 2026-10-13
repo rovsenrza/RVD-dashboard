@@ -11,11 +11,6 @@ export const equipmentColumns = [
     header: 'Гаражный №',
     cell: (c) => <span className="font-medium text-brand-deep">{c.getValue()}</span>,
   }),
-  col.accessor('factoryNumber', {
-    header: 'Заводской №',
-    meta: { mobile: 'hide' },
-    cell: (c) => valueOr(c.getValue()),
-  }),
   col.accessor('department', {
     header: 'Подразделение',
     meta: { mobile: 'hide' },

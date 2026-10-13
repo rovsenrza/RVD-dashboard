@@ -21,7 +21,6 @@ import { EquipmentTree } from './components/EquipmentTree'
 
 const EXPORT_COLUMNS: ExportColumn<Equipment>[] = [
   { header: 'Гаражный №', value: (e) => e.garageNumber, width: 10 },
-  { header: 'Заводской №', value: (e) => e.factoryNumber, width: 14 },
   { header: 'Инвентарный №', value: (e) => e.inventoryNumber, width: 13 },
   { header: 'Подразделение', value: (e) => e.department, width: 22 },
   { header: 'Тип', value: (e) => e.type, width: 14 },
@@ -133,7 +132,6 @@ export function EquipmentPage() {
               onRowClick={(e) => navigate(`/equipment/${e.id}`)}
               stickyFirstColumn
               tools
-              hiddenByDefault={['factoryNumber']}
               globalFilter={filter}
               emptyTitle="Техника не добавлена"
               search={search}

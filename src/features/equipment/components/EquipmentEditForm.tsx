@@ -20,7 +20,6 @@ export function EquipmentEditForm({
   const toast = useToast()
   const suggestions = useId()
   const [department, setDepartment] = useState(e.department ?? '')
-  const [factoryNumber, setFactoryNumber] = useState(e.factoryNumber ?? '')
   // The departments already named, so one department is written one way.
   const known = [
     ...new Set((fleet.data ?? []).flatMap((m) => (m.department ? [m.department] : []))),
@@ -29,7 +28,8 @@ export function EquipmentEditForm({
   const submit = (event: FormEvent) => {
     event.preventDefault()
     update.mutate(
-      { department: department.trim() || null, factoryNumber: factoryNumber.trim() || null },
+      // No «Заводской №» (customer, 2026-10-13: the catalogue number already covers it).
+      { department: department.trim() || null },
       {
         onSuccess: () => {
           toast('Изменения сохранены')
@@ -45,7 +45,7 @@ export function EquipmentEditForm({
       open
       onClose={onClose}
       title={`Техника ${e.garageNumber}`}
-      description="Подразделение и заводской номер. Гаражный номер, марку и владельца ведёт поставщик в 1С."
+      description="Подразделение. Гаражный номер, марку и владельца ведёт поставщик в 1С."
       footer={
         <>
           <Button variant="secondary" size="sm" onClick={onClose}>
@@ -74,16 +74,6 @@ export function EquipmentEditForm({
                 ))}
               </datalist>
             </>
-          )}
-        </Field>
-        <Field label="Заводской номер">
-          {(id) => (
-            <Input
-              id={id}
-              value={factoryNumber}
-              onChange={(ev) => setFactoryNumber(ev.target.value)}
-              placeholder="С таблички на технике"
-            />
           )}
         </Field>
       </form>

@@ -71,7 +71,6 @@ export function EquipmentDetailPage() {
                 termWidth={120}
                 items={[
                   ['Гаражный №', e.garageNumber],
-                  ['Заводской №', e.factoryNumber],
                   ['Инвентарный №', e.inventoryNumber],
                   ['Филиал', branches.find((b) => b.id === e.branchId)?.name],
                   ['Подразделение', e.department],
