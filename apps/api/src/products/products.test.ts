@@ -132,7 +132,9 @@ describe.skipIf(!hasDb)('products in the cache', () => {
     expect(ids(await get('/products?client=k2'))).toEqual(['p4', 'p3'])
     expect(ids(await get('/products?equipment=e1'))).toEqual(['p1'])
     expect(ids(await get('/products?catalog=c1'))).toEqual(['p1'])
-    expect(ids(await get('/products?installed=0'))).toEqual(['p4'])
+    // «Не на технике»: no machine, whatever the installation date says (customer, 2026-10-13).
+    expect(ids(await get('/products?installed=0'))).toEqual(['p4', 'p2', 'p3'])
+    expect(ids(await get('/products?installed=1'))).toEqual(['p1'])
     expect(ids(await get('/products?branch=k2'))).toEqual(['p4', 'p3'])
   })
 
