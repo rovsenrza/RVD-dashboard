@@ -387,10 +387,10 @@ export function DataTable<T>({
                           {i === 0 && selection ? (
                             <span className="inline-flex items-center gap-1.5">
                               {rowBox(row.original)}
-                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                              <CellText cell={cell} />
                             </span>
                           ) : (
-                            flexRender(cell.column.columnDef.cell, cell.getContext())
+                            <CellText cell={cell} />
                           )}
                         </td>
                       ))}
@@ -487,6 +487,28 @@ export function DataTable<T>({
           </div>
         </div>
       )}
+    </div>
+  )
+}
+
+/**
+ * A text cell holds its width: up to 16rem on one line, longer text (a garage
+ * number written out as «Экскаватор Komatsu … резерв») wraps to two lines and
+ * the rest is in the tooltip, so one long value never shoves the whole table.
+ * Under the cap the cell is as wide as its text and never squeezed into
+ * wrapping; non-text cells (status bars, numbers) are left as they are.
+ */
+function CellText<T>({ cell }: { cell: Cell<T, unknown> }) {
+  const content = flexRender(cell.column.columnDef.cell, cell.getContext())
+  const value = cell.getValue()
+  if (typeof value !== 'string') return content
+  return (
+    // Only text that may run past the cap gets a tooltip; short values are codes and dates.
+    <div
+      title={value.length > 30 ? value : undefined}
+      className="line-clamp-2 w-max max-w-64 break-words whitespace-normal"
+    >
+      {content}
     </div>
   )
 }

@@ -160,3 +160,18 @@ describe('DataTable selection', () => {
     ).toBe(true)
   })
 })
+
+describe('DataTable long text', () => {
+  it('caps a long value at two lines with the whole text in the tooltip', () => {
+    const long = 'Экскаватор Komatsu PC2000-11R резерв на складе'
+    const data = [{ garage: long }, { garage: '4212/1' }]
+    const cols: ColumnDef<(typeof data)[number], unknown>[] = [
+      { accessorKey: 'garage', header: 'Гаражный №' },
+    ]
+    const { container } = render(<DataTable data={data} columns={cols} />)
+    const cells = container.querySelectorAll('tbody td > div')
+    expect(cells[0]).toHaveClass('max-w-64', 'line-clamp-2')
+    expect(cells[0]).toHaveAttribute('title', long)
+    expect(cells[1]).not.toHaveAttribute('title')
+  })
+})
