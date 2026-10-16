@@ -365,6 +365,13 @@ export interface AuditEntry {
 }
 
 /** Hoses on one machine model, for comparing models side by side (Д15). Computed server-side. */
+/** «Сравнение техники» over a period (customer, 2026-10-16: «как в 1С»): what was counted, and over what. */
+export interface ModelComparison {
+  /** By default from the company's first hose made to today */
+  period: { from: string; to: string }
+  models: ModelStats[]
+}
+
 export interface ModelStats {
   /** The machine's id when comparing machines, else the model's name */
   id: string
@@ -377,8 +384,9 @@ export interface ModelStats {
   /** Hoses on those machines now */
   hoses: number
   breakdown: Record<ProductStatus, number>
-  replacements12m: number
-  /** Replacements per machine over the last 12 months */
+  /** Replacements over the period */
+  replacements: number
+  /** Replacements per machine over the period */
   replacementsPerMachine: number
   /** Share of those replacements caused by a failure, 0..1; null when none carries a reason (1С keeps none) */
   failureShare: number | null

@@ -769,14 +769,17 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
         : reply.code(404).send({ message: 'Изделие не найдено' }),
     )
 
-    app.get('/analytics/models', { preHandler: forManagers }, async (req) =>
-      companyModels(
+    app.get('/analytics/models', { preHandler: forManagers }, async (req) => {
+      const q = req.query as { by?: string; from?: string; to?: string }
+      const day = (v?: string) => (v && /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : null)
+      return companyModels(
         db,
         await clockOf(req),
         clientsOf(req),
-        (req.query as { by?: string }).by === 'machine' ? 'machine' : 'model',
-      ),
-    )
+        q.by === 'machine' ? 'machine' : 'model',
+        { from: day(q.from), to: day(q.to) },
+      )
+    })
 
     // Notifications (Д19): worked out per person from the cache, the company's lead days and
     // their own choice; only reads and the choice are stored.

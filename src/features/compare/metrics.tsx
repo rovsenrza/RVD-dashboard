@@ -33,9 +33,9 @@ export const METRICS: Metric[] = [
     value: (m) => share(m.breakdown.warn, m.hoses),
   },
   {
-    label: 'Замен за 12 месяцев',
-    value: (m) => formatNumber(m.replacements12m),
-    score: (m) => m.replacements12m,
+    label: 'Замен за период',
+    value: (m) => formatNumber(m.replacements),
+    score: (m) => m.replacements,
     better: 'lower',
   },
   {

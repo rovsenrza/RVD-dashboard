@@ -242,14 +242,15 @@ export const handlers = [
     })
     return report ? HttpResponse.json(report) : new HttpResponse(null, { status: 404 })
   }),
-  http.get(api('/analytics/models'), ({ request }) =>
-    HttpResponse.json(
-      modelStats(
-        branchOf(request),
-        new URL(request.url).searchParams.get('by') === 'machine' ? 'machine' : 'model',
-      ),
-    ),
-  ),
+  http.get(api('/analytics/models'), ({ request }) => {
+    const q = new URL(request.url).searchParams
+    return HttpResponse.json(
+      modelStats(branchOf(request), q.get('by') === 'machine' ? 'machine' : 'model', {
+        from: q.get('from'),
+        to: q.get('to'),
+      }),
+    )
+  }),
   http.get(api('/replacements'), ({ request }) => {
     const branch = branchOf(request)
     if (!branch) return HttpResponse.json(newestFirst(replacements))

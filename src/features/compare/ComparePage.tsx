@@ -8,14 +8,17 @@ import { ProductStatusBar, STATUS_COLOR, STATUS_LABEL, STATUS_ORDER } from '@/en
 import { useSession } from '@/app/session'
 import { useModelStats } from '@/shared/api/queries'
 import { useReducedMotion } from '@/shared/lib/motion'
-import { formatNumber } from '@/shared/lib/utils'
+import { cn, formatNumber } from '@/shared/lib/utils'
 import {
   Badge,
+  Button,
   Card,
   Checkbox,
   Chip,
   DataTable,
+  DatePicker,
   EmptyState,
+  Field,
   PageHeader,
   QueryState,
   SearchInput,
@@ -28,14 +31,23 @@ const MAX = 4
 
 export function ComparePage() {
   const { user, branch } = useSession()
-  const stats = useModelStats()
+  // The period lives in the address, like the pick, so a comparison sent as a link keeps it.
+  const [params, setParams] = useSearchParams()
+  const asked = { from: params.get('from'), to: params.get('to') }
+  const stats = useModelStats(asked)
   const allowed = user.role === 'manager' || user.role === 'admin'
+  const setPeriod = (patch: { from?: string | null; to?: string | null }) => {
+    for (const [key, value] of Object.entries(patch))
+      if (value) params.set(key, value)
+      else params.delete(key)
+    setParams(params, { replace: true })
+  }
 
   return (
     <>
       <PageHeader
         title="Сравнение техники"
-        description={`Как РВД служат на разной технике: состояние сейчас и замены за год · ${branch?.name ?? 'Все филиалы'}`}
+        description={`Как РВД служат на разной технике: состояние и замены за период · ${branch?.name ?? 'Все филиалы'}`}
       />
       {!allowed ? (
         <Card>
@@ -48,10 +60,68 @@ export function ComparePage() {
         </Card>
       ) : (
         <QueryState query={stats} skeleton={<Skeleton className="sheet h-96" />}>
-          {(models) => <Comparison models={models} />}
+          {({ period, models }) => (
+            <div
+              aria-busy={stats.isPlaceholderData || undefined}
+              className={cn(
+                'grid gap-5 transition-opacity duration-150',
+                stats.isPlaceholderData && 'opacity-60',
+              )}
+            >
+              <PeriodBar period={period} custom={!!(asked.from || asked.to)} onChange={setPeriod} />
+              <Comparison models={models} />
+            </div>
+          )}
         </QueryState>
       )}
     </>
+  )
+}
+
+/**
+ * «С … по …», as in 1С (customer, 2026-10-16): hoses made in the period, as they
+ * stand today, and the replacements done in it. Opens on all of the company's
+ * time, from its first hose made to today.
+ */
+function PeriodBar({
+  period,
+  custom,
+  onChange,
+}: {
+  period: { from: string; to: string }
+  custom: boolean
+  onChange: (patch: { from?: string | null; to?: string | null }) => void
+}) {
+  return (
+    <div className="flex flex-wrap items-end gap-3">
+      <div className="grid grid-cols-2 gap-3 max-sm:w-full sm:w-80">
+        <Field label="Период с">
+          {(id) => (
+            <DatePicker
+              id={id}
+              value={period.from}
+              max={period.to}
+              onChange={(v) => v && onChange({ from: v })}
+            />
+          )}
+        </Field>
+        <Field label="по">
+          {(id) => (
+            <DatePicker
+              id={id}
+              value={period.to}
+              min={period.from}
+              onChange={(v) => v && onChange({ to: v })}
+            />
+          )}
+        </Field>
+      </div>
+      {custom && (
+        <Button variant="ghost" size="sm" onClick={() => onChange({ from: null, to: null })}>
+          За всё время
+        </Button>
+      )}
+    </div>
   )
 }
 
@@ -258,9 +328,9 @@ function StatusByModel({ models }: { models: ModelStats[] }) {
 /** One series, one colour: models are named on the axis, the value sits at the bar's end. */
 function ReplacementsPerMachine({ models }: { models: ModelStats[] }) {
   const still = useReducedMotion()
-  const data = models.map((m) => ({ model: nameOf(m), value: m.replacements12m }))
+  const data = models.map((m) => ({ model: nameOf(m), value: m.replacements }))
   return (
-    <Card title="Замен за 12 месяцев">
+    <Card title="Замен за период">
       <div style={{ height: 56 + data.length * 44 }}>
         <ResponsiveContainer>
           <BarChart

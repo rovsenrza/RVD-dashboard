@@ -1,5 +1,12 @@
 import { differenceInCalendarDays, parseISO } from 'date-fns'
-import type { Equipment, ModelStats, Product, ProductStatus, Replacement } from './types'
+import type {
+  Equipment,
+  ModelComparison,
+  ModelStats,
+  Product,
+  ProductStatus,
+  Replacement,
+} from './types'
 
 /** The swap reason that counts as a failure. */
 const FAILURE = 'Поломка'
@@ -12,20 +19,46 @@ const mostCommon = (values: (string | null)[]) => {
 
 const round1 = (n: number) => Math.round(n * 10) / 10
 
+/** The day a hose counts from in a period: when it was made, else shipped. */
+const madeOn = (p: Product) => p.manufacturedAt ?? p.shippedAt
+
 /**
- * Machine models side by side (Д15), for the mock and the API alike: what is on
- * each model's machines now (their counts, already worked out for today) and how
- * their hoses fared over the 365 days to `today`. Until 1С publishes its model
- * catalogue a machine is known by its brand alone. `by: 'machine'` compares single
- * machines instead (customer, 2026-10-11: pick units by brand, model and garage №).
+ * The period asked for, the missing ends filled in: from the first of the given
+ * hoses made (customer, 2026-10-16), else a year back, to today.
+ */
+export function comparisonPeriod(
+  products: Product[],
+  today: string,
+  asked: { from?: string | null; to?: string | null } = {},
+): ModelComparison['period'] {
+  const first = products
+    .map(madeOn)
+    .filter((d): d is string => !!d)
+    .sort()[0]
+  const yearAgo = new Date(parseISO(today).getTime() - 365 * 86_400_000).toISOString().slice(0, 10)
+  return { from: asked.from || first || yearAgo, to: asked.to || today }
+}
+
+/**
+ * Machine models side by side (Д15), for the mock and the API alike, over a
+ * period: the hoses on each model's machines that were made in it, as they stand
+ * today, and the replacements done in it. A hose with no date at all is counted
+ * in any period. `by: 'machine'` compares single machines instead (customer,
+ * 2026-10-11: pick units by brand, model and garage №).
  */
 export function modelStats(
   data: { equipment: Equipment[]; products: Product[]; replacements: Replacement[] },
-  today: string,
+  period: ModelComparison['period'],
   by: 'model' | 'machine' = 'model',
 ): ModelStats[] {
-  const since = new Date(parseISO(today).getTime() - 365 * 86_400_000).toISOString().slice(0, 10)
+  const within = (d: string) => d >= period.from && d <= period.to
   const product = new Map(data.products.map((p) => [p.id, p]))
+  const onMachine = new Map<string, Product[]>()
+  for (const p of data.products) {
+    const made = madeOn(p)
+    if (!p.equipmentId || p.lifecycle === 'written_off' || (made && !within(made))) continue
+    onMachine.set(p.equipmentId, [...(onMachine.get(p.equipmentId) ?? []), p])
+  }
   const groups = new Map<string, Equipment[]>()
   const nameOf = (e: Equipment) =>
     [e.brand, e.model].filter(Boolean).join(' ') || e.type || 'Без марки'
@@ -42,10 +75,9 @@ export function modelStats(
         replace: 0,
         no_warranty: 0,
       }
-      for (const m of machines)
-        for (const k of Object.keys(breakdown) as ProductStatus[])
-          breakdown[k] += m.statusBreakdown[k]
-      const swaps = data.replacements.filter((r) => ids.has(r.equipmentId) && r.date >= since)
+      const hoses = machines.flatMap((m) => onMachine.get(m.id) ?? [])
+      for (const p of hoses) breakdown[p.status]++
+      const swaps = data.replacements.filter((r) => ids.has(r.equipmentId) && within(r.date))
       const olds = swaps.map((r) => product.get(r.oldProductId))
       // How long the hose taken off had served: from its start (installation, else shipment).
       const served = swaps
@@ -63,9 +95,9 @@ export function modelStats(
         garageNumber: by === 'machine' ? machines[0].garageNumber : null,
         type: machines[0].type,
         machines: machines.length,
-        hoses: machines.reduce((sum, m) => sum + m.hoseCount, 0),
+        hoses: hoses.length,
         breakdown,
-        replacements12m: swaps.length,
+        replacements: swaps.length,
         replacementsPerMachine: round1(swaps.length / machines.length),
         failureShare: reasoned.length
           ? reasoned.filter((r) => r.reason === FAILURE).length / reasoned.length

@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { afterAll, beforeAll, describe, expect, it } from 'vitest'
-import { DEFAULT_RULES, type ModelStats, type Report } from '@rvd/contracts'
+import { DEFAULT_RULES, type ModelComparison, type Report } from '@rvd/contracts'
 import { buildApp } from '../app.ts'
 import { addUser } from '../auth/service.ts'
 import type { Db } from '../db/pool.ts'
@@ -131,17 +131,27 @@ describe.skipIf(!hasDb)('reports and the model comparison on the server', () => 
   })
 
   it('compares machine brands without inventing a failure share 1С does not keep', async () => {
-    const [belaz] = (await get('/analytics/models', manager)).json() as ModelStats[]
-    expect(belaz).toMatchObject({
+    // Without a period: from the first hose made (here shipped, 1С gives no make date) to today.
+    const all = (await get('/analytics/models', manager)).json() as ModelComparison
+    expect(all.period).toEqual({ from: '2025-09-01', to: TODAY })
+    expect(all.models[0]).toMatchObject({
       model: 'БелАЗ',
       machines: 1,
       hoses: 3,
-      replacements12m: 1,
+      replacements: 1,
       failureShare: null,
       avgServiceDays: 395,
     })
+    // A period narrows the hoses to those made in it and the replacements to those done in it.
+    const lately = (
+      await get('/analytics/models?from=2025-11-01&to=2026-09-30', manager)
+    ).json() as ModelComparison
+    expect(lately.period).toEqual({ from: '2025-11-01', to: '2026-09-30' })
+    expect(lately.models[0]).toMatchObject({ hoses: 1, replacements: 0, avgServiceDays: null })
     // One machine at a time, named by its garage number.
-    const machines = (await get('/analytics/models?by=machine', manager)).json() as ModelStats[]
+    const machines = (
+      (await get('/analytics/models?by=machine', manager)).json() as ModelComparison
+    ).models
     expect(machines).toEqual([
       expect.objectContaining({ id: 'e1', model: 'БелАЗ', garageNumber: 'НТ08', machines: 1 }),
     ])

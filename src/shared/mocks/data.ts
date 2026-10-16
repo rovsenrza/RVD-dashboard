@@ -1,6 +1,6 @@
 import { addDays, formatISO, parseISO, setHours, setMinutes, subDays, subMonths } from 'date-fns'
 import type {
-  ModelStats,
+  ModelComparison,
   AuditEntry,
   BranchSummary,
   CabinetSettings,
@@ -19,7 +19,7 @@ import type {
 } from '@/entities/types'
 import { serviceDates, statusOf } from '@/entities/product/rules'
 import { DEFAULT_SETTINGS } from '@/entities/settings'
-import { compareModels } from '@/entities/analytics'
+import { comparisonPeriod, compareModels } from '@/entities/analytics'
 import {
   auditChanges as diff,
   filesChange,
@@ -659,13 +659,20 @@ export const currentAuthor = () => shortName(users[0].name)
 export const modelStats = (
   branch: string | null = null,
   by: 'model' | 'machine' = 'model',
-): ModelStats[] =>
-  compareModels(
-    {
-      equipment: equipment.filter((x) => !branch || x.branchId === branch),
-      products,
-      replacements,
-    },
-    iso(NOW),
-    by,
-  )
+  asked: { from?: string | null; to?: string | null } = {},
+): ModelComparison => {
+  const scoped = products.filter((p) => !branch || p.branchId === branch)
+  const period = comparisonPeriod(scoped, iso(NOW), asked)
+  return {
+    period,
+    models: compareModels(
+      {
+        equipment: equipment.filter((x) => !branch || x.branchId === branch),
+        products,
+        replacements,
+      },
+      period,
+      by,
+    ),
+  }
+}

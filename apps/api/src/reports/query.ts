@@ -1,8 +1,9 @@
 import {
   buildReport,
+  comparisonPeriod,
   modelStats,
   reportMeta,
-  type ModelStats,
+  type ModelComparison,
   type Product,
   type Report,
   type ReportData,
@@ -77,12 +78,15 @@ export async function companyReport(
   )
 }
 
-/** «Сравнение техники» (Д15): the company's machine models over the last year. */
+/** «Сравнение техники» (Д15): the company's machines over a period, by default all of its time. */
 export async function companyModels(
   db: Db,
   clock: Clock,
   clients: string[] | undefined,
   by: 'model' | 'machine' = 'model',
-): Promise<ModelStats[]> {
-  return modelStats(await companyData(db, clock, clients), clock.today, by)
+  asked: { from?: string | null; to?: string | null } = {},
+): Promise<ModelComparison> {
+  const data = await companyData(db, clock, clients)
+  const period = comparisonPeriod(data.products, clock.today, asked)
+  return { period, models: modelStats(data, period, by) }
 }

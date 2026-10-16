@@ -12,7 +12,7 @@ import type {
   Report,
   ReportId,
   AuditEntry,
-  ModelStats,
+  ModelComparison,
   BranchSummary,
   CabinetSettings,
   CabinetUser,
@@ -81,7 +81,8 @@ export const keys = {
   branches: ['admin', 'branches'] as const,
   settings: ['admin', 'settings'] as const,
   audit: ['admin', 'audit'] as const,
-  modelStats: (branch: string | null) => ['analytics', 'models', branch] as const,
+  modelStats: (branch: string | null, from: string | null, to: string | null) =>
+    ['analytics', 'models', branch, from, to] as const,
   notifications: (branch: string | null) => ['notifications', branch] as const,
   notificationPrefs: ['notifications', 'prefs'] as const,
   report: (id: ReportId, branch: string | null, from?: string, to?: string) =>
@@ -414,15 +415,22 @@ export const useEquipmentReplacements = (id: string) =>
   })
 
 /** Machine models compared (Д15): computed by the server over the whole fleet, never in the browser. */
-export const useModelStats = () => {
+export const useModelStats = (period: { from: string | null; to: string | null }) => {
   const branch = useScope()
   return useQuery({
-    queryKey: keys.modelStats(branch),
-    // Single machines, picked by brand, model and garage number (customer, 2026-10-11).
-    queryFn: () =>
-      api.get<ModelStats[]>(
-        `${scoped('/analytics/models', branch)}${branch ? '&' : '?'}by=machine`,
-      ),
+    queryKey: keys.modelStats(branch, period.from, period.to),
+    // Single machines, picked by brand, model and garage number (customer, 2026-10-11), over a
+    // period; without one the server counts from the company's first hose made to today.
+    queryFn: () => {
+      const q = new URLSearchParams({ by: 'machine' })
+      if (period.from) q.set('from', period.from)
+      if (period.to) q.set('to', period.to)
+      return api.get<ModelComparison>(
+        `${scoped('/analytics/models', branch)}${branch ? '&' : '?'}${q}`,
+      )
+    },
+    // A new period keeps the page up, dimmed, instead of falling back to the skeleton.
+    placeholderData: keepPreviousData,
   })
 }
 
