@@ -29,7 +29,7 @@ export function ProductDetails({
     {
       title: 'Характеристики',
       rows: [
-        ['Тип', p.type],
+        ['Наименование', p.type],
         ['Диаметр', `${p.diameter} мм`],
         ['Оплётки / навивки', p.braidCount],
         ['Параметры', p.specs],

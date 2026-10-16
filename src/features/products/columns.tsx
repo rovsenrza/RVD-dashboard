@@ -23,7 +23,7 @@ export const productColumns = (machines: ReadonlyMap<string, Equipment>) => [
   // 1С names some hoses at length («2SC ду6 рукав Rock Arctic p=400 BAR …»): one line, cut,
   // the whole name on hover and on the card, so the columns after it stay put (2026-10-13).
   col.accessor('type', {
-    header: 'Тип',
+    header: 'Наименование',
     cell: (c) => (
       <span className="block max-w-56 truncate" title={c.getValue()}>
         {c.getValue()}

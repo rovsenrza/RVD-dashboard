@@ -267,7 +267,7 @@ export function buildReport(id: ReportId, data: ReportData, params: ReportParams
       columns = [
         col('planned', 'Плановая замена', 'date', 12),
         ...HOSE_COLUMNS,
-        col('type', 'Тип', 'text', 12),
+        col('type', 'Наименование', 'text', 12),
         col('status', 'Состояние', 'status', 16),
       ]
       rows = hoses
