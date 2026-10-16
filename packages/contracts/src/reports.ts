@@ -128,12 +128,14 @@ const STATUS_COLUMNS = [
   col('replace', 'Замена', 'number', 8),
   col('no_warranty', 'Без гарантии', 'number', 10),
 ]
+// The machine by its garage number and its brand and model; where on it, last (customer, 2026-10-16).
 const HOSE_COLUMNS = [
   col('serial', 'Серийный №', 'text', 10),
   col('catalog', 'Каталожный № (OEM)', 'text', 18),
-  col('machine', 'Техника', 'text', 10),
-  col('place', 'Место установки', 'text', 20),
+  col('machine', 'Гаражный №', 'text', 10),
+  col('model', 'Марка / модель', 'text', 18),
 ]
+const PLACE = col('place', 'Место установки', 'text', 20)
 /** The cabinet's one start date: installation as 1С has it, else shipment (customer, 2026-10-03). */
 const START = col('installed', 'Установлено', 'date', 11)
 
@@ -174,6 +176,9 @@ export function buildReport(id: ReportId, data: ReportData, params: ReportParams
   const hoses = inBranch(data.products).filter(shippedIn)
   const machines = inBranch(data.equipment)
   const garage = new Map(data.equipment.map((m) => [m.id, m.garageNumber]))
+  const modelOf = new Map(
+    data.equipment.map((m) => [m.id, [m.brand, m.model].filter(Boolean).join(' ') || null]),
+  )
   const machineIds = new Set<string | null>(machines.map((m) => m.id))
   const inPeriod = (date: string) => !period || (date >= period.from && date <= period.to)
   const swaps = data.replacements.filter((r) => machineIds.has(r.equipmentId) && inPeriod(r.date))
@@ -186,6 +191,7 @@ export function buildReport(id: ReportId, data: ReportData, params: ReportParams
     serial: p.serialNumber,
     catalog: p.catalogNumber,
     machine: p.equipmentId ? (garage.get(p.equipmentId) ?? null) : null,
+    model: p.equipmentId ? (modelOf.get(p.equipmentId) ?? null) : null,
     place: p.installPlace,
   })
   // A hose with no warranty on record (0 in 1С) has no planned date: `dates` gives null.
@@ -203,6 +209,7 @@ export function buildReport(id: ReportId, data: ReportData, params: ReportParams
         col('status', 'Состояние', 'status', 16),
         col('left', 'До плановой замены, дн.', 'number', 12),
         col('lifecycle', 'Статус в 1С', 'text', 16),
+        PLACE,
       ]
       rows = hoses
         .filter(notRetired)
@@ -231,6 +238,7 @@ export function buildReport(id: ReportId, data: ReportData, params: ReportParams
         START,
         col('until', 'Гарантия до', 'date', 11),
         col('left', 'Осталось, дн.', 'number', 10),
+        PLACE,
       ]
       rows = hoses
         .filter((p) => inService(p) && p.warrantyDays > 0)
@@ -251,6 +259,7 @@ export function buildReport(id: ReportId, data: ReportData, params: ReportParams
         START,
         col('planned', 'Плановая замена', 'date', 12),
         col('overdue', 'Просрочено, дн.', 'number', 10),
+        PLACE,
       ]
       rows = hoses
         .filter((p) => inService(p) && p.status === 'replace' && planned(p) !== null)
@@ -270,6 +279,7 @@ export function buildReport(id: ReportId, data: ReportData, params: ReportParams
         ...HOSE_COLUMNS,
         col('type', 'Наименование', 'text', 12),
         col('status', 'Состояние', 'status', 16),
+        PLACE,
       ]
       rows = hoses
         .filter((p) => inService(p) && planned(p) !== null)
@@ -285,7 +295,7 @@ export function buildReport(id: ReportId, data: ReportData, params: ReportParams
         col('date', 'Дата', 'date', 11),
         col('old', 'Снято (серийный №)', 'text', 11),
         col('new', 'Установлено (серийный №)', 'text', 13),
-        col('machine', 'Техника', 'text', 10),
+        col('machine', 'Гаражный №', 'text', 10),
         col('reason', 'Причина', 'text', 20),
         col('usage', 'Наработка', 'number', 10),
         col('unit', 'Ед.', 'text', 5),
