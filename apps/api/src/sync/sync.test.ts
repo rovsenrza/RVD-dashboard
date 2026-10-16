@@ -147,6 +147,32 @@ describe.skipIf(!hasDb)('the sync keeps up with 1С (Д26)', () => {
     expect(onec.asked.some((q) => q.startsWith(`${REGISTER} ? Recorder eq cast(`))).toBe(false)
   })
 
+  it('writes off a hose once a new one names it as replaced, though the old one did not change', async () => {
+    const D = id(4)
+    onec.sets.Catalog_Изделия.push({
+      ...item({ Ref_Key: D, Description: 'Рукав D', ЗаменяемоеИзделие_Key: A }),
+      DataVersion: 'v1',
+    })
+    onec.sets[REGISTER].push(
+      statusRecord({ Изделие_Key: D, Recorder: DOC, Period: '2026-03-01T09:00:00' }),
+    )
+    onec.asked.length = 0
+    expect(await runCheck(db, onec.client)).toMatchObject({ mode: 'check' })
+    // A is read again with D, though 1С did not change it.
+    expect(onec.asked.some((q) => q.startsWith('Catalog_Изделия ?') && q.includes(A))).toBe(true)
+    const lifecycle = async (key: string) =>
+      (await cached()).find((r) => r.id === key)!.data.lifecycle
+    expect(await lifecycle(A)).toBe('written_off')
+    expect(await lifecycle(D)).toBe('in_stock')
+    // Changed later on its own, the old hose stays written off.
+    const items = onec.sets.Catalog_Изделия as Record<string, unknown>[]
+    const a = items.find((i) => i.Ref_Key === A)!
+    a.Description = 'Рукав A, снят'
+    a.DataVersion = 'v3'
+    await runCheck(db, onec.client)
+    expect(await lifecycle(A)).toBe('written_off')
+  })
+
   it('keeps the cache and says since when 1С is down, until it answers again', async () => {
     const before = await cached()
     onec.setDown(true)

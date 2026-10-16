@@ -63,7 +63,15 @@ export interface ProductSources {
 export interface ProductOptions {
   rules?: StatusRules
   today?: Date
+  /** Hoses named as replaced by ones not among `src.items` — a check reads only some */
+  replaced?: Iterable<string>
 }
+
+/** The hoses some live item names as the one it replaces. */
+export const replacedBy = (items: RawItem[]): string[] =>
+  items
+    .filter((i) => !i.DeletionMark && isRef(i.ЗаменяемоеИзделие_Key))
+    .map((i) => i.ЗаменяемоеИзделие_Key)
 
 /**
  * Each item's active status records, oldest first. Records of one moment keep
@@ -106,6 +114,9 @@ export function toProducts(src: ProductSources, options: ProductOptions = {}): P
     (e) => e.Ref_Key,
   )
   const lifecycles = statusesByItem(src.statuses)
+  // 1С records no write-off for a swapped hose: a new one naming it as replaced is the
+  // write-off, whatever its own status says (the 1С developer, 2026-10-17).
+  const replaced = new Set([...replacedBy(src.items), ...(options.replaced ?? [])])
 
   return src.items
     .filter((item) => !item.DeletionMark)
@@ -117,7 +128,9 @@ export function toProducts(src: ProductSources, options: ProductOptions = {}): P
       // The stage is the latest status the cabinet knows. A status 1С adds later — the
       // repair line of its new package, say — records an event and must not move the hose.
       const stage = [...history].reverse().find((r) => isKnownStatus(r.Статус))
-      const lifecycle = LIFECYCLE[cleanText(stage?.Статус)] ?? 'manufacturing'
+      const lifecycle: ProductLifecycle = replaced.has(item.Ref_Key)
+        ? 'written_off'
+        : (LIFECYCLE[cleanText(stage?.Статус)] ?? 'manufacturing')
       // 1С takes hoses back: in the working base 291 went from «ВЭксплуатации» to «НаСкладе»
       // (163 on 1 September). A hose in the warehouse has no installation to count from.
       const reached = REACHED[lifecycle]

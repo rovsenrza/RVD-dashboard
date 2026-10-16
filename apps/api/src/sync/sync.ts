@@ -3,7 +3,7 @@ import { toCatalogNumber } from '../onec/adapters/catalog.ts'
 import { findDiscrepancies } from '../onec/adapters/discrepancies.ts'
 import { toEquipment } from '../onec/adapters/equipment.ts'
 import { toHistory } from '../onec/adapters/history.ts'
-import { toProducts } from '../onec/adapters/product.ts'
+import { replacedBy, toProducts } from '../onec/adapters/product.ts'
 import type { ODataClient } from '../onec/client.ts'
 import {
   fetchClients,
@@ -52,9 +52,9 @@ const earlier = (period: string, ms: number) =>
   new Date(new Date(`${period}Z`).getTime() - ms).toISOString().slice(0, 19)
 
 /** The adapted cache for what was read, with each item's owner and version. */
-function adapt(sources: Sources): Cache {
+function adapt(sources: Sources, replaced?: string[]): Cache {
   const item = new Map(sources.items.map((i) => [i.Ref_Key, i]))
-  const products = toProducts(sources)
+  const products = toProducts(sources, { replaced })
   // What sits on a machine is counted at read time; the cache keeps no counts, so a check
   // (which sees only the hoses it read) writes the same machines a rebuild does.
   const equipment = toEquipment({ ...sources, products: [] })
@@ -95,6 +95,26 @@ const ORDER_DAYS = 3
 
 const ordersOf = (db: Db, client: ODataClient, since?: string) =>
   fetchOrders(client, since).then((orders) => importOrders(db, orders))
+
+/**
+ * The changed hoses adapted. A hose named as replaced is written off (the 1С developer,
+ * 2026-10-17), so one a changed hose names is read and written again too, and one read
+ * alone keeps the write-off a cached hose's link gives it. A link 1С takes back waits
+ * for the nightly rebuild.
+ */
+async function adaptSome(db: Db, client: ODataClient, ids: string[], live: Set<string>) {
+  const sources = await fetchSourcesFor(client, ids)
+  const named = replacedBy(sources.items).filter((id) => live.has(id) && !ids.includes(id))
+  const { rows } = await db.query<{ id: string }>(
+    `select distinct replaced_product_id as id from products
+       where replaced_product_id is not null and id <> all($1)`,
+    [ids],
+  )
+  return adapt(
+    named.length ? await fetchSourcesFor(client, [...ids, ...new Set(named)]) : sources,
+    rows.map((r) => r.id),
+  )
+}
 
 /**
  * Full sync: read 1С, adapt, replace the cache. Nightly, and whenever a check cannot do.
@@ -181,7 +201,7 @@ export async function runCheck(
   let equipment = 0
   if (affected.length || removed.length) {
     const patch = affected.length
-      ? adapt(await fetchSourcesFor(client, affected))
+      ? await adaptSome(db, client, affected, live)
       : { products: [], history: new Map(), equipment: undefined }
     await patchCache(db, { ...patch, removed }, Date.now() - started)
     products = patch.products.length

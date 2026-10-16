@@ -260,6 +260,24 @@ describe('health and ownership', () => {
     ).toBeNull()
   })
 
+  it('writes off a hose a new one names as replaced, whatever its own status says', () => {
+    // The 1С developer, 2026-10-17: the new hose's manufacture is the old one's write-off.
+    const inUse = statusRecord({ Статус: 'ВЭксплуатации', Period: '2026-03-01T00:00:00' })
+    const fresh = item({ Ref_Key: 'item-2', ЗаменяемоеИзделие_Key: 'item-1' })
+    const [old, made] = toProducts(sources({ items: [item(), fresh], statuses: [inUse] }), {
+      today: TODAY,
+    })
+    expect(old).toMatchObject({ lifecycle: 'written_off', installedAt: '2026-03-01' })
+    expect(made.lifecycle).toBe('manufacturing')
+    // A check reads the old hose alone; the cached link comes with it.
+    expect(toProducts(sources({ statuses: [inUse] }), { replaced: ['item-1'] })[0].lifecycle).toBe(
+      'written_off',
+    )
+    // A deleted new hose replaces nothing.
+    const deleted = { ...fresh, DeletionMark: true }
+    expect(one({ items: [item(), deleted], statuses: [inUse] }).lifecycle).toBe('in_operation')
+  })
+
   it('does not call an item overdue when 1С gives it no warranty', () => {
     const shipped = statusRecord({ Статус: 'Отгружен', Period: '2025-08-15T00:00:00' })
     const p = one({ items: [item({ СрокГарантии: '0' })], statuses: [shipped] })
