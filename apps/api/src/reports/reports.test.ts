@@ -92,14 +92,15 @@ describe.skipIf(!hasDb)('reports and the model comparison on the server', () => 
   it('builds the registry of the company’s own hoses, counted from shipment', async () => {
     const registry = await report('/reports/registry')
     expect(registry.rows.map((r) => [r.serial, r.machine, r.installed, r.status])).toEqual([
-      ['11', 'НТ08', '2025-09-01', 'replace'],
-      ['12', 'НТ08', '2025-12-01', 'warn'],
+      // Newest first (customer, 2026-10-16).
       ['13', 'НТ08', '2026-10-01', 'ok'],
+      ['12', 'НТ08', '2025-12-01', 'warn'],
+      ['11', 'НТ08', '2025-09-01', 'replace'],
     ])
-    expect(registry.rows[0].left).toBe(90)
+    expect(registry.rows[2].left).toBe(90)
     // Narrowed to what was shipped in a period: h1 (01.09.2025) falls out.
     const lately = await report('/reports/registry?from=2025-11-01&to=2026-10-03')
-    expect(lately.rows.map((r) => r.serial)).toEqual(['12', '13'])
+    expect(lately.rows.map((r) => r.serial)).toEqual(['13', '12'])
   })
 
   it('lists what is due and what the next quarter needs', async () => {
@@ -111,9 +112,9 @@ describe.skipIf(!hasDb)('reports and the model comparison on the server', () => 
     const plan = await report('/reports/plan?from=2026-10-03&to=2027-04-30')
     expect(plan.period).toEqual({ from: '2026-10-03', to: '2027-04-30' })
     expect(plan.rows.map((r) => [r.planned, r.serial])).toEqual([
-      ['2027-01-01', '11'],
-      ['2027-03-30', '13'],
       ['2027-04-02', '12'],
+      ['2027-03-30', '13'],
+      ['2027-01-01', '11'],
     ])
   })
 

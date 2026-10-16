@@ -29,6 +29,18 @@ describe('reports', () => {
     }
   })
 
+  it('lists hoses newest first', () => {
+    for (const [id, key] of [
+      ['registry', 'installed'],
+      ['warranty', 'installed'],
+      ['due', 'installed'],
+      ['plan', 'planned'],
+    ] as const) {
+      const dates = buildReport(id, all)!.rows.map((r) => String(r[key] ?? ''))
+      expect(dates).toEqual([...dates].sort().reverse())
+    }
+  })
+
   it('refuses an unknown report', () => {
     expect(buildReport('nope' as ReportId, all)).toBeNull()
   })

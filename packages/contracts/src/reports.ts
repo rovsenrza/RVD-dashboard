@@ -139,6 +139,20 @@ const PLACE = col('place', 'Место установки', 'text', 20)
 /** The cabinet's one start date: installation as 1С has it, else shipment (customer, 2026-10-03). */
 const START = col('installed', 'Установлено', 'date', 11)
 
+/**
+ * Rows read newest first unless a report has a reason otherwise (customer, 2026-10-16):
+ * by a date, later first, rows without one last; then by serial, the higher (newer) first.
+ */
+const newestFirst =
+  (key: string) =>
+  (a: Row, b: Row): number => {
+    const x = (a[key] as string | null) ?? ''
+    const y = (b[key] as string | null) ?? ''
+    const sa = String(a.serial ?? '')
+    const sb = String(b.serial ?? '')
+    return y.localeCompare(x) || sb.length - sa.length || sb.localeCompare(sa)
+  }
+
 const days = (from: string, to: string) => differenceInCalendarDays(parseISO(to), parseISO(from))
 
 /** Sum the countable columns; the first column carries the «Итого» label. */
@@ -213,7 +227,6 @@ export function buildReport(id: ReportId, data: ReportData, params: ReportParams
       ]
       rows = hoses
         .filter(notRetired)
-        // By machine, so a printed page reads machine by machine; stock last.
         .map((p) => {
           const due = planned(p)
           return {
@@ -224,12 +237,7 @@ export function buildReport(id: ReportId, data: ReportData, params: ReportParams
             lifecycle: LIFECYCLE_LABEL[p.lifecycle],
           }
         })
-        .sort(
-          (a, b) =>
-            Number(a.machine === null) - Number(b.machine === null) ||
-            String(a.machine ?? '').localeCompare(String(b.machine ?? ''), 'ru') ||
-            String(a.serial).localeCompare(String(b.serial)),
-        )
+        .sort(newestFirst('installed'))
       break
 
     case 'warranty':
@@ -244,13 +252,13 @@ export function buildReport(id: ReportId, data: ReportData, params: ReportParams
         .filter((p) => inService(p) && p.warrantyDays > 0)
         .map((p) => ({ p, until: dates(p)!.warrantyUntil }))
         .filter(({ until }) => until >= today)
-        .sort((a, b) => a.until.localeCompare(b.until))
         .map(({ p, until }) => ({
           ...hoseCells(p),
           installed: start(p),
           until,
           left: days(today, until),
         }))
+        .sort(newestFirst('installed'))
       break
 
     case 'due':
@@ -270,7 +278,7 @@ export function buildReport(id: ReportId, data: ReportData, params: ReportParams
           // Red starts a quarter before the planned day: until it passes, nothing is overdue.
           overdue: Math.max(days(planned(p)!, today), 0) || null,
         }))
-        .sort((a, b) => Number(b.overdue) - Number(a.overdue))
+        .sort(newestFirst('installed'))
       break
 
     case 'plan':
@@ -286,8 +294,8 @@ export function buildReport(id: ReportId, data: ReportData, params: ReportParams
         .map((p) => ({ p, due: planned(p)! }))
         // Due inside the period, or already overdue: both have to be ordered now.
         .filter(({ due }) => (!period || due <= period.to) && (inPeriod(due) || due < today))
-        .sort((a, b) => a.due.localeCompare(b.due))
         .map(({ p, due }) => ({ planned: due, ...hoseCells(p), type: p.type, status: p.status }))
+        .sort(newestFirst('planned'))
       break
 
     case 'replacements':
