@@ -280,7 +280,15 @@ export interface DashboardSummary {
    * of theirs (1С's «Заменяемое изделие»), `made` the rest. A repair mark waits for 1С.
    */
   productsByMonth: { month: string; made: number; replaced: number }[]
-  upcoming: { productId: string; serialNumber: string; equipment: string; dueDate: string }[]
+  upcoming: {
+    productId: string
+    serialNumber: string
+    /** The machine's garage number */
+    equipment: string
+    /** Its brand and model, «Komatsu PC400»; null when 1С has neither */
+    model: string | null
+    dueDate: string
+  }[]
 }
 
 /** Someone with access to the cabinet. Lives in the cabinet, not in 1С. */

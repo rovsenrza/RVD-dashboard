@@ -14,7 +14,7 @@ const machine = (id: string, garageNumber: string): Equipment => ({
   branchId: 'b1',
   type: 'Самосвал',
   brand: 'БелАЗ',
-  model: '',
+  model: '75131',
   garageNumber,
   factoryNumber: null,
   inventoryNumber: null,
@@ -115,7 +115,15 @@ describe.skipIf(!hasDb)('machines and the dashboard from the cache', () => {
         made: 0,
         replaced: 0,
       })),
-      upcoming: [{ productId: 'h1', serialNumber: '11', equipment: 'НТ08', dueDate: '2027-02-28' }],
+      upcoming: [
+        {
+          productId: 'h1',
+          serialNumber: '11',
+          equipment: 'НТ08',
+          model: 'БелАЗ 75131',
+          dueDate: '2027-02-28',
+        },
+      ],
     })
   })
 })

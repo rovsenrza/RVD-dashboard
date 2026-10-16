@@ -63,7 +63,9 @@ export async function dashboardSummary(
          and ($5::text[] is null or client_id = any($5))
      )
      select p.id as "productId", p.serial_number as "serialNumber",
-       coalesce(e.garage_number, '—') as equipment, to_char(p.planned_at, 'YYYY-MM-DD') as "dueDate"
+       coalesce(e.garage_number, '—') as equipment,
+       nullif(trim(concat_ws(' ', e.data->>'brand', e.data->>'model')), '') as model,
+       to_char(p.planned_at, 'YYYY-MM-DD') as "dueDate"
      from p left join equipment e on e.id = p.equipment_id
      where p.status <> 'replace' and p.planned_at >= $1::date
      order by p.planned_at, length(p.serial_number), p.serial_number

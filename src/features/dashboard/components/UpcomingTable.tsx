@@ -19,7 +19,8 @@ const columns = [
       </Link>
     ),
   }),
-  col.accessor('equipment', { header: 'Техника' }),
+  col.accessor('equipment', { header: 'Гаражный №' }),
+  col.accessor('model', { header: 'Марка / модель', cell: (c) => valueOr(c.getValue()) }),
   col.accessor('dueDate', {
     header: 'Плановая дата',
     cell: (c) => valueOr(formatDate(c.getValue())),

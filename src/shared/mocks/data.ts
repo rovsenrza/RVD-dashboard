@@ -406,12 +406,16 @@ export function dashboardSummary(branch: string | null = null, days = 30): Dashb
   for (const p of scopedProducts) breakdown[p.status]++
   const upcoming = scopedProducts
     .filter((p) => p.installedAt && p.status !== 'replace')
-    .map((p) => ({
-      productId: p.id,
-      serialNumber: p.serialNumber,
-      equipment: equipment.find((e) => e.id === p.equipmentId)?.garageNumber ?? '—',
-      dueDate: serviceDates(p, settings)!.plannedAt,
-    }))
+    .map((p) => {
+      const e = equipment.find((x) => x.id === p.equipmentId)
+      return {
+        productId: p.id,
+        serialNumber: p.serialNumber,
+        equipment: e?.garageNumber ?? '—',
+        model: (e && [e.brand, e.model].filter(Boolean).join(' ')) || null,
+        dueDate: serviceDates(p, settings)!.plannedAt,
+      }
+    })
     .filter((u) => u.dueDate >= iso(NOW))
     .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
     .slice(0, 8)
