@@ -15,6 +15,7 @@ import type {
   ProductStatus,
 } from '@/entities/types'
 import { LIFECYCLE_LABEL, STATUS_LABEL, serviceDates } from '@/entities/product'
+import { PRODUCT_SORT_KEYS } from '@/entities/product/list'
 import { MAX_REQUEST_POSITIONS } from '@/entities/request/rules'
 import { useSession } from '@/app/session'
 import {
@@ -118,8 +119,9 @@ export function ProductsPage() {
       q: q || undefined,
       archive: tab === 'archive' ? '1' : '0',
       limit: pageSize,
-      // Unsorted, the newest-made hoses come first (customer, 2026-10-11).
-      ...(sorting[0]
+      // Unsorted, the newest-made hoses come first (customer, 2026-10-11); a link with a sort the
+      // server does not know (an old bookmark) falls back to the same instead of failing.
+      ...(sorting[0] && PRODUCT_SORT_KEYS.includes(sorting[0].id as ProductSortKey)
         ? { sort: sorting[0].id as ProductSortKey, dir: sorting[0].desc ? 'desc' : 'asc' }
         : { sort: 'manufacturedAt', dir: 'desc' }),
     }),

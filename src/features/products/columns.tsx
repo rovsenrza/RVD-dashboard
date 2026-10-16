@@ -82,7 +82,7 @@ export const productColumns = (machines: ReadonlyMap<string, Equipment>) => [
       )
     },
   }),
-  // The start of «Пора менять»; the server sorts by the same rule under this id.
+  // The warranty's end (customer, 2026-10-16); the server sorts by the same rule under this id.
   col.accessor((p) => serviceDates(p)?.plannedAt ?? null, {
     id: 'plannedAt',
     header: 'Плановая замена',

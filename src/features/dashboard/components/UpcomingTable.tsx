@@ -37,14 +37,7 @@ const columns = [
 
 export function UpcomingTable({ rows }: { rows: Row[] }) {
   return (
-    <Card
-      title="Ближайшие плановые замены"
-      action={
-        <Link to="/products?sort=due" className="text-ui text-brand-deep hover:underline">
-          Все изделия
-        </Link>
-      }
-    >
+    <Card title="Ближайшие плановые замены">
       <DataTable data={rows} columns={columns as ColumnDef<Row, unknown>[]} pageSize={8} embedded />
     </Card>
   )
