@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import type { ColumnDef } from '@tanstack/react-table'
 import { Bar, BarChart, LabelList, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
@@ -13,10 +13,13 @@ import {
   Badge,
   Card,
   Checkbox,
+  Chip,
   DataTable,
   EmptyState,
   PageHeader,
   QueryState,
+  SearchInput,
+  Select,
   Skeleton,
 } from '@/shared/ui'
 import { bestOf, METRICS, type Metric } from './metrics'
@@ -77,51 +80,9 @@ function Comparison({ models }: { models: ModelStats[] }) {
     setParams(params, { replace: true })
   }
 
-  // Brand and model, then the units of it by garage number.
-  const groups = useMemo(() => {
-    const byModel = new Map<string, ModelStats[]>()
-    for (const m of models) byModel.set(m.model, [...(byModel.get(m.model) ?? []), m])
-    return [...byModel]
-  }, [models])
-
   return (
     <div className="grid gap-5">
-      <Card
-        title="Техника"
-        action={
-          <span className="text-label text-ink-muted">
-            выбрано {chosen.length} из {MAX}
-          </span>
-        }
-      >
-        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
-          {groups.map(([model, units]) => (
-            <fieldset key={model} className="min-w-0">
-              <legend className="mb-2 text-ui font-medium">
-                {model}
-                <span className="ml-2 text-label font-normal text-ink-muted">
-                  {units[0].type} · {units.length} ед.
-                </span>
-              </legend>
-              <div className="grid max-h-64 gap-2 overflow-y-auto pr-1">
-                {units.map((m) => {
-                  const on = chosen.includes(m.id)
-                  return (
-                    <Checkbox
-                      key={m.id}
-                      label={m.garageNumber ?? m.model}
-                      hint={`${formatNumber(m.hoses)} РВД`}
-                      checked={on}
-                      disabled={!on && chosen.length >= MAX}
-                      onChange={(e) => toggle(m.id, e.target.checked)}
-                    />
-                  )
-                })}
-              </div>
-            </fieldset>
-          ))}
-        </div>
-      </Card>
+      <MachinePicker models={models} chosen={chosen} onToggle={toggle} />
 
       {shown.length === 0 ? (
         <Card>
@@ -142,6 +103,128 @@ function Comparison({ models }: { models: ModelStats[] }) {
         </>
       )}
     </div>
+  )
+}
+
+/**
+ * The pick on top as chips, the fleet below in one block of fixed height that
+ * scrolls: a search over garage number, brand, model and type, a type filter,
+ * and the units grouped by brand and model. Holds a fleet of hundreds the same
+ * as a fleet of ten.
+ */
+function MachinePicker({
+  models,
+  chosen,
+  onToggle,
+}: {
+  models: ModelStats[]
+  chosen: string[]
+  onToggle: (id: string, on: boolean) => void
+}) {
+  const [query, setQuery] = useState('')
+  const [type, setType] = useState('')
+  const types = useMemo(
+    () =>
+      [...new Set(models.map((m) => m.type).filter(Boolean))].sort((a, b) => a.localeCompare(b)),
+    [models],
+  )
+  // Brand and model, then the units of it by garage number, narrowed by the search and type.
+  const groups = useMemo(() => {
+    const words = query.toLowerCase().split(/\s+/).filter(Boolean)
+    const byModel = new Map<string, ModelStats[]>()
+    for (const m of models) {
+      if (type && m.type !== type) continue
+      const text = `${m.garageNumber ?? ''} ${m.model} ${m.type}`.toLowerCase()
+      if (!words.every((w) => text.includes(w))) continue
+      byModel.set(m.model, [...(byModel.get(m.model) ?? []), m])
+    }
+    return [...byModel]
+  }, [models, query, type])
+  const picked = chosen.flatMap((id) => models.filter((m) => m.id === id))
+  const full = chosen.length >= MAX
+
+  return (
+    <Card
+      title="Техника"
+      action={
+        <span className="text-label text-ink-muted tabular">
+          выбрано {chosen.length} из {MAX}
+        </span>
+      }
+    >
+      <div className="grid gap-4">
+        <div className="flex min-h-7 flex-wrap items-center gap-2">
+          {picked.length ? (
+            picked.map((m) => (
+              <Chip
+                key={m.id}
+                onRemove={() => onToggle(m.id, false)}
+                removeLabel={`Убрать ${nameOf(m)}`}
+              >
+                {nameOf(m)}
+              </Chip>
+            ))
+          ) : (
+            <span className="text-label text-ink-muted">
+              Отметьте в списке от 2 до {MAX} единиц
+            </span>
+          )}
+        </div>
+
+        <div className="flex flex-col gap-3 sm:flex-row">
+          <SearchInput
+            aria-label="Поиск техники"
+            placeholder="Гаражный №, марка, модель…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="sm:flex-1"
+          />
+          {types.length > 1 && (
+            <Select
+              aria-label="Тип техники"
+              placeholder="Все типы"
+              options={types.map((t) => ({ value: t, label: t }))}
+              value={type}
+              onChange={(e) => setType(e.target.value)}
+              className="sm:w-56"
+            />
+          )}
+        </div>
+
+        <div className="-mx-5 max-h-80 overflow-y-auto border-y border-line">
+          {groups.length ? (
+            groups.map(([model, units]) => (
+              <div key={model} role="group" aria-label={model}>
+                {/* Sticks while its own units scroll by, so a long group keeps its name. */}
+                <div className="sticky top-0 z-10 flex items-baseline gap-2 bg-sheet px-5 pt-3 pb-1.5 text-ui font-medium">
+                  {model}
+                  <span className="text-label font-normal text-ink-muted">
+                    {units[0].type} · {units.length} ед.
+                  </span>
+                </div>
+                <div className="grid gap-x-6 gap-y-2.5 px-5 pb-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {units.map((m) => {
+                    const on = chosen.includes(m.id)
+                    return (
+                      <Checkbox
+                        key={m.id}
+                        label={<span className="break-words">{m.garageNumber ?? m.model}</span>}
+                        hint={`${formatNumber(m.hoses)} РВД`}
+                        checked={on}
+                        disabled={!on && full}
+                        onChange={(e) => onToggle(m.id, e.target.checked)}
+                      />
+                    )
+                  })}
+                </div>
+              </div>
+            ))
+          ) : (
+            <p className="px-5 py-8 text-center text-ink-muted">По запросу ничего не найдено</p>
+          )}
+        </div>
+      </div>
+    </Card>
   )
 }
 

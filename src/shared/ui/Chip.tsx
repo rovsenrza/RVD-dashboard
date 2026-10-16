@@ -2,7 +2,16 @@ import type { ReactNode } from 'react'
 import { X } from 'lucide-react'
 
 /** Removable filter chip. */
-export function Chip({ children, onRemove }: { children: ReactNode; onRemove?: () => void }) {
+export function Chip({
+  children,
+  onRemove,
+  removeLabel = 'Убрать фильтр',
+}: {
+  children: ReactNode
+  onRemove?: () => void
+  /** The remove button's accessible name, e.g. «Убрать НТ04» */
+  removeLabel?: string
+}) {
   return (
     <span className="inline-flex h-7 items-center gap-1 rounded-full bg-brand-soft py-1 pl-2.5 text-label font-medium text-brand-deep">
       {children}
@@ -10,7 +19,7 @@ export function Chip({ children, onRemove }: { children: ReactNode; onRemove?: (
         <button
           type="button"
           onClick={onRemove}
-          aria-label="Убрать фильтр"
+          aria-label={removeLabel}
           className="grid size-6 place-items-center rounded-full pointer-coarse:size-8 hover:bg-brand/30"
         >
           <X size={12} strokeWidth={2} />
