@@ -258,7 +258,8 @@ export function buildReport(id: ReportId, data: ReportData, params: ReportParams
           ...hoseCells(p),
           installed: start(p),
           planned: planned(p),
-          overdue: days(planned(p)!, today),
+          // Red starts a quarter before the planned day: until it passes, nothing is overdue.
+          overdue: Math.max(days(planned(p)!, today), 0) || null,
         }))
         .sort((a, b) => Number(b.overdue) - Number(a.overdue))
       break

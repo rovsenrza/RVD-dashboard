@@ -75,8 +75,8 @@ describe.skipIf(!hasDb)('machines and the dashboard from the cache', () => {
     expect(machines[1]).toMatchObject({
       hoseCount: 2,
       statusBreakdown: { ok: 1, warn: 0, replace: 1, no_warranty: 0 },
-      // ¾ of 180 days of warranty after h2's shipment
-      nextPlannedReplacement: '2026-01-14',
+      // The end of h2's 180 days of warranty after its shipment
+      nextPlannedReplacement: '2026-02-28',
     })
     expect(machines[0]).toMatchObject({
       hoseCount: 0,
@@ -115,7 +115,7 @@ describe.skipIf(!hasDb)('machines and the dashboard from the cache', () => {
         made: 0,
         replaced: 0,
       })),
-      upcoming: [{ productId: 'h1', serialNumber: '11', equipment: 'НТ08', dueDate: '2027-01-14' }],
+      upcoming: [{ productId: 'h1', serialNumber: '11', equipment: 'НТ08', dueDate: '2027-02-28' }],
     })
   })
 })

@@ -157,7 +157,7 @@ describe.skipIf(!hasDb)('products in the cache', () => {
     expect(life).toMatchObject({
       basis: 'installed',
       startedAt: '2026-08-01',
-      plannedAt: '2026-12-14',
+      plannedAt: '2027-01-28',
     })
     expect(life.phases.at(-1)).toEqual({
       status: 'no_warranty',

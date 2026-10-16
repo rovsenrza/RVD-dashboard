@@ -51,7 +51,7 @@ describe.skipIf(!hasDb)('letters, once there is a mail server', () => {
               serialNumber: '101',
               shippedAt: '2025-10-17',
               lifecycle: 'shipped',
-              warrantyDays: 487, // ¾ of it is 365: planned 17.10.2026
+              warrantyDays: 365, // planned at its end: 17.10.2026
             }),
             clientId: 'k1',
           },
@@ -108,7 +108,7 @@ describe.skipIf(!hasDb)('letters, once there is a mail server', () => {
     expect(letter.to).toBe('e@r.ru')
     expect(letter.subject).toBe('РВД Кабинет: № 101')
     expect(letter.text).toContain(
-      '• № 101: Плановая замена 17.10.2026 — через 14 дней. Пора заказать рукав',
+      '• № 101: Плановая замена 17.10.2026, конец гарантии — через 14 дней. Пора заказать рукав',
     )
     expect(letter.text).toContain('https://rvd.example.ru/notifications')
     // Once a day, however often the job runs.

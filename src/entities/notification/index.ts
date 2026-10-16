@@ -20,6 +20,7 @@ export {
   inspectionNoticeText,
   machineNoticeTitle,
   NOTIFICATION_KINDS,
+  SHOWN_NOTIFICATION_KINDS,
   NOTIFICATION_WINDOW_DAYS,
   requestNoticeText,
 } from '@rvd/contracts'

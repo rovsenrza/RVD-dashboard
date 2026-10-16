@@ -33,7 +33,9 @@ export interface ServiceDates {
   warrantyUntil: string
   /** «Внимание» from this day: half the warranty */
   warnFrom: string
-  /** Planned replacement, «Пора менять» from this day: three quarters of the warranty */
+  /** «Требуется замена» from this day: three quarters of the warranty */
+  replaceFrom: string
+  /** Planned replacement: the warranty's end, the same day as `warrantyUntil` (customer, 2026-10-16) */
   plannedAt: string
   /** The end of the stretch past the warranty, as long as «Пора менять»; the timeline stops here */
   endsAt: string
@@ -45,10 +47,12 @@ const plus = (iso: string, days: number) => day(addDays(parseISO(iso), days))
 /**
  * The customer's life of a hose (2026-10-11), all of it measured on the warranty:
  * green the first 50 %, yellow the next 25 %, red the last 25 %, then grey past
- * the warranty for as long as the red, after which the timeline stops.
+ * the warranty for as long as the red, after which the timeline stops. The
+ * planned replacement is the warranty's end, not the start of the red
+ * (customer, 2026-10-16): red is the time to replace it, the date the deadline.
  */
 export const warnDay = (warrantyDays: number) => Math.round(warrantyDays * 0.5)
-export const plannedDay = (warrantyDays: number) => Math.round(warrantyDays * 0.75)
+export const replaceDay = (warrantyDays: number) => Math.round(warrantyDays * 0.75)
 
 export function serviceDates(p: ServiceFacts, _rules?: StatusRules): ServiceDates | null {
   const start = p.installedAt || p.shippedAt
@@ -59,13 +63,14 @@ export function serviceDates(p: ServiceFacts, _rules?: StatusRules): ServiceDate
     basis: p.installedAt ? 'installed' : 'shipped',
     warrantyUntil: plus(start, w),
     warnFrom: plus(start, warnDay(w)),
-    plannedAt: plus(start, plannedDay(w)),
-    endsAt: plus(start, 2 * w - plannedDay(w)),
+    replaceFrom: plus(start, replaceDay(w)),
+    plannedAt: plus(start, w),
+    endsAt: plus(start, 2 * w - replaceDay(w)),
   }
 }
 
 /**
- * From the planned day on the hose is to be replaced, and stays so past the
+ * From three quarters of the warranty on the hose is to be replaced, and stays so past the
  * warranty: the grey stretch is a phase of the timeline, not a better status.
  * Every boundary day belongs to the later phase, as in `lifetimePhases`.
  */
@@ -73,7 +78,7 @@ export function statusOf(p: ServiceFacts, rules?: StatusRules, today = new Date(
   const d = serviceDates(p, rules)
   if (!d) return 'no_warranty'
   const t = day(today)
-  if (t >= d.plannedAt) return 'replace'
+  if (t >= d.replaceFrom) return 'replace'
   if (t >= d.warnFrom) return 'warn'
   return 'ok'
 }
@@ -82,8 +87,8 @@ export function statusOf(p: ServiceFacts, rules?: StatusRules, today = new Date(
 export function lifetimePhases(d: ServiceDates): LifetimePhase[] {
   return [
     { status: 'ok', from: d.start, to: d.warnFrom },
-    { status: 'warn', from: d.warnFrom, to: d.plannedAt },
-    { status: 'replace', from: d.plannedAt, to: d.warrantyUntil },
+    { status: 'warn', from: d.warnFrom, to: d.replaceFrom },
+    { status: 'replace', from: d.replaceFrom, to: d.warrantyUntil },
     { status: 'no_warranty', from: d.warrantyUntil, to: d.endsAt },
   ]
 }

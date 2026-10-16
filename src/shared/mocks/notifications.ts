@@ -81,7 +81,7 @@ export function notificationsFor(branch: string | null, today = new Date()): Cab
       })
     }
     for (const lead of settings.leadDays) {
-      fire('warranty_end', life.warrantyUntil, lead)
+      // The planned replacement is the warranty's end: one notice, as on the API.
       fire('planned_replacement', life.plannedAt, lead)
     }
     fire('overdue', life.plannedAt, 0)

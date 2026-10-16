@@ -25,7 +25,8 @@ describe('service life', () => {
     expect(life.phases.map((x) => x.status)).toEqual(['ok', 'warn', 'replace', 'no_warranty'])
     for (let i = 1; i < life.phases.length; i++)
       expect(life.phases[i].from).toBe(life.phases[i - 1].to)
-    expect(life.phases[2].from).toBe(life.plannedAt)
+    // The planned replacement is the warranty's last day, where grey begins (customer, 2026-10-16).
+    expect(life.plannedAt).toBe(life.warrantyUntil)
     expect(life.phases[3].from).toBe(life.warrantyUntil)
     expect(life.phases.at(-1)!.to).not.toBeNull()
   })

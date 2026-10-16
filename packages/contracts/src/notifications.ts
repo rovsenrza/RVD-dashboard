@@ -2,7 +2,7 @@ import type { NotificationKind, NotificationPrefs, RequestStatus } from './types
 
 /*
  * Notifications (Д19), worded once for the mock and the API. A hose notice fires
- * `lead` days before its date (warranty end, planned replacement) and on the day
+ * `lead` days before the planned replacement (the warranty's end) and on the day
  * the service life runs out; an inspection notice on a machine every so many
  * days (the company's setting), counted from its first hose in service; a
  * request notice when 1С closes the request.
@@ -18,6 +18,13 @@ export const NOTIFICATION_KINDS: readonly NotificationKind[] = [
   'inspection',
   'request_status',
 ]
+
+/**
+ * The kinds a person sees and chooses. The planned replacement is the warranty's
+ * end (customer, 2026-10-16), so «Окончание гарантии» would repeat it on the same
+ * days: it no longer fires. The kind stays in the type and in stored choices.
+ */
+export const SHOWN_NOTIFICATION_KINDS = NOTIFICATION_KINDS.filter((k) => k !== 'warranty_end')
 
 /** A person who never chose hears about everything, and by e-mail where the company allows it. */
 export const DEFAULT_NOTIFICATION_PREFS: Pick<NotificationPrefs, 'kinds' | 'email'> = {
@@ -53,7 +60,7 @@ export function hoseNoticeText(
 ): string {
   if (kind === 'warranty_end') return `Гарантия заканчивается ${dmy(due)} — ${inDays(lead)}`
   if (kind === 'planned_replacement')
-    return `Плановая замена ${dmy(due)} — ${inDays(lead)}. Пора заказать рукав`
+    return `Плановая замена ${dmy(due)}, конец гарантии — ${inDays(lead)}. Пора заказать рукав`
   return `Срок эксплуатации вышел ${dmy(due)} — рукав пора менять`
 }
 

@@ -24,7 +24,8 @@ describe('status rule', () => {
   it('lays the life out on the warranty: half ok, a quarter warn, a quarter replace, then grey', () => {
     expect(serviceDates(hose)).toMatchObject({
       warnFrom: '2026-06-30',
-      plannedAt: '2026-09-28',
+      replaceFrom: '2026-09-28',
+      plannedAt: '2026-12-27',
       warrantyUntil: '2026-12-27',
       endsAt: '2027-03-27',
     })
@@ -57,9 +58,10 @@ describe('status rule', () => {
   it('counts from shipment when the installation date is unknown', () => {
     const stock = { ...hose, installedAt: null }
     const d = serviceDates(stock, PERCENT)!
-    expect(d).toMatchObject({ start: '2025-12-20', basis: 'shipped', plannedAt: '2026-09-16' })
+    expect(d).toMatchObject({ start: '2025-12-20', basis: 'shipped', replaceFrom: '2026-09-16' })
+    expect(d.plannedAt).toBe(d.warrantyUntil)
     expect(statusOf(stock, PERCENT, on('2026-09-16'))).toBe('replace')
-    expect(daysLeft(stock, on('2026-09-06'))).toBe(10)
+    expect(daysLeft(stock, on('2026-09-06'))).toBe(100)
   })
 
   it('agrees with its own timeline on every day up to the grey stretch', () => {

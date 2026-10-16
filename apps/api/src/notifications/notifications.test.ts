@@ -46,8 +46,8 @@ describe.skipIf(!hasDb)('notifications on the server', () => {
     // Accounts older than the window, so it is the window that bounds the list.
     await db.query("update users set created_at = '2026-01-01'")
     const hose = (id: string, over: Partial<Product>) =>
-      // ¾ of 487 days of warranty is 365: the planned replacement a year after shipment.
-      product({ lifecycle: 'shipped', warrantyDays: 487, serviceLifeDays: 365, ...over, id })
+      // The planned replacement is the warranty's end: a year after shipment.
+      product({ lifecycle: 'shipped', warrantyDays: 365, serviceLifeDays: 365, ...over, id })
     await storeCache(
       db,
       {
@@ -107,7 +107,7 @@ describe.skipIf(!hasDb)('notifications on the server', () => {
     ])
     expect(notices[0]).toMatchObject({
       title: '№ 11 · НТ08',
-      message: 'Плановая замена 17.10.2026 — через 14 дней. Пора заказать рукав',
+      message: 'Плановая замена 17.10.2026, конец гарантии — через 14 дней. Пора заказать рукав',
       dueDate: '2026-10-17',
       read: false,
     })

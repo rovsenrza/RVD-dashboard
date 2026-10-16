@@ -5,9 +5,10 @@
  * holds the two implementations to the same answers.
  */
 const START = 'coalesce(installed_at, shipped_at)'
-const PLANNED_DAY = 'round(warranty_days * 0.75)::int'
+const REPLACE_FROM = `(${START} + round(warranty_days * 0.75)::int)`
 
-export const PLANNED_AT = `(${START} + ${PLANNED_DAY})`
+/** The planned replacement: the warranty's end (customer, 2026-10-16). */
+export const PLANNED_AT = `(${START} + warranty_days)`
 export const WARN_FROM = `(${START} + round(warranty_days * 0.5)::int)`
 
 // $2–$4 still arrive with every query but the rule no longer reads them; naming
@@ -15,7 +16,7 @@ export const WARN_FROM = `(${START} + round(warranty_days * 0.5)::int)`
 export const STATUS_SQL = `case
   when ($2::text, $3::numeric, $4::numeric) is null then 'no_warranty'
   when ${START} is null or warranty_days <= 0 then 'no_warranty'
-  when $1::date >= ${PLANNED_AT} then 'replace'
+  when $1::date >= ${REPLACE_FROM} then 'replace'
   when $1::date >= ${WARN_FROM} then 'warn'
   else 'ok' end`
 

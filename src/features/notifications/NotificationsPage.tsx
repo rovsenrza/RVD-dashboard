@@ -8,7 +8,7 @@ import { INSPECTION_LABEL } from '@/entities/settings'
 import {
   NOTIFICATION_KIND_HINT,
   NOTIFICATION_KIND_LABEL,
-  NOTIFICATION_KINDS,
+  SHOWN_NOTIFICATION_KINDS,
   notificationTarget,
 } from '@/entities/notification'
 import { useSession } from '@/app/session'
@@ -55,7 +55,7 @@ export function NotificationsPage() {
   const navigate = useNavigate()
   const [params, setParams] = useSearchParams()
   const tab: Tab = params.get('tab') === 'unread' ? 'unread' : 'all'
-  const kind = NOTIFICATION_KINDS.find((k) => k === params.get('kind')) ?? null
+  const kind = SHOWN_NOTIFICATION_KINDS.find((k) => k === params.get('kind')) ?? null
   const [shown, setShown] = useState(PAGE)
   // «Настройки уведомлений» in the user menu lands on the preferences, not the top of the list.
   const { hash } = useLocation()
@@ -117,7 +117,7 @@ export function NotificationsPage() {
               value={kind ?? ''}
               onChange={(e) => set('kind', e.target.value || null)}
               placeholder="Все правила"
-              options={NOTIFICATION_KINDS.map((k) => ({
+              options={SHOWN_NOTIFICATION_KINDS.map((k) => ({
                 value: k,
                 label: NOTIFICATION_KIND_LABEL[k],
               }))}
@@ -225,7 +225,7 @@ function PrefsCard() {
           <>
             <fieldset className="grid gap-3">
               <legend className="sr-only">Правила</legend>
-              {NOTIFICATION_KINDS.map((k: NotificationKind) => (
+              {SHOWN_NOTIFICATION_KINDS.map((k: NotificationKind) => (
                 <Checkbox
                   key={k}
                   label={NOTIFICATION_KIND_LABEL[k]}

@@ -63,7 +63,7 @@ describe('toEquipment', () => {
   })
 
   it('reports the earliest planned replacement', () => {
-    expect(build()[0].nextPlannedReplacement).toBe('2026-01-14') // h2: three quarters of 180 days
+    expect(build()[0].nextPlannedReplacement).toBe('2026-02-28') // h2: the end of its 180-day warranty
   })
 
   it('leaves out the «Без привязки» placeholders and names a machine without a garage number', () => {

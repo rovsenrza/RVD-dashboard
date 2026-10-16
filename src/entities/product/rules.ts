@@ -9,7 +9,7 @@ export {
   serviceDates,
   statusOf,
   warnRuleLabel,
-  plannedDay,
+  replaceDay,
   warnDay,
   type ServiceBasis,
   type ServiceDates,

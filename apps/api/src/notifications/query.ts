@@ -91,13 +91,11 @@ export async function listNotifications(
          and coalesce(installed_at, shipped_at) is not null
      ),
      f as (
-       select p.*, 'warranty_end' as kind, l as lead, start + warranty_days as due
+       -- The planned replacement is the warranty's end: one notice, not a second «warranty_end».
+       select p.*, 'planned_replacement' as kind, l as lead, start + warranty_days as due
          from p cross join unnest($3::int[]) as l where warranty_days > 0
        union all
-       select p.*, 'planned_replacement', l, start + round(warranty_days * 0.75)::int
-         from p cross join unnest($3::int[]) as l where warranty_days > 0
-       union all
-       select p.*, 'overdue', 0, start + round(warranty_days * 0.75)::int from p where warranty_days > 0
+       select p.*, 'overdue', 0, start + warranty_days from p where warranty_days > 0
      )
      select f.kind, f.lead, f.id, f.serial_number, e.garage_number, f.branch_id,
        to_char(f.due, 'YYYY-MM-DD') as due, to_char(f.due - f.lead, 'YYYY-MM-DD') as fired

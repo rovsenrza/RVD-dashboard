@@ -96,7 +96,7 @@ describe.skipIf(!hasDb)('reports and the model comparison on the server', () => 
       ['12', 'НТ08', '2025-12-01', 'warn'],
       ['13', 'НТ08', '2026-10-01', 'ok'],
     ])
-    expect(registry.rows[0].left).toBe(-32)
+    expect(registry.rows[0].left).toBe(90)
     // Narrowed to what was shipped in a period: h1 (01.09.2025) falls out.
     const lately = await report('/reports/registry?from=2025-11-01&to=2026-10-03')
     expect(lately.rows.map((r) => r.serial)).toEqual(['12', '13'])
@@ -104,13 +104,16 @@ describe.skipIf(!hasDb)('reports and the model comparison on the server', () => 
 
   it('lists what is due and what the next quarter needs', async () => {
     expect((await report('/reports/due')).rows.map((r) => [r.serial, r.overdue])).toEqual([
-      ['11', 32],
+      ['11', null],
     ])
-    const plan = await report('/reports/plan?from=2026-10-03&to=2026-12-31')
-    expect(plan.period).toEqual({ from: '2026-10-03', to: '2026-12-31' })
+    // Planned at the warranty's end: none falls in this quarter, three by the end of April.
+    expect((await report('/reports/plan?from=2026-10-03&to=2026-12-31')).rows).toEqual([])
+    const plan = await report('/reports/plan?from=2026-10-03&to=2027-04-30')
+    expect(plan.period).toEqual({ from: '2026-10-03', to: '2027-04-30' })
     expect(plan.rows.map((r) => [r.planned, r.serial])).toEqual([
-      ['2026-09-01', '11'],
-      ['2026-12-01', '12'],
+      ['2027-01-01', '11'],
+      ['2027-03-30', '13'],
+      ['2027-04-02', '12'],
     ])
   })
 
