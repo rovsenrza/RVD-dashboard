@@ -72,7 +72,10 @@ function Timeline({ life, onAskDate }: { life: Lifetime; onAskDate?: () => void 
 
   const age = days(life.startedAt, now)
   const left = days(now, life.plannedAt)
-  const current = life.phases.find((p) => p.from <= now && (!p.to || now < p.to)) ?? life.phases[0]
+  // Past the end of the timeline the hose is still in its last phase, not back to the first.
+  const current =
+    life.phases.find((p) => p.from <= now && (!p.to || now < p.to)) ??
+    (now < life.phases[0].from ? life.phases[0] : life.phases.at(-1)!)
   const warrantyOver = life.warrantyUntil <= now
 
   return (
