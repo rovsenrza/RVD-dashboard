@@ -4,6 +4,8 @@ import { USAGE_UNIT_LABEL } from '@/entities/replacement'
 import { formatNumber } from '@/shared/lib/utils'
 
 const pct = (part: number, whole: number) => (whole ? Math.round((part / whole) * 100) : 0)
+/** «3 · 12 %»; a machine with no hoses has no share, and shows it, rather than a 0 % that never wins. */
+const share = (part: number, whole: number) => (whole ? `${part} · ${pct(part, whole)} %` : '—')
 
 /** One comparison row: how to read it and, where one exists, which direction is better. */
 export interface Metric {
@@ -22,13 +24,13 @@ export const METRICS: Metric[] = [
   { label: 'РВД на технике', value: (m) => formatNumber(m.hoses) },
   {
     label: 'Требуют замены',
-    value: (m) => `${m.breakdown.replace} · ${pct(m.breakdown.replace, m.hoses)} %`,
+    value: (m) => share(m.breakdown.replace, m.hoses),
     score: (m) => (m.hoses ? pct(m.breakdown.replace, m.hoses) : null),
     better: 'lower',
   },
   {
     label: 'Внимание',
-    value: (m) => `${m.breakdown.warn} · ${pct(m.breakdown.warn, m.hoses)} %`,
+    value: (m) => share(m.breakdown.warn, m.hoses),
   },
   {
     label: 'Замен за 12 месяцев',

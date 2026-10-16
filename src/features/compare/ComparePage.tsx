@@ -357,6 +357,10 @@ function ComparisonTable({ models }: { models: ModelStats[] }) {
   return (
     <Card title="Сравнение">
       <DataTable embedded data={rows} columns={columns} pageSize={20} />
+      <p className="mt-3 text-label text-ink-muted">
+        «Лучше» — лучший результат среди выбранных машин там, где ясно, что лучше: меньше РВД к
+        замене, меньше замен и поломок, дольше срок службы. Машина без РВД в долях не участвует.
+      </p>
     </Card>
   )
 }

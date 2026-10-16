@@ -55,3 +55,15 @@ describe('best model per metric', () => {
     expect(bestOf(metric('Требуют замены'), [small, large])).toBe('Large')
   })
 })
+
+describe('shares on a machine without hoses', () => {
+  it('reads «—», not a 0 % that would look tied with the winner', () => {
+    const empty = model('E', {
+      hoses: 0,
+      breakdown: { ok: 0, warn: 0, replace: 0, no_warranty: 0 },
+    })
+    expect(metric('Требуют замены').value(empty)).toBe('—')
+    expect(metric('Внимание').value(empty)).toBe('—')
+    expect(metric('Требуют замены').value(model('A', {}))).toBe('2 · 5 %')
+  })
+})
