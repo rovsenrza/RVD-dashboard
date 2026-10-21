@@ -3,6 +3,7 @@ import type { Db } from '../db/pool.ts'
 import type { FileStore } from '../files/storage.ts'
 import type { Mailer } from '../mail/mail.ts'
 import type { OrderPayload, OrderResult, OrderService } from '../onec/orders.ts'
+import { mailboxFor } from '../supplier/supplier.ts'
 
 /** A letter's files together stay under what mail servers usually take. */
 const ATTACH_LIMIT = 15 * 1024 * 1024
@@ -25,6 +26,7 @@ interface LineFacts {
 export class MailOrderService implements OrderService {
   private readonly db: Db
   private readonly mailer: Mailer
+  /** The server's mailbox, for a client whose supplier branch has none of its own */
   private readonly to: string
   private readonly files?: FileStore
 
@@ -38,11 +40,12 @@ export class MailOrderService implements OrderService {
   async create(payload: OrderPayload): Promise<OrderResult> {
     const { rows } = await this.db.query<{
       positions: RequestPosition[]
+      client_id: string | null
       client_name: string | null
       company: string | null
       created_at: Date
     }>(
-      `select r.positions, b.name as client_name, c.name as company, r.created_at
+      `select r.positions, r.client_id, b.name as client_name, c.name as company, r.created_at
        from requests r
        left join company_branches b on b.client_key = r.client_id
        left join companies c on c.id = b.company_id
@@ -73,7 +76,8 @@ export class MailOrderService implements OrderService {
     })
     const client = r.client_name ?? r.company ?? payload.client
     await this.mailer.send({
-      to: this.to,
+      // The mailbox of the supplier branch serving the client (customer, 2026-10-22).
+      to: (await mailboxFor(this.db, r.client_id, 'requests', this.to)) ?? this.to,
       replyTo: payload.author.email ?? undefined,
       subject: `РВД Кабинет: заявка «${REQUEST_KIND_LABEL[payload.kind]}» — ${client}`,
       text: [

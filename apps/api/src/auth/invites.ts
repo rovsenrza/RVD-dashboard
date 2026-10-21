@@ -11,7 +11,8 @@ import { AuthRejected, setOwnPassword } from './service.ts'
 const HOURS = 48
 const hash = (token: string) => createHash('sha256').update(token).digest('hex')
 
-export type InviteKind = 'welcome' | 'reset'
+/** `forgot` — the person asked themselves («Забыли пароль?»). */
+export type InviteKind = 'welcome' | 'reset' | 'forgot'
 
 /** A fresh link for the user; any link sent before stops working. */
 export async function createInvite(db: Db, userId: string): Promise<string> {
@@ -64,7 +65,9 @@ export function inviteLetter(
   const lead =
     kind === 'welcome'
       ? `для вас открыт доступ в «РВД Кабинет» компании ${to.company}.`
-      : 'администратор вашей компании сбросил пароль для входа в «РВД Кабинет».'
+      : kind === 'forgot'
+        ? 'вы попросили задать новый пароль для входа в «РВД Кабинет».'
+        : 'администратор вашей компании сбросил пароль для входа в «РВД Кабинет».'
   return {
     to: to.email,
     subject: kind === 'welcome' ? 'Доступ в «РВД Кабинет»' : 'Новый пароль для «РВД Кабинета»',

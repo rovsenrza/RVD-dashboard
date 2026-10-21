@@ -7,6 +7,15 @@ export const isBranchBound = (role: UserRole) => role === 'mechanic'
 
 export const MIN_PASSWORD_LENGTH = 10
 
+/**
+ * The supplier's mail domains (customer, 2026-10-22): its staff have addresses here, and
+ * «Забыли пароль?» sends a link to no other address.
+ */
+export const SUPPLIER_DOMAINS = ['vgiz.ru', 'snabsv.ru']
+
+export const isSupplierEmail = (email: string) =>
+  SUPPLIER_DOMAINS.includes(email.trim().toLowerCase().split('@')[1] ?? '')
+
 /** Refusals a form shows under the field they are about, so the API and the form share the words. */
 export const EMAIL_TAKEN = 'Пользователь с такой почтой уже есть'
 export const WRONG_CURRENT_PASSWORD = 'Текущий пароль не подходит'

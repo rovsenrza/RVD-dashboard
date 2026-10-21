@@ -14,7 +14,10 @@ export async function recordAudit(db: Db, actor: Identity, note: AuditNote): Pro
     [
       actor.companyId,
       actor.userId,
-      actor.name,
+      // A supplier's staff member looking as one of the company's people is named too.
+      actor.actor && actor.actor.id !== actor.userId
+        ? `${actor.name} (вход сотрудника поставщика: ${actor.actor.name})`
+        : actor.name,
       note.action,
       note.target.kind,
       note.target.id,

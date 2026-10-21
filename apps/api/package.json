@@ -13,6 +13,7 @@
     "fake-1c": "tsx src/onec/fake-orders.ts",
     "user:add": "tsx --env-file=../../.env src/auth/cli.ts",
     "branch:add": "tsx --env-file=../../.env src/auth/branch-cli.ts",
+    "staff:add": "tsx --env-file=../../.env src/supplier/staff-cli.ts",
     "perf": "tsx --env-file=../../.env src/perf/bench.ts"
   },
   "dependencies": {

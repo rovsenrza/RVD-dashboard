@@ -8,6 +8,7 @@ import {
 } from '@rvd/contracts'
 import type { Db } from '../db/pool.ts'
 import { listNotifications, notificationPrefs } from '../notifications/query.ts'
+import { mailboxFor } from '../supplier/supplier.ts'
 
 /*
  * Mail (Д19, «Связаться со специалистом»): nothing here runs until the
@@ -61,10 +62,11 @@ interface MessageRow {
 export async function deliverSupport(
   db: Db,
   mailer: Mailer,
-  to: string,
+  fallback: string | undefined,
 ): Promise<{ sent: number; failed: number }> {
-  const { rows } = await db.query<MessageRow>(
+  const { rows } = await db.query<MessageRow & { client_key: string | null }>(
     `select m.id, m.author_name, m.author_email, c.name as company, m.topic, p.serial_number as serial,
+       coalesce(p.client_id, c.onec_client_key) as client_key,
        to_char(coalesce(p.installed_at, p.shipped_at), 'YYYY-MM-DD') as shown_date,
        to_char(m.installed_at, 'YYYY-MM-DD') as installed_at, m.text, m.created_at
      from support_messages m
@@ -76,6 +78,9 @@ export async function deliverSupport(
   let sent = 0
   let failed = 0
   for (const m of rows) {
+    // The supplier branch's mailbox, else the general one, else the server's (2026-10-22).
+    const to = await mailboxFor(db, m.client_key, 'support', fallback)
+    if (!to) continue
     const lines = [
       `Тема: ${SUPPORT_TOPIC_LABEL[m.topic]}`,
       m.serial && `Изделие: № ${m.serial}`,
@@ -225,7 +230,7 @@ export async function sendDigests(
 
 export interface MailJobOptions {
   intervalMs: number
-  /** Where messages to the specialist go (question 15); unset — they wait */
+  /** Where messages to the specialist go (question 15) when no supplier mailbox is set; none — they wait */
   supportTo?: string
   /** Where letters about data 1С keeps twice and differently go (question 24); unset — they wait */
   dataIssuesTo?: string
@@ -242,7 +247,7 @@ export function startMail(db: Db, mailer: Mailer, options: MailJobOptions) {
     if (busy) return
     busy = true
     try {
-      if (options.supportTo) await deliverSupport(db, mailer, options.supportTo)
+      await deliverSupport(db, mailer, options.supportTo)
       if (options.dataIssuesTo) await deliverDataIssues(db, mailer, options.dataIssuesTo)
       const now = new Date()
       if (now.getHours() >= options.digestHour)

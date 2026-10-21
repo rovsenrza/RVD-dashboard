@@ -125,9 +125,24 @@ async function byKeys<T>(
   return out
 }
 
-/** The clients' names, for the letter about data 1С keeps twice and differently (question 24). */
-export const fetchClients = (client: ODataClient) =>
-  client.all<RawNamed>('Catalog_Клиенты', { select: ['Ref_Key', 'Description'] })
+/**
+ * The clients: their names for the letter about data 1С keeps twice and differently
+ * (question 24); with the supplier branch and INN for registering a company (2026-10-22).
+ */
+export const fetchClients = (client: ODataClient, spare: Spare = asIs) =>
+  spare<RawNamed>('Catalog_Клиенты', () =>
+    client.all<RawNamed>('Catalog_Клиенты', {
+      select: ['Ref_Key', 'Description', 'ИНН', 'Филиал_Key', 'DeletionMark'],
+    }),
+  )
+
+/** The supplier's branches, whose mailboxes a client's letters go to (2026-10-22). */
+export const fetchFilials = (client: ODataClient, spare: Spare = asIs) =>
+  spare<RawNamed>('Catalog_Филиалы', () =>
+    client.all<RawNamed>('Catalog_Филиалы', {
+      select: ['Ref_Key', 'Description', 'DeletionMark'],
+    }),
+  )
 
 /** Every item's version, cheap enough to read on each check (4 269 items: under a second). */
 export const fetchVersions = (client: ODataClient) =>

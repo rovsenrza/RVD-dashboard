@@ -29,6 +29,10 @@ export interface Identity {
   branches: IdentityBranch[]
   /** Signed in with a password the administrator gave; only replacing it is allowed */
   mustChangePassword: boolean
+  /** One of the supplier's staff (customer, 2026-10-22) */
+  staff: boolean
+  /** The staff member looking at this company as it sees itself, when one is */
+  actor?: { id: string; name: string }
 }
 
 interface AccessClaims {
@@ -42,6 +46,10 @@ interface AccessClaims {
   br: [string, string][]
   /** Must change the password */
   mcp?: true
+  /** Supplier staff */
+  stf?: true
+  /** The staff member acting: [id, name] */
+  act?: [string, string]
   iat: number
   exp: number
 }
@@ -71,6 +79,8 @@ export function issueAccess(identity: Identity, secret: string, now = new Date()
     cname: identity.companyName,
     br: identity.branches.map((b) => [b.id, b.name]),
     ...(identity.mustChangePassword && { mcp: true as const }),
+    ...(identity.staff && { stf: true as const }),
+    ...(identity.actor && { act: [identity.actor.id, identity.actor.name] as [string, string] }),
     iat,
     exp: iat + ACCESS_SECONDS,
   }
@@ -90,6 +100,8 @@ export function readAccess(token: string, secret: string, now = Date.now()): Ide
         companyName: c.cname,
         branches: c.br.map(([id, name]) => ({ id, name })),
         mustChangePassword: c.mcp === true,
+        staff: c.stf === true,
+        ...(c.act && { actor: { id: c.act[0], name: c.act[1] } }),
       }
     : null
 }
@@ -103,6 +115,8 @@ export const signedIn = (identity: Identity, accessToken: string): SignedIn => (
   company: { id: identity.companyId, name: identity.companyName },
   branches: identity.branches.map((b) => ({ ...b, companyId: identity.companyId })),
   mustChangePassword: identity.mustChangePassword,
+  staff: identity.staff,
+  actingBy: identity.actor?.name ?? null,
 })
 
 /** The person's branches as JSON; none of their own — every branch of the company. */
@@ -115,25 +129,88 @@ const BRANCHES = `coalesce(
     '[]')`
 
 const IDENTITY = `select u.id as "userId", u.name, u.email, u.role, u.active, u.password_hash,
-    u.must_change_password as "mustChangePassword",
+    u.must_change_password as "mustChangePassword", c.kind = 'supplier' as staff,
+    c.active as "companyActive",
     c.id as "companyId", c.name as "companyName", ${BRANCHES} as branches
   from users u join companies c on c.id = u.company_id`
 
-type IdentityRow = Identity & { active: boolean; password_hash: string }
+type IdentityRow = Identity & { active: boolean; companyActive: boolean; password_hash: string }
 
-const identityOf = ({ active: _a, password_hash: _p, ...identity }: IdentityRow): Identity =>
-  identity
+const identityOf = ({
+  active: _a,
+  companyActive: _c,
+  password_hash: _p,
+  ...identity
+}: IdentityRow): Identity => identity
+
+/** A staff sign-in looking at a company: as one of its people, or (no user) as its hidden administrator. */
+export interface Acting {
+  companyId: string
+  userId: string | null
+}
+
+/**
+ * Who a staff member is while looking at a company: the person they chose —
+ * their branches and role, never their password to change — or an administrator
+ * of the company that is in none of its lists, with every branch. Null when the
+ * company or the person is gone or switched off.
+ */
+async function actingIdentity(
+  db: Pick<Db, 'query'>,
+  staff: Identity,
+  acting: Acting,
+): Promise<Identity | null> {
+  const actor = { id: staff.userId, name: staff.name }
+  if (acting.userId) {
+    const { rows } = await db.query<IdentityRow>(
+      `${IDENTITY} where u.id = $1 and c.id = $2 and c.kind = 'client'`,
+      [acting.userId, acting.companyId],
+    )
+    const row = rows[0]
+    if (!row || !row.active || !row.companyActive) return null
+    return { ...identityOf(row), mustChangePassword: false, actor }
+  }
+  const { rows } = await db.query<{ name: string; branches: IdentityBranch[] }>(
+    `select c.name, coalesce(
+       (select json_agg(json_build_object('id', b.client_key, 'name', b.name) order by b.name)
+          from company_branches b where b.company_id = c.id), '[]') as branches
+     from companies c where c.id = $1 and c.kind = 'client' and c.active`,
+    [acting.companyId],
+  )
+  if (!rows[0]) return null
+  return {
+    userId: staff.userId,
+    name: `${staff.name} (поставщик)`,
+    email: staff.email,
+    role: 'admin',
+    companyId: acting.companyId,
+    companyName: rows[0].name,
+    branches: rows[0].branches,
+    mustChangePassword: false,
+    staff: false,
+    actor,
+  }
+}
 
 async function openSession(
   db: Pick<Db, 'query'>,
   userId: string,
   now: Date,
+  acting: Acting | null = null,
 ): Promise<{ id: string; token: string }> {
   const id = randomUUID()
   const token = randomBytes(32).toString('base64url')
   await db.query(
-    `insert into sessions (id, user_id, token_hash, expires_at) values ($1, $2, $3, $4)`,
-    [id, userId, hashToken(token), new Date(now.getTime() + REFRESH_DAYS * 86_400_000)],
+    `insert into sessions (id, user_id, token_hash, expires_at, acting_company, acting_user)
+     values ($1, $2, $3, $4, $5, $6)`,
+    [
+      id,
+      userId,
+      hashToken(token),
+      new Date(now.getTime() + REFRESH_DAYS * 86_400_000),
+      acting?.companyId ?? null,
+      acting?.userId ?? null,
+    ],
   )
   return { id, token }
 }
@@ -152,7 +229,7 @@ export async function login(
   const row = rows[0]
   // The same work whether or not the user exists, so timing says nothing about the e-mail.
   const ok = await verifyPassword(password, row?.password_hash ?? DUMMY_HASH)
-  if (!row || !row.active || !ok) return null
+  if (!row || !row.active || !row.companyActive || !ok) return null
   await db.query('update users set last_login_at = $2 where id = $1', [row.userId, now])
   const identity = identityOf(row)
   return {
@@ -181,25 +258,37 @@ export async function refresh(
   const hash = hashToken(token)
   const client = await db.connect()
   let userId: string | undefined
+  let acting: Acting | null = null
   let refreshToken: string | null = null
   try {
     await client.query('begin')
-    const claimed = await client.query<{ id: string; user_id: string }>(
+    const claimed = await client.query<{
+      id: string
+      user_id: string
+      acting_company: string | null
+      acting_user: string | null
+    }>(
       `update sessions s set revoked_at = $2
         where s.token_hash = $1 and s.revoked_at is null and s.expires_at > $2
-          and exists (select 1 from users u where u.id = s.user_id and u.active)
-        returning s.id, s.user_id`,
+          and exists (select 1 from users u join companies c on c.id = u.company_id
+                       where u.id = s.user_id and u.active and c.active)
+        returning s.id, s.user_id, s.acting_company, s.acting_user`,
       [hash, now],
     )
     if (claimed.rows.length) {
-      const { id, user_id } = claimed.rows[0]
-      const successor = await openSession(client, user_id, now)
+      const { id, user_id, acting_company, acting_user } = claimed.rows[0]
+      acting = acting_company ? { companyId: acting_company, userId: acting_user } : null
+      const successor = await openSession(client, user_id, now, acting)
       await client.query('update sessions set replaced_by = $2 where id = $1', [id, successor.id])
       userId = user_id
       refreshToken = successor.token
     } else {
-      const raced = await client.query<{ user_id: string }>(
-        `select s.user_id from sessions s
+      const raced = await client.query<{
+        user_id: string
+        acting_company: string | null
+        acting_user: string | null
+      }>(
+        `select s.user_id, s.acting_company, s.acting_user from sessions s
            join sessions next on next.id = s.replaced_by
            join users u on u.id = s.user_id
           where s.token_hash = $1 and s.revoked_at > $3 and u.active
@@ -207,6 +296,8 @@ export async function refresh(
         [hash, now, new Date(now.getTime() - RACE_SECONDS * 1000)],
       )
       userId = raced.rows[0]?.user_id
+      const r = raced.rows[0]
+      acting = r?.acting_company ? { companyId: r.acting_company, userId: r.acting_user } : null
     }
     await client.query('commit')
   } catch (error) {
@@ -218,8 +309,37 @@ export async function refresh(
   if (!userId) return null
   const { rows } = await db.query<IdentityRow>(`${IDENTITY} where u.id = $1`, [userId])
   if (!rows[0]) return null
-  const identity = identityOf(rows[0])
+  const own = identityOf(rows[0])
+  // A company switched off, or a person gone, while a staff member looked: back to their own.
+  const identity = (acting && own.staff && (await actingIdentity(db, own, acting))) || own
   return { identity, accessToken: issueAccess(identity, secret, now), refreshToken }
+}
+
+/**
+ * A staff member starts (or, with `acting` null, stops) looking at a company: their
+ * current sign-in ends and a new one carries the choice through every renewal.
+ */
+export async function switchActing(
+  db: Db,
+  secret: string,
+  staffId: string,
+  acting: Acting | null,
+  currentToken: string | undefined,
+  now = new Date(),
+): Promise<{ identity: Identity; accessToken: string; refreshToken: string }> {
+  const { rows } = await db.query<IdentityRow>(`${IDENTITY} where u.id = $1`, [staffId])
+  const row = rows[0]
+  if (!row || !row.active || !row.companyActive || !row.staff)
+    throw new AuthRejected(403, 'Раздел для сотрудников поставщика')
+  const own = identityOf(row)
+  const identity = acting ? await actingIdentity(db, own, acting) : own
+  if (!identity) throw new AuthRejected(404, 'Компания или пользователь отключены')
+  if (currentToken) await logout(db, currentToken, now)
+  return {
+    identity,
+    accessToken: issueAccess(identity, secret, now),
+    refreshToken: (await openSession(db, staffId, now, acting)).token,
+  }
 }
 
 export async function logout(db: Db, token: string, now = new Date()): Promise<void> {

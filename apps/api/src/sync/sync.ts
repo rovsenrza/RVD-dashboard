@@ -7,6 +7,7 @@ import { replacedBy, toProducts } from '../onec/adapters/product.ts'
 import type { ODataClient } from '../onec/client.ts'
 import {
   fetchClients,
+  fetchFilials,
   fetchRegisterSince,
   fetchSources,
   fetchSourcesFor,
@@ -140,10 +141,12 @@ export async function runSync(
   // Only the items and their register are a must; any other set or step that fails is
   // noted, stood in for or skipped, and the rest syncs (1С developer, 2026-10-22).
   const failed: SetFailure[] = []
+  const spare = spareFor(db, failed)
   const [sources, clients, documents] = await Promise.all([
-    fetchSources(client, spareFor(db, failed)),
-    optional(failed, 'Catalog_Клиенты', () => fetchClients(client), null),
+    fetchSources(client, spare),
+    optional(failed, 'Catalog_Клиенты', () => fetchClients(client, spare), null),
     optional(failed, 'Document_Выпуск (версии)', () => fetchReleaseVersions(client), []),
+    optional(failed, 'Catalog_Филиалы', () => fetchFilials(client, spare), []),
   ])
   const cache = adapt(sources)
   await storeCache(db, cache, Date.now() - started)

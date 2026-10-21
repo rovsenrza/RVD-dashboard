@@ -530,4 +530,36 @@ export interface SignedIn {
   branches: Branch[]
   /** Signed in with a password the administrator gave: the cabinet opens once it is replaced. */
   mustChangePassword: boolean
+  /** One of the supplier's staff: their own section, not a company's data */
+  staff?: boolean
+  /** A staff member looking at this company as it sees itself: their name */
+  actingBy?: string | null
+}
+
+/** A client company as the supplier's staff see it (customer, 2026-10-22). */
+export interface SupplierCompany {
+  id: string
+  name: string
+  active: boolean
+  /** Its 1С clients */
+  branches: { id: string; name: string }[]
+  users: { id: string; name: string; email: string; role: UserRole; active: boolean }[]
+}
+
+/** A client in 1С, for registering one: whose it is already, and its supplier branch. */
+export interface OnecClient {
+  id: string
+  name: string
+  inn: string | null
+  filialId: string | null
+  /** The company it is a branch of, if any */
+  companyId: string | null
+}
+
+/** Where a supplier branch's letters go; `filialId` '' — the general mailbox. */
+export interface SupplierMailbox {
+  filialId: string
+  name: string
+  requestsEmail: string | null
+  supportEmail: string | null
 }

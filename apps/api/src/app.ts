@@ -19,7 +19,9 @@ import {
   settingsPatch,
   settingsView,
   userView,
+  isSupplierEmail,
   type PasswordDelivery,
+  type SupplierMailbox,
   type UserCreated,
   type UserRole,
   WRONG_CURRENT_PASSWORD,
@@ -53,6 +55,7 @@ import {
   refresh,
   REFRESH_DAYS,
   signedIn,
+  switchActing,
   type Identity,
 } from './auth/service.ts'
 import {
@@ -80,6 +83,16 @@ import { getProduct, listProducts, type Clock } from './products/query.ts'
 import { listReplacements } from './replacements/query.ts'
 import { companyModels, companyReport } from './reports/query.ts'
 import { syncStatus } from './sync/health.ts'
+import {
+  addCompanyBranch,
+  createCompany,
+  listCompanies,
+  listMailboxes,
+  listOnecClients,
+  saveMailboxes,
+  setCompanyActive,
+  type NewCompany,
+} from './supplier/supplier.ts'
 import type { Mail } from './mail/mail.ts'
 import { createFiles } from './files/attachments.ts'
 import {
@@ -154,6 +167,7 @@ export const DEMO_IDENTITY: Identity = {
   companyName: 'Демо-клиент',
   branches: [],
   mustChangePassword: false,
+  staff: false,
 }
 
 const cookieOf = (req: FastifyRequest, name: string) =>
@@ -163,7 +177,14 @@ const cookieOf = (req: FastifyRequest, name: string) =>
     .find(([key]) => key === name)?.[1]
 
 /** Routes anyone may call: the health check and getting a session. */
-const OPEN = new Set(['/health', '/auth/login', '/auth/refresh', '/auth/logout', '/auth/invite'])
+const OPEN = new Set([
+  '/health',
+  '/auth/login',
+  '/auth/refresh',
+  '/auth/logout',
+  '/auth/invite',
+  '/auth/forgot',
+])
 /** All a person signed in with an administrator's one-time password may do until they replace it. */
 const WHILE_TEMPORARY = new Set(['/auth/password', '/me'])
 
@@ -392,6 +413,8 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
       async (req, reply) => {
         if (!secret || !req.identity)
           return reply.code(404).send({ message: 'Вход в этом кабинете выключен' })
+        if (req.identity.actor)
+          return reply.code(403).send({ message: 'Пароль меняет сам пользователь' })
         const identity = req.identity
         // A stolen session must not guess the current password either.
         const key = `account:${identity.email.toLowerCase()}`
@@ -412,6 +435,186 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
       },
     )
 
+    /**
+     * How a new or reset password reaches the person: by mail, a link to set their own
+     * (when SMTP and the cabinet's address are known); otherwise — or if the letter
+     * fails — the one-time password, shown once to whoever made it.
+     */
+    const deliver = async (
+      req: FastifyRequest,
+      user: { id: string; name: string; email: string },
+      kind: InviteKind,
+      password: string,
+      company = req.identity!.companyName,
+    ): Promise<PasswordDelivery> => {
+      const mail = options.mail
+      if (!mail) return { kind: 'password', password }
+      try {
+        const token = await createInvite(db, user.id)
+        const link = `${mail.cabinetUrl.replace(/\/+$/, '')}/invite?token=${token}`
+        await mail.send(inviteLetter(kind, { ...user, company }, link))
+        return { kind: 'email', sentTo: user.email }
+      } catch (error) {
+        req.log.error({ err: error }, 'приглашение не отправлено')
+        return { kind: 'password', password }
+      }
+    }
+
+    // «Забыли пароль?» (customer, 2026-10-22): a link to set a new one, only ever to an address
+    // of the supplier's own domains; the answer is the same whoever asks, so it tells nothing.
+    app.post<{ Body: { email?: unknown } }>('/auth/forgot', async (req, reply) => {
+      const email = String(req.body?.email ?? '').trim()
+      const key = `address:${req.ip}`
+      const wait = addresses.wait(key)
+      if (wait) return tooMany(reply, wait)
+      addresses.fail(key)
+      const mail = options.mail
+      if (secret && mail && isSupplierEmail(email)) {
+        const { rows } = await db.query<{
+          id: string
+          name: string
+          email: string
+          company: string
+        }>(
+          `select u.id, u.name, u.email, c.name as company from users u
+             join companies c on c.id = u.company_id
+            where lower(u.email) = lower($1) and u.active and c.active`,
+          [email],
+        )
+        const user = rows[0]
+        if (user)
+          try {
+            const token = await createInvite(db, user.id)
+            const link = `${mail.cabinetUrl.replace(/\/+$/, '')}/invite?token=${token}`
+            await mail.send(inviteLetter('forgot', user, link))
+          } catch (error) {
+            req.log.error({ err: error }, 'письмо «Забыли пароль» не отправлено')
+          }
+      }
+      return reply.code(204).send()
+    })
+
+    // A staff member looks at a company as it sees itself — as one of its people, or as a
+    // hidden administrator — and comes back (customer, 2026-10-22).
+    app.post<{ Body: { companyId?: unknown; userId?: unknown } }>(
+      '/auth/act',
+      async (req, reply) => {
+        if (!secret || !req.identity?.staff || req.identity.actor)
+          return reply.code(403).send({ message: 'Раздел для сотрудников поставщика' })
+        const companyId = String(req.body?.companyId ?? '')
+        const userId = typeof req.body?.userId === 'string' ? req.body.userId : null
+        return answering(reply, async () => {
+          const result = await switchActing(
+            db,
+            secret,
+            req.identity!.userId,
+            { companyId, userId },
+            cookieOf(req, REFRESH_COOKIE),
+          )
+          setRefresh(reply, result.refreshToken)
+          return signedIn(result.identity, result.accessToken)
+        })
+      },
+    )
+
+    app.post('/auth/act/stop', async (req, reply) => {
+      if (!secret || !req.identity?.actor)
+        return reply.code(409).send({ message: 'Вы и так в своём кабинете' })
+      return answering(reply, async () => {
+        const result = await switchActing(
+          db,
+          secret,
+          req.identity!.actor!.id,
+          null,
+          cookieOf(req, REFRESH_COOKIE),
+        )
+        setRefresh(reply, result.refreshToken)
+        return signedIn(result.identity, result.accessToken)
+      })
+    })
+
+    // The supplier's section (customer, 2026-10-22): its staff only, signed in as themselves.
+    void app.register(async (supplier) => {
+      supplier.addHook('preHandler', async (req, reply) => {
+        if (!secret || !req.identity?.staff || req.identity.actor)
+          return reply.code(403).send({ message: 'Раздел для сотрудников поставщика' })
+      })
+
+      supplier.get('/supplier/companies', async () => listCompanies(db))
+      supplier.get('/supplier/clients', async () => listOnecClients(db))
+
+      supplier.post<{ Body: Partial<NewCompany> }>('/supplier/companies', async (req, reply) =>
+        answering(reply, async () => {
+          const b = req.body ?? {}
+          const admin = (b.admin ?? {}) as Partial<NewCompany['admin']>
+          const created = await createCompany(db, {
+            name: String(b.name ?? ''),
+            clientKeys: Array.isArray(b.clientKeys)
+              ? b.clientKeys.filter((k): k is string => typeof k === 'string')
+              : [],
+            admin: { name: String(admin.name ?? ''), email: String(admin.email ?? '') },
+          })
+          const delivery = await deliver(
+            req,
+            created.user,
+            'welcome',
+            created.password,
+            String(b.name ?? '').trim(),
+          )
+          return reply
+            .code(201)
+            .send({ companyId: created.companyId, user: created.user, delivery })
+        }),
+      )
+
+      supplier.post<{ Params: { id: string }; Body: { clientKey?: unknown } }>(
+        '/supplier/companies/:id/branches',
+        async (req, reply) =>
+          answering(reply, async () => {
+            await addCompanyBranch(db, req.params.id, String(req.body?.clientKey ?? ''))
+            return reply.code(201).send(await listCompanies(db))
+          }),
+      )
+
+      supplier.patch<{ Params: { id: string }; Body: { active?: unknown } }>(
+        '/supplier/companies/:id',
+        async (req, reply) =>
+          answering(reply, async () => {
+            if (typeof req.body?.active !== 'boolean')
+              throw new AuthRejected(400, 'Укажите, включить доступ или отключить')
+            await setCompanyActive(db, req.params.id, req.body.active)
+            return listCompanies(db)
+          }),
+      )
+
+      // A first administrator who lost the letter gets a new link (or a one-time password).
+      supplier.post<{ Params: { id: string } }>(
+        '/supplier/users/:id/reset-password',
+        async (req, reply) =>
+          answering(reply, async () => {
+            const { rows } = await db.query<{ company_id: string; company: string }>(
+              `select u.company_id, c.name as company from users u join companies c on c.id = u.company_id
+                where u.id = $1 and c.kind = 'client'`,
+              [req.params.id],
+            )
+            if (!rows[0]) throw new AuthRejected(404, 'Пользователь не найден')
+            const user = await getUser(db, rows[0].company_id, req.params.id)
+            const password = await resetPassword(db, rows[0].company_id, req.params.id)
+            return deliver(req, user, 'reset', password, rows[0].company)
+          }),
+      )
+
+      supplier.get('/supplier/mailboxes', async () => listMailboxes(db))
+      supplier.put<{ Body: unknown }>('/supplier/mailboxes', async (req, reply) =>
+        answering(reply, async () =>
+          saveMailboxes(
+            db,
+            Array.isArray(req.body) ? (req.body as Partial<SupplierMailbox>[]) : [],
+          ),
+        ),
+      )
+    })
+
     // The company's users (Д6): the administrator's, and only within their own company.
     void app.register(async (admin) => {
       admin.addHook('preHandler', async (req, reply) => {
@@ -420,30 +623,6 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
       })
       const companyOf = (req: FastifyRequest) => req.identity!.companyId
 
-      /**
-       * How a new or reset password reaches the person: by mail, a link to set their own
-       * (when SMTP and the cabinet's address are known); otherwise — or if the letter
-       * fails — the one-time password, shown once to the administrator.
-       */
-      const deliver = async (
-        req: FastifyRequest,
-        user: { id: string; name: string; email: string },
-        kind: InviteKind,
-        password: string,
-      ): Promise<PasswordDelivery> => {
-        const mail = options.mail
-        if (!mail) return { kind: 'password', password }
-        try {
-          const token = await createInvite(db, user.id)
-          const link = `${mail.cabinetUrl.replace(/\/+$/, '')}/invite?token=${token}`
-          await mail.send(inviteLetter(kind, { ...user, company: req.identity!.companyName }, link))
-          return { kind: 'email', sentTo: user.email }
-        } catch (error) {
-          req.log.error({ err: error }, 'приглашение не отправлено')
-          return { kind: 'password', password }
-        }
-      }
-
       admin.get('/admin/users', async (req) => listUsers(db, companyOf(req)))
 
       // The company's branches — its 1С clients — and what the cabinet holds for each.
@@ -451,11 +630,11 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
 
       admin.post('/admin/users', async (req, reply) =>
         answering(reply, async () => {
-          const { user, password } = await createUser(
-            db,
-            companyOf(req),
-            userFields(req.body) as UserDraft,
-          )
+          const fields = userFields(req.body) as UserDraft
+          // The supplier's staff are of its own domains only (customer, 2026-10-22).
+          if (req.identity!.staff && !isSupplierEmail(fields.email ?? ''))
+            throw new AuthRejected(400, 'Сотрудник поставщика — с почтой @vgiz.ru или @snabsv.ru')
+          const { user, password } = await createUser(db, companyOf(req), fields)
           const names = await companyBranchNames(db, companyOf(req))
           await audit(req, {
             action: 'user.create',
@@ -475,6 +654,9 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
       admin.patch<{ Params: { id: string } }>('/admin/users/:id', async (req, reply) =>
         answering(reply, async () => {
           const before = await getUser(db, companyOf(req), req.params.id)
+          const asked = userFields(req.body).email
+          if (req.identity!.staff && asked !== undefined && !isSupplierEmail(asked))
+            throw new AuthRejected(400, 'Сотрудник поставщика — с почтой @vgiz.ru или @snabsv.ru')
           const user = await updateUser(
             db,
             companyOf(req),
