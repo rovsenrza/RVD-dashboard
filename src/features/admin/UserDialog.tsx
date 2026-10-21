@@ -23,7 +23,10 @@ export function UserDialog({ user, onClose }: { user: CabinetUser | null; onClos
   const several = session.branches.length > 1
   const [name, setName] = useState(user?.name ?? '')
   const [email, setEmail] = useState(user?.email ?? '')
-  const [role, setRole] = useState<UserRole>(user?.role ?? (firstBranch ? 'mechanic' : 'engineer'))
+  // The supplier's staff have no roles of a client's: each one is an administrator of the section.
+  const [role, setRole] = useState<UserRole>(
+    user?.role ?? (session.staff ? 'admin' : firstBranch ? 'mechanic' : 'engineer'),
+  )
   // «All branches» is its own choice, so unticking the last branch never flips into it.
   const [everywhere, setEverywhere] = useState(
     !!user && !isBranchBound(user.role) && user.branchIds.length === 0,
@@ -153,9 +156,11 @@ export function UserDialog({ user, onClose }: { user: CabinetUser | null; onClos
         <Field
           label="Почта"
           hint={
-            session.demo
-              ? 'На неё приходят приглашение и ссылка для смены пароля'
-              : 'С ней сотрудник входит в кабинет'
+            session.staff
+              ? 'Только @vgiz.ru или @snabsv.ru — на неё приходит ссылка «Забыли пароль?»'
+              : session.demo
+                ? 'На неё приходят приглашение и ссылка для смены пароля'
+                : 'С ней сотрудник входит в кабинет'
           }
           error={emailError}
         >
@@ -173,17 +178,19 @@ export function UserDialog({ user, onClose }: { user: CabinetUser | null; onClos
             />
           )}
         </Field>
-        <Field label="Роль" hint={ROLE_SCOPE[role]}>
-          {(id) => (
-            <Select
-              id={id}
-              value={role}
-              disabled={isSelf}
-              onChange={(e) => changeRole(e.target.value as UserRole)}
-              options={roles.map((r) => ({ value: r, label: ROLE_LABEL[r] }))}
-            />
-          )}
-        </Field>
+        {!session.staff && (
+          <Field label="Роль" hint={ROLE_SCOPE[role]}>
+            {(id) => (
+              <Select
+                id={id}
+                value={role}
+                disabled={isSelf}
+                onChange={(e) => changeRole(e.target.value as UserRole)}
+                options={roles.map((r) => ({ value: r, label: ROLE_LABEL[r] }))}
+              />
+            )}
+          </Field>
+        )}
 
         {several &&
           (bound ? (

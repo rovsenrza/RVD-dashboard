@@ -29,6 +29,9 @@ import type {
   EquipmentPatch,
   InstallationPatch,
   NewSupportMessage,
+  OnecClient,
+  SupplierCompany,
+  SupplierMailbox,
 } from '@/entities/types'
 import { useSession } from '@/app/session'
 import { api } from './client'
@@ -78,6 +81,9 @@ export const keys = {
   equipmentReplacements: (id: string) => ['replacements', 'equipment', id] as const,
   requests: (branch: string | null) => ['requests', branch] as const,
   users: ['admin', 'users'] as const,
+  supplierCompanies: ['supplier', 'companies'] as const,
+  onecClients: ['supplier', 'clients'] as const,
+  mailboxes: ['supplier', 'mailboxes'] as const,
   branches: ['admin', 'branches'] as const,
   settings: ['admin', 'settings'] as const,
   audit: ['admin', 'audit'] as const,
@@ -599,3 +605,87 @@ export const useSaveNotificationPrefs = () => {
     },
   })
 }
+
+/*
+ * The supplier's section (customer, 2026-10-22): client companies and their people, the
+ * clients 1С holds, and where each supplier branch's letters go.
+ */
+export const useSupplierCompanies = () =>
+  useQuery({
+    queryKey: keys.supplierCompanies,
+    queryFn: () => api.get<SupplierCompany[]>('/supplier/companies'),
+  })
+
+export const useOnecClients = () =>
+  useQuery({
+    queryKey: keys.onecClients,
+    queryFn: () => api.get<OnecClient[]>('/supplier/clients'),
+  })
+
+export interface NewCompany {
+  name: string
+  clientKeys: string[]
+  admin: { name: string; email: string }
+}
+
+export const useCreateCompany = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (company: NewCompany) =>
+      api.post<{ companyId: string; user: CabinetUser; delivery: PasswordDelivery }>(
+        '/supplier/companies',
+        company,
+      ),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: keys.supplierCompanies })
+      qc.invalidateQueries({ queryKey: keys.onecClients })
+    },
+  })
+}
+
+export const useAddCompanyBranch = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ companyId, clientKey }: { companyId: string; clientKey: string }) =>
+      api.post<SupplierCompany[]>(`/supplier/companies/${companyId}/branches`, { clientKey }),
+    onSuccess: (companies) => {
+      qc.setQueryData(keys.supplierCompanies, companies)
+      qc.invalidateQueries({ queryKey: keys.onecClients })
+    },
+  })
+}
+
+export const useSetCompanyActive = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ companyId, active }: { companyId: string; active: boolean }) =>
+      api.patch<SupplierCompany[]>(`/supplier/companies/${companyId}`, { active }),
+    onSuccess: (companies) => qc.setQueryData(keys.supplierCompanies, companies),
+  })
+}
+
+/** A client's person who lost the invitation: a new link, or a one-time password without mail. */
+export const useSupplierResetPassword = () =>
+  useMutation({
+    mutationFn: (userId: string) =>
+      api.post<PasswordDelivery>(`/supplier/users/${userId}/reset-password`, {}),
+  })
+
+export const useMailboxes = () =>
+  useQuery({
+    queryKey: keys.mailboxes,
+    queryFn: () => api.get<SupplierMailbox[]>('/supplier/mailboxes'),
+  })
+
+export const useSaveMailboxes = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (boxes: SupplierMailbox[]) =>
+      api.put<SupplierMailbox[]>('/supplier/mailboxes', boxes),
+    onSuccess: (boxes) => qc.setQueryData(keys.mailboxes, boxes),
+  })
+}
+
+/** «Забыли пароль?»: the answer is the same whether or not a letter went. */
+export const useForgotPassword = () =>
+  useMutation({ mutationFn: (email: string) => api.post<void>('/auth/forgot', { email }) })

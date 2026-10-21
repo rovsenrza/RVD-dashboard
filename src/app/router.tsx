@@ -86,6 +86,19 @@ export const router = createBrowserRouter([
         lazy: page(() => import('@/features/compare/ComparePage'), 'ComparePage'),
       },
       { path: 'admin', lazy: page(() => import('@/features/admin/AdminPage'), 'AdminPage') },
+      // The supplier's section (customer, 2026-10-22); the layout keeps everyone else out.
+      {
+        path: 'supplier',
+        lazy: page(() => import('@/features/supplier/CompaniesPage'), 'CompaniesPage'),
+      },
+      {
+        path: 'supplier/mail',
+        lazy: page(() => import('@/features/supplier/MailPage'), 'MailPage'),
+      },
+      {
+        path: 'supplier/staff',
+        lazy: page(() => import('@/features/supplier/StaffPage'), 'StaffPage'),
+      },
       { path: 'help', lazy: page(() => import('@/features/help/HelpPage'), 'HelpPage') },
       // Component catalogue; `import.meta.env.DEV` is false in production builds,
       // so the route and its chunk are dropped there entirely.

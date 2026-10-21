@@ -30,11 +30,22 @@ export interface Session {
   mustChangePassword: boolean
   /** Replaces the signed-in person's password; rejects with the server's reason (an ApiError) */
   changePassword: (current: string, next: string) => Promise<void>
+  /** One of the supplier's staff, in their own section (customer, 2026-10-22) */
+  staff: boolean
+  /** A staff member looking at this company as it sees itself: their name */
+  actingBy: string | null
+  /** Staff: look at a company as one of its people, or (no user) as its hidden administrator */
+  actAs: (companyId: string, userId?: string) => Promise<void>
+  /** Back from a company to the supplier's section */
+  stopActing: () => Promise<void>
+  /** Demo only: preview the supplier's section */
+  setDemoStaff: (on: boolean) => void
 }
 
 const AUTH_KEY = 'rvd.session'
 const ROLE_KEY = 'rvd.role'
 const BRANCH_KEY = 'rvd.branch'
+const STAFF_KEY = 'rvd.staff'
 
 const SessionContext = createContext<Session | null>(null)
 
@@ -103,9 +114,19 @@ export function SessionProvider({ children }: { children: ReactNode }) {
   )
 }
 
+const readStaff = () => {
+  try {
+    return localStorage.getItem(STAFF_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
 function MockSessionProvider({ children }: { children: ReactNode }) {
   const [authenticated, setAuthenticated] = useState(readAuth)
   const [role, setRoleState] = useState(readRole)
+  const [staff, setStaff] = useState(readStaff)
+  const [acting, setActing] = useState(false)
   const [branchId, setBranchId] = useState<string | null>(MOCK_BRANCHES[0].id)
 
   const value = useMemo<Session>(
@@ -147,8 +168,23 @@ function MockSessionProvider({ children }: { children: ReactNode }) {
       changePassword: async (current, next) => {
         await api.post('/auth/password', { current, next })
       },
+      // The demo's supplier section: viewing a company shows the demo company itself.
+      staff: staff && !acting,
+      actingBy: acting ? MOCK_USER.name : null,
+      actAs: async () => setActing(true),
+      stopActing: async () => setActing(false),
+      setDemoStaff: (on) => {
+        try {
+          if (on) localStorage.setItem(STAFF_KEY, '1')
+          else localStorage.removeItem(STAFF_KEY)
+        } catch {
+          // Storage blocked: the preview lasts until reload.
+        }
+        setActing(false)
+        setStaff(on)
+      },
     }),
-    [authenticated, branchId, role],
+    [authenticated, branchId, role, staff, acting],
   )
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
@@ -229,6 +265,22 @@ function LiveSessionProvider({ children }: { children: ReactNode }) {
         authToken.set(me.accessToken)
         setState({ ready: true, me })
       },
+      staff: state.me?.staff ?? false,
+      actingBy: state.me?.actingBy ?? null,
+      // Another company's data, or back to one's own: nothing cached may carry across.
+      actAs: async (companyId, userId) => {
+        const me = await api.post<SignedIn>('/auth/act', { companyId, userId })
+        authToken.set(me.accessToken)
+        queries.clear()
+        setState({ ready: true, me })
+      },
+      stopActing: async () => {
+        const me = await api.post<SignedIn>('/auth/act/stop', {})
+        authToken.set(me.accessToken)
+        queries.clear()
+        setState({ ready: true, me })
+      },
+      setDemoStaff: () => {},
     }
   }, [state, queries, branchId])
 

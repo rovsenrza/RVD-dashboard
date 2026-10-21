@@ -38,6 +38,7 @@ import {
   userView,
 } from './data'
 import { productPage } from './productList'
+import { addBranch, createCompany, mailboxes, onecClients, supplierCompanies } from './supplier'
 import { buildReport } from './reports'
 import { createRequest } from './requests'
 import { sendSupportMessage } from './support'
@@ -443,4 +444,52 @@ export const handlers = [
     return HttpResponse.json(settings)
   }),
   http.get(api('/admin/audit'), () => HttpResponse.json(audit)),
+
+  // The supplier's section (customer, 2026-10-22).
+  http.get(api('/supplier/companies'), () => HttpResponse.json(supplierCompanies)),
+  http.get(api('/supplier/clients'), () => HttpResponse.json(onecClients)),
+  http.post(api('/supplier/companies'), async ({ request }) => {
+    const created = createCompany((await request.json()) as Parameters<typeof createCompany>[0])
+    if (typeof created === 'string')
+      return HttpResponse.json(
+        { message: created },
+        { status: created.includes('уже') ? 409 : 400 },
+      )
+    const delivery: PasswordDelivery = { kind: 'email', sentTo: created.users[0].email }
+    return HttpResponse.json(
+      { companyId: created.id, user: created.users[0], delivery },
+      { status: 201 },
+    )
+  }),
+  http.post(api('/supplier/companies/:id/branches'), async ({ params, request }) => {
+    const { clientKey } = (await request.json()) as { clientKey: string }
+    const problem = addBranch(String(params.id), clientKey)
+    return problem
+      ? HttpResponse.json({ message: problem }, { status: 409 })
+      : HttpResponse.json(supplierCompanies, { status: 201 })
+  }),
+  http.patch(api('/supplier/companies/:id'), async ({ params, request }) => {
+    const { active } = (await request.json()) as { active: boolean }
+    const company = supplierCompanies.find((c) => c.id === params.id)
+    if (company) company.active = active
+    return HttpResponse.json(supplierCompanies)
+  }),
+  http.post(api('/supplier/users/:id/reset-password'), ({ params }) => {
+    const user = supplierCompanies.flatMap((c) => c.users).find((u) => u.id === params.id)
+    const delivery: PasswordDelivery = { kind: 'email', sentTo: user?.email ?? '' }
+    return HttpResponse.json(delivery)
+  }),
+  http.get(api('/supplier/mailboxes'), () => HttpResponse.json(mailboxes)),
+  http.put(api('/supplier/mailboxes'), async ({ request }) => {
+    for (const b of (await request.json()) as typeof mailboxes) {
+      const box = mailboxes.find((m) => m.filialId === b.filialId)
+      if (box)
+        Object.assign(box, {
+          requestsEmail: b.requestsEmail || null,
+          supportEmail: b.supportEmail || null,
+        })
+    }
+    return HttpResponse.json(mailboxes)
+  }),
+  http.post(api('/auth/forgot'), () => new HttpResponse(null, { status: 204 })),
 ]

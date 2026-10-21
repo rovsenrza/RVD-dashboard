@@ -46,6 +46,8 @@ export function Header({ onMenu }: { onMenu: () => void }) {
   const [scanOpen, setScanOpen] = useState(false)
   const [contactOpen, setContactOpen] = useState(false)
   const [passwordOpen, setPasswordOpen] = useState(false)
+  // The supplier's staff have no hoses to search, no specialist to call and no notices.
+  const { staff } = useSession()
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -68,58 +70,73 @@ export function Header({ onMenu }: { onMenu: () => void }) {
         onClick={onMenu}
         aria-label="Открыть меню"
       />
-      <BranchSwitcher />
-      <GlobalSearch
-        className="mx-auto hidden w-full max-w-md md:block"
-        onOpen={() => setSearchOpen(true)}
-      />
-      <CommandPalette
-        open={searchOpen}
-        onClose={() => setSearchOpen(false)}
-        onScan={() => setScanOpen(true)}
-      />
-      <div className="ml-auto flex items-center gap-1.5 md:ml-0">
-        <Button
-          variant="ghost"
-          size="icon"
-          icon={Search}
-          className="md:hidden"
-          aria-label="Поиск"
-          onClick={() => setSearchOpen(true)}
-        />
-        {/* Camera scanning is a phone/tablet job; hidden where the pointer is a mouse. */}
-        <Button
-          variant="ghost"
-          size="icon"
-          icon={ScanLine}
-          className="pointer-fine:hidden"
-          aria-label="Сканировать код"
-          onClick={() => setScanOpen(true)}
-        />
-        {scanOpen && <ScanDialog onClose={() => setScanOpen(false)} />}
-        {/* The full button where the header has room, an icon on tablets; phones use the user menu. */}
-        <Button
-          variant="ghost"
-          size="icon"
-          icon={Headset}
-          className="max-sm:hidden xl:hidden"
-          aria-label="Связаться со специалистом"
-          onClick={() => setContactOpen(true)}
-        />
-        <Button
-          variant="primary"
-          size="sm"
-          icon={Headset}
-          className="hidden xl:inline-flex"
-          onClick={() => setContactOpen(true)}
-        >
-          Связаться со специалистом
-        </Button>
-        {contactOpen && <ContactDialog onClose={() => setContactOpen(false)} />}
-        <NotificationsPanel />
-        <UserMenu onContact={() => setContactOpen(true)} onPassword={() => setPasswordOpen(true)} />
-        {passwordOpen && <ChangePasswordDialog onClose={() => setPasswordOpen(false)} />}
-      </div>
+      {!staff && <BranchSwitcher />}
+      {staff ? (
+        <div className="ml-auto flex items-center gap-1.5">
+          <UserMenu
+            onContact={() => setContactOpen(true)}
+            onPassword={() => setPasswordOpen(true)}
+          />
+          {passwordOpen && <ChangePasswordDialog onClose={() => setPasswordOpen(false)} />}
+        </div>
+      ) : (
+        <>
+          <GlobalSearch
+            className="mx-auto hidden w-full max-w-md md:block"
+            onOpen={() => setSearchOpen(true)}
+          />
+          <CommandPalette
+            open={searchOpen}
+            onClose={() => setSearchOpen(false)}
+            onScan={() => setScanOpen(true)}
+          />
+          <div className="ml-auto flex items-center gap-1.5 md:ml-0">
+            <Button
+              variant="ghost"
+              size="icon"
+              icon={Search}
+              className="md:hidden"
+              aria-label="Поиск"
+              onClick={() => setSearchOpen(true)}
+            />
+            {/* Camera scanning is a phone/tablet job; hidden where the pointer is a mouse. */}
+            <Button
+              variant="ghost"
+              size="icon"
+              icon={ScanLine}
+              className="pointer-fine:hidden"
+              aria-label="Сканировать код"
+              onClick={() => setScanOpen(true)}
+            />
+            {scanOpen && <ScanDialog onClose={() => setScanOpen(false)} />}
+            {/* The full button where the header has room, an icon on tablets; phones use the user menu. */}
+            <Button
+              variant="ghost"
+              size="icon"
+              icon={Headset}
+              className="max-sm:hidden xl:hidden"
+              aria-label="Связаться со специалистом"
+              onClick={() => setContactOpen(true)}
+            />
+            <Button
+              variant="primary"
+              size="sm"
+              icon={Headset}
+              className="hidden xl:inline-flex"
+              onClick={() => setContactOpen(true)}
+            >
+              Связаться со специалистом
+            </Button>
+            {contactOpen && <ContactDialog onClose={() => setContactOpen(false)} />}
+            <NotificationsPanel />
+            <UserMenu
+              onContact={() => setContactOpen(true)}
+              onPassword={() => setPasswordOpen(true)}
+            />
+            {passwordOpen && <ChangePasswordDialog onClose={() => setPasswordOpen(false)} />}
+          </div>
+        </>
+      )}
     </header>
   )
 }
@@ -221,7 +238,8 @@ function GlobalSearch({ className, onOpen }: { className?: string; onOpen: () =>
 }
 
 function UserMenu({ onContact, onPassword }: { onContact: () => void; onPassword: () => void }) {
-  const { user, demo, signOut, setRole } = useSession()
+  const { user, demo, staff, actingBy, signOut, setRole, setDemoStaff } = useSession()
+  const roleLabel = staff ? 'Сотрудник поставщика' : ROLE_LABEL[user.role]
   const navigate = useNavigate()
   const [theme, setTheme] = useThemePreference()
   return (
@@ -237,9 +255,7 @@ function UserMenu({ onContact, onPassword }: { onContact: () => void; onPassword
           </span>
           <span className="hidden text-left md:block">
             <span className="block text-ui leading-4 font-medium">{user.name}</span>
-            <span className="block text-caption leading-4 text-ink-muted">
-              {ROLE_LABEL[user.role]}
-            </span>
+            <span className="block text-caption leading-4 text-ink-muted">{roleLabel}</span>
           </span>
           <ChevronDown size={14} className="hidden text-ink-muted md:block" />
         </Button>
@@ -247,7 +263,7 @@ function UserMenu({ onContact, onPassword }: { onContact: () => void; onPassword
       header={
         <div>
           <div className="text-sm font-medium">{user.name}</div>
-          <div className="text-caption text-ink-muted">{ROLE_LABEL[user.role]}</div>
+          <div className="text-caption text-ink-muted">{roleLabel}</div>
           <div className="mt-3 flex items-center justify-between gap-3">
             <span className="text-label text-ink-muted">Тема</span>
             <SegmentedControl
@@ -258,13 +274,20 @@ function UserMenu({ onContact, onPassword }: { onContact: () => void; onPassword
             />
           </div>
           {/* The demo only: lets the customer see the cabinet through each role. */}
-          {demo && (
+          {demo && !actingBy && (
             <label className="mt-2.5 flex items-center justify-between gap-3">
               <span className="text-label whitespace-nowrap text-ink-muted">Роль · демо</span>
               <Select
-                value={user.role}
-                onChange={(e) => setRole(e.target.value as typeof user.role)}
-                options={ROLE_ORDER.map((r) => ({ value: r, label: ROLE_LABEL[r] }))}
+                value={staff ? 'staff' : user.role}
+                onChange={(e) => {
+                  const next = e.target.value
+                  setDemoStaff(next === 'staff')
+                  if (next !== 'staff') setRole(next as typeof user.role)
+                }}
+                options={[
+                  ...ROLE_ORDER.map((r) => ({ value: r, label: ROLE_LABEL[r] })),
+                  { value: 'staff', label: 'Сотрудник поставщика' },
+                ]}
                 className="w-40"
               />
             </label>
@@ -272,14 +295,23 @@ function UserMenu({ onContact, onPassword }: { onContact: () => void; onPassword
         </div>
       }
       items={[
-        {
-          label: 'Настройки уведомлений',
-          icon: Settings,
-          separator: true,
-          onSelect: () => navigate('/notifications#prefs'),
-        },
-        { label: 'Сменить пароль', icon: KeyRound, onSelect: onPassword },
-        { label: 'Связаться со специалистом', icon: Headset, onSelect: onContact },
+        ...(staff
+          ? []
+          : [
+              {
+                label: 'Настройки уведомлений',
+                icon: Settings,
+                separator: true,
+                onSelect: () => navigate('/notifications#prefs'),
+              },
+            ]),
+        // Looking as a company's person, their password is theirs.
+        ...(actingBy
+          ? []
+          : [{ label: 'Сменить пароль', icon: KeyRound, separator: staff, onSelect: onPassword }]),
+        ...(staff
+          ? []
+          : [{ label: 'Связаться со специалистом', icon: Headset, onSelect: onContact }]),
         {
           label: 'Выйти',
           icon: LogOut,

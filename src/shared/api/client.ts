@@ -87,6 +87,7 @@ export const api = {
   get: <T>(path: string) => json<T>(path, 'GET'),
   post: <T>(path: string, body: unknown) => json<T>(path, 'POST', body),
   patch: <T>(path: string, body: unknown) => json<T>(path, 'PATCH', body),
+  put: <T>(path: string, body: unknown) => json<T>(path, 'PUT', body),
   delete: (path: string) => send(`${BASE_URL}${path}`, { method: 'DELETE' }).then(() => undefined),
   /** Multipart upload; the browser sets the boundary, so no Content-Type here. */
   upload: <T>(path: string, form: FormData) =>

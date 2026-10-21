@@ -1,15 +1,18 @@
 import { NavLink } from 'react-router-dom'
 import {
   Bell,
+  Building2,
   ClipboardList,
   FileChartColumn,
   History,
   LayoutDashboard,
   LifeBuoy,
+  Mail,
   Package,
   Scale,
   ShieldCheck,
   Truck,
+  Users,
   X,
   type LucideIcon,
 } from 'lucide-react'
@@ -41,6 +44,13 @@ const COMPARE_NAV: NavItem = { to: '/compare', label: 'Сравнение тех
 /** Users and settings belong to the administrator; the other roles never see the entry. */
 const ADMIN_NAV: NavItem = { to: '/admin', label: 'Администрирование', icon: ShieldCheck }
 
+/** The supplier's staff see their own section only (customer, 2026-10-22). */
+const STAFF_NAV: NavItem[] = [
+  { to: '/supplier', label: 'Компании', icon: Building2, end: true },
+  { to: '/supplier/mail', label: 'Почта', icon: Mail },
+  { to: '/supplier/staff', label: 'Сотрудники', icon: Users },
+]
+
 const navClass = ({ isActive }: { isActive: boolean }) =>
   cn(
     'flex h-10 items-center gap-3 rounded-lg px-3 text-ui transition-colors duration-150',
@@ -50,12 +60,14 @@ const navClass = ({ isActive }: { isActive: boolean }) =>
   )
 
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { user, demo } = useSession()
-  const nav = [
-    ...NAV,
-    ...(user.role === 'manager' || user.role === 'admin' ? [REPORTS_NAV, COMPARE_NAV] : []),
-    ...(user.role === 'admin' ? [ADMIN_NAV] : []),
-  ]
+  const { user, demo, staff } = useSession()
+  const nav = staff
+    ? STAFF_NAV
+    : [
+        ...NAV,
+        ...(user.role === 'manager' || user.role === 'admin' ? [REPORTS_NAV, COMPARE_NAV] : []),
+        ...(user.role === 'admin' ? [ADMIN_NAV] : []),
+      ]
   return (
     <>
       <aside

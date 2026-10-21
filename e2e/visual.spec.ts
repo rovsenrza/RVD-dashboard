@@ -3,7 +3,8 @@ import { expect, test, type Page } from '@playwright/test'
 /** Mock data counts days from «now»; freezing the clock freezes every date on screen. */
 const NOW = new Date('2026-09-23T10:00:00+03:00')
 
-type Role = 'mechanic' | 'engineer' | 'manager' | 'admin'
+/** `staff` — the supplier's section (customer, 2026-10-22) */
+type Role = 'mechanic' | 'engineer' | 'manager' | 'admin' | 'staff'
 
 async function open(page: Page, path: string, theme: 'light' | 'dark', role: Role = 'engineer') {
   await page.clock.setFixedTime(NOW)
@@ -11,7 +12,8 @@ async function open(page: Page, path: string, theme: 'light' | 'dark', role: Rol
     ([t, r]) => {
       localStorage.setItem('rvd.session', '1')
       localStorage.setItem('rvd.theme', t)
-      localStorage.setItem('rvd.role', r)
+      if (r === 'staff') localStorage.setItem('rvd.staff', '1')
+      else localStorage.setItem('rvd.role', r)
     },
     [theme, role],
   )
@@ -45,6 +47,8 @@ const DESKTOP: { name: string; path: string; role?: Role; themes: ('light' | 'da
   { name: 'admin-settings', path: '/admin?tab=settings', role: 'admin', themes: ['light'] },
   { name: 'admin-audit', path: '/admin?tab=audit', role: 'admin', themes: ['light'] },
   { name: 'help', path: '/help', themes: ['light', 'dark'] },
+  { name: 'supplier-companies', path: '/supplier', role: 'staff', themes: ['light', 'dark'] },
+  { name: 'supplier-mail', path: '/supplier/mail', role: 'staff', themes: ['light'] },
 ]
 
 test.describe('desktop', () => {
@@ -64,6 +68,24 @@ test.describe('desktop', () => {
     await page.waitForLoadState('networkidle')
     await page.evaluate(() => document.fonts.ready)
     await expect(page).toHaveScreenshot('login-light.png')
+  })
+
+  test('forgot password · light', async ({ page }) => {
+    await page.clock.setFixedTime(NOW)
+    await page.goto('/login')
+    await page.waitForLoadState('networkidle')
+    await page.getByRole('button', { name: 'Забыли пароль?' }).click()
+    await page.evaluate(() => document.fonts.ready)
+    await expect(page).toHaveScreenshot('forgot-light.png')
+  })
+
+  test('a company seen by the supplier · light', async ({ page }) => {
+    await open(page, '/supplier', 'light', 'staff')
+    await page.getByRole('button', { name: 'Открыть кабинет' }).first().click()
+    await expect(page.getByText('Вернуться к компаниям')).toBeVisible()
+    await page.waitForLoadState('networkidle')
+    await expect(page.locator('.animate-pulse')).toHaveCount(0)
+    await expect(page).toHaveScreenshot('acting-light.png')
   })
 })
 
