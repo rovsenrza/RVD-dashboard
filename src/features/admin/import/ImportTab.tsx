@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Download, FileSpreadsheet, Upload } from 'lucide-react'
-import type { CabinetUser, Equipment, ProductPage, UserCreated } from '@/entities/types'
+import type { CabinetUser, UserCreated } from '@/entities/types'
 import { useSession } from '@/app/session'
 import { api } from '@/shared/api/client'
 import { keys, type UserDraft } from '@/shared/api/queries'
@@ -9,19 +9,15 @@ import { Button, Card, FileButton, useToast } from '@/shared/ui'
 import { downloadTemplate, readRows, XLSX_TYPES } from './excel'
 import { ImportDialog, type ImportOutcome } from './ImportDialog'
 import {
-  checkInstallations,
   checkUsers,
-  INSTALL_COLUMNS,
   USER_COLUMNS,
   type CheckedRow,
   type ImportCheck,
   type ImportColumn,
-  type InstallationRow,
 } from './validate'
 
-type Open =
-  | { kind: 'users'; fileName: string; rows: CheckedRow<UserDraft>[] }
-  | { kind: 'installations'; fileName: string; rows: CheckedRow<InstallationRow>[] }
+// Installation places went with «Место установки» (customer, 2026-10-22): only users import.
+type Open = { kind: 'users'; fileName: string; rows: CheckedRow<UserDraft>[] }
 
 /** Writes row by row through the ordinary endpoints, so each row is validated and logged as usual. */
 async function each<T>(
@@ -40,7 +36,7 @@ async function each<T>(
 }
 
 export function ImportTab() {
-  const { branches, demo } = useSession()
+  const { branches } = useSession()
   const qc = useQueryClient()
   const toast = useToast()
   const [open, setOpen] = useState<Open | null>(null)
@@ -92,35 +88,6 @@ export function ImportTab() {
             )
           }
         />
-        {/* Live, products move between machines only after question 14. */}
-        {demo && (
-          <ImportCard
-            title="Установка изделий на технику"
-            description="Какое изделие на какой машине и в каком месте стоит. Даты установки, изделия и технику ведёт поставщик в 1С — их здесь не меняют и не создают."
-            columns={INSTALL_COLUMNS}
-            busy={reading}
-            onTemplate={() =>
-              downloadTemplate(
-                'Шаблон — установка изделий.xlsx',
-                INSTALL_COLUMNS.map((c) => c.header + (c.required ? '*' : '')),
-                ['48703', 'НТ04', 'Ковш', 'К-1003'],
-              )
-            }
-            onFile={(file) =>
-              load(
-                file,
-                async (sheet) =>
-                  checkInstallations(
-                    sheet,
-                    // The whole company, not the branch picked in the header.
-                    (await api.get<ProductPage>('/products?limit=5000')).items,
-                    await api.get<Equipment[]>('/equipment'),
-                  ),
-                'installations',
-              )
-            }
-          />
-        )}
       </div>
 
       {open?.kind === 'users' && (
@@ -144,20 +111,6 @@ export function ImportTab() {
               `Добавлено пользователей: ${outcome.done}`,
               outcome.failed.length ? 'error' : 'ok',
             )
-            return outcome
-          }}
-        />
-      )}
-      {open?.kind === 'installations' && (
-        <ImportDialog
-          fileName={open.fileName}
-          columns={INSTALL_COLUMNS}
-          rows={open.rows}
-          onClose={() => setOpen(null)}
-          onImport={async (ready) => {
-            const outcome = await each(ready, (r) => api.patch(`/products/${r.productId}`, r.patch))
-            refresh(['products'], ['equipment'], ['dashboard'])
-            toast(`Обновлено изделий: ${outcome.done}`, outcome.failed.length ? 'error' : 'ok')
             return outcome
           }}
         />

@@ -89,7 +89,7 @@ export function EquipmentDetailPage() {
               </div>
             </Card>
 
-            <Card title="РВД по местам установки">
+            <Card title="РВД на технике">
               <HosesByPlace equipmentId={e.id} />
             </Card>
           </div>

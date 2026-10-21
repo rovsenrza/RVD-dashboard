@@ -53,7 +53,7 @@ export function ProductEditForm({
       open
       onClose={onClose}
       title={`Изделие ${p.serialNumber}`}
-      description="Техника, место установки и ваш внутренний номер. Даты, сроки и состав ведёт поставщик в 1С."
+      description="Техника и ваш внутренний номер. Даты, сроки и состав ведёт поставщик в 1С."
       footer={
         <>
           <Button variant="secondary" size="sm" onClick={onClose}>

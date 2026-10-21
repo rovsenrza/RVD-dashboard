@@ -1,3 +1,4 @@
+import { useSession } from '@/app/session'
 import { Fragment, useEffect, useState, type ReactNode } from 'react'
 import { useLocation } from 'react-router-dom'
 import { FileText, Headset } from 'lucide-react'
@@ -10,6 +11,8 @@ import { ContactDialog } from '@/features/support/ContactDialog'
 
 /** The user guide for client staff, built from docs/guide by `npm run guide`. */
 const GUIDE_URL = '/docs/rvd-kabinet-instrukciya.pdf'
+/** The supplier's staff get the guide to their own section (customer, 2026-10-22). */
+const STAFF_GUIDE_URL = '/docs/rvd-kabinet-postavshchik.pdf'
 
 const SECTIONS = [
   { id: 'statuses', title: 'Статусы изделия' },
@@ -63,6 +66,7 @@ const LIFE: { status: ProductStatus; grow: number; from: string; text: string }[
 export function HelpPage() {
   const { hash } = useLocation()
   const [contact, setContact] = useState(false)
+  const { staff } = useSession()
 
   useEffect(() => {
     if (hash) document.getElementById(hash.slice(1))?.scrollIntoView({ block: 'start' })
@@ -73,7 +77,7 @@ export function HelpPage() {
       <Button
         variant="ghost"
         icon={FileText}
-        onClick={() => window.open(GUIDE_URL, '_blank', 'noopener')}
+        onClick={() => window.open(staff ? STAFF_GUIDE_URL : GUIDE_URL, '_blank', 'noopener')}
       >
         Инструкция (PDF)
       </Button>
@@ -141,9 +145,9 @@ export function HelpPage() {
               полученные данные.
             </p>
             <p>
-              В 1С данные правит поставщик. Если неверна дата установки, техника или место установки
-              — напишите специалисту: кнопка «Связаться со специалистом» есть в шапке и на карточке
-              изделия, изделие и верная дата уйдут вместе с сообщением.
+              В 1С данные правит поставщик. Если неверна дата установки или техника — напишите
+              специалисту: кнопка «Связаться со специалистом» есть в шапке и на карточке изделия,
+              изделие и верная дата уйдут вместе с сообщением.
             </p>
           </Section>
 

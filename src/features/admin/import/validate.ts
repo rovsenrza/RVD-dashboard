@@ -1,8 +1,7 @@
 import { format } from 'date-fns'
-import type { Branch, CabinetUser, Equipment, Product, UserRole } from '@/entities/types'
-import { INSTALL_PLACES, sameSerial } from '@/entities/product'
+import type { Branch, CabinetUser, UserRole } from '@/entities/types'
 import { ROLE_LABEL, ROLE_ORDER, isBranchBound } from '@/entities/user'
-import type { InstallationPatch, UserDraft } from '@/shared/api/queries'
+import type { UserDraft } from '@/shared/api/queries'
 import type { Cell } from './excel'
 
 export interface ImportColumn {
@@ -115,59 +114,5 @@ export function checkUsers(
 
     if (errors.length || !role) return null
     return { name: text(get('name')), email, role, branchIds }
-  })
-}
-
-// ── Installation facts ───────────────────────────────────────────────────────
-
-/**
- * Where each hose sits. No date column: the installation date is the
- * supplier's (1С), and a «Дата установки» column left in an old template is
- * simply not read.
- */
-export const INSTALL_COLUMNS: ImportColumn[] = [
-  { key: 'ehs', header: 'Серийный №', aliases: ['EHS №'], required: true },
-  { key: 'garage', header: 'Гаражный №', required: true },
-  { key: 'place', header: 'Место установки', required: true },
-  { key: 'client', header: 'Внутренний №' },
-]
-
-export interface InstallationRow {
-  productId: string
-  label: string
-  patch: InstallationPatch
-}
-
-export function checkInstallations(
-  sheet: Cell[][],
-  products: Product[],
-  equipment: Equipment[],
-): ImportCheck<InstallationRow> {
-  const seen = new Map<string, number>()
-  return checkSheet(sheet, INSTALL_COLUMNS, (get, errors, line) => {
-    const ehs = text(get('ehs')).replace(/^(ehs|esm)[\s:№#-]*/i, '')
-    const product = products.find((p) => sameSerial(p.serialNumber, ehs))
-    if (!product) errors.push(`изделие № ${ehs} не найдено`)
-    else if (seen.has(ehs)) errors.push(`изделие повторяется: строка ${seen.get(ehs)}`)
-    else seen.set(ehs, line)
-
-    const garage = text(get('garage'))
-    const machine = equipment.find((e) => norm(e.garageNumber) === norm(garage))
-    if (!machine) errors.push(`техника ${garage} не найдена`)
-
-    const place = INSTALL_PLACES.find((p) => norm(p) === norm(text(get('place'))))
-    if (!place) errors.push(`место — одно из: ${INSTALL_PLACES.join('; ')}`)
-
-    if (errors.length || !product || !machine || !place) return null
-    const client = text(get('client'))
-    return {
-      productId: product.id,
-      label: `№ ${product.serialNumber}`,
-      patch: {
-        equipmentId: machine.id,
-        installPlace: place,
-        ...(client ? { clientNumber: client } : {}),
-      },
-    }
   })
 }
