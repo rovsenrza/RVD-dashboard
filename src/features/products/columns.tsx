@@ -89,5 +89,4 @@ export const productColumns = (machines: ReadonlyMap<string, Equipment>) => [
     meta: { mobile: 'hide' },
     cell: (c) => valueOr(formatDate(c.getValue())),
   }),
-  col.accessor('installPlace', { header: 'Место установки', cell: (c) => valueOr(c.getValue()) }),
 ]

@@ -62,14 +62,17 @@ export function HosesByPlace({ equipmentId }: { equipmentId: string }) {
               <span>Статус</span>
               <span className="text-right">До замены</span>
             </div>
-            {byPlace(hoses).map(({ place, hoses: list }) => (
+            {byPlace(hoses).map(({ place, hoses: list }, _, groups) => (
               <section key={place}>
-                <h3 className="flex items-baseline gap-2 text-ui font-medium">
-                  {place}
-                  <span className="text-label font-normal text-ink-muted">
-                    {list.length} {plural(list.length, 'рукав', 'рукава', 'рукавов')}
-                  </span>
-                </h3>
+                {/* 1С fills no places yet (customer, 2026-10-22): one unnamed group needs no heading. */}
+                {!(groups.length === 1 && place === NO_PLACE) && (
+                  <h3 className="flex items-baseline gap-2 text-ui font-medium">
+                    {place}
+                    <span className="text-label font-normal text-ink-muted">
+                      {list.length} {plural(list.length, 'рукав', 'рукава', 'рукавов')}
+                    </span>
+                  </h3>
+                )}
                 <ul className="mt-1 divide-y divide-line">
                   {list.map((p) => (
                     <li key={p.id}>

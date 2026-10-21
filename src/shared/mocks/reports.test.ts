@@ -19,12 +19,12 @@ describe('reports', () => {
     }
   })
 
-  it('names the machine by garage number and model, with the place on it last', () => {
+  it('names the machine by garage number and model, and no place: 1С fills none', () => {
     for (const id of ['registry', 'warranty', 'due', 'plan'] as const) {
       const titles = buildReport(id, all)!.columns.map((c) => c.header)
       const at = titles.indexOf('Гаражный №')
       expect(titles[at + 1]).toBe('Марка / модель')
-      expect(titles.at(-1)).toBe('Место установки')
+      expect(titles).not.toContain('Место установки')
       expect(titles).not.toContain('Техника')
     }
   })

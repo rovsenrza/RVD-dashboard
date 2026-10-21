@@ -71,7 +71,6 @@ const exportColumns = (machines: ReadonlyMap<string, Equipment>): ExportColumn<P
     value: (p) => (p.equipmentId ? (machines.get(p.equipmentId)?.garageNumber ?? null) : null),
     width: 12,
   },
-  { header: 'Место установки', value: (p) => p.installPlace, width: 20 },
   { header: 'Срок эксплуатации, дн.', value: (p) => p.serviceLifeDays, width: 12 },
   { header: 'Состояние', value: (p) => STATUS_LABEL[p.status], width: 16 },
   { header: 'Статус в 1С', value: (p) => LIFECYCLE_LABEL[p.lifecycle], width: 16 },

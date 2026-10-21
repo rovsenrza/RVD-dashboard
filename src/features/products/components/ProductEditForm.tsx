@@ -1,7 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { useSession } from '@/app/session'
 import type { Product } from '@/entities/types'
-import { INSTALL_PLACES } from '@/entities/product'
 import { useEquipment, useUpdateProduct } from '@/shared/api/queries'
 import { formatDate } from '@/shared/lib/utils'
 import { Button, Dialog, Field, Input, Select, useToast } from '@/shared/ui'
@@ -25,7 +24,6 @@ export function ProductEditForm({
   const machineFixed = !demo
 
   const [equipmentId, setEquipmentId] = useState(p.equipmentId ?? '')
-  const [installPlace, setInstallPlace] = useState(p.installPlace ?? '')
   const [clientNumber, setClientNumber] = useState(p.clientNumber ?? '')
   const machine = equipment.data?.find((e) => e.id === p.equipmentId)
 
@@ -34,7 +32,6 @@ export function ProductEditForm({
     update.mutate(
       {
         ...(machineFixed ? {} : { equipmentId: equipmentId || null }),
-        installPlace: equipmentId ? installPlace || null : null,
         clientNumber: clientNumber.trim() || null,
       },
       {
@@ -93,20 +90,6 @@ export function ProductEditForm({
                   value: e.id,
                   label: `${e.garageNumber} · ${e.brand} ${e.model}`,
                 }))}
-              />
-            )}
-          </Field>
-        )}
-
-        {equipmentId && (
-          <Field label="Место установки">
-            {(id) => (
-              <Select
-                id={id}
-                value={installPlace}
-                onChange={(e) => setInstallPlace(e.target.value)}
-                placeholder="Не указано"
-                options={INSTALL_PLACES.map((place) => ({ value: place, label: place }))}
               />
             )}
           </Field>

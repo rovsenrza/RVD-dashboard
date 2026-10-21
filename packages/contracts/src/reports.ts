@@ -135,7 +135,6 @@ const HOSE_COLUMNS = [
   col('machine', 'Гаражный №', 'text', 10),
   col('model', 'Марка / модель', 'text', 18),
 ]
-const PLACE = col('place', 'Место установки', 'text', 20)
 /** The cabinet's one start date: installation as 1С has it, else shipment (customer, 2026-10-03). */
 const START = col('installed', 'Установлено', 'date', 11)
 
@@ -206,7 +205,6 @@ export function buildReport(id: ReportId, data: ReportData, params: ReportParams
     catalog: p.catalogNumber,
     machine: p.equipmentId ? (garage.get(p.equipmentId) ?? null) : null,
     model: p.equipmentId ? (modelOf.get(p.equipmentId) ?? null) : null,
-    place: p.installPlace,
   })
   // A hose with no warranty on record (0 in 1С) has no planned date: `dates` gives null.
   const planned = (p: Product) => dates(p)?.plannedAt ?? null
@@ -223,7 +221,6 @@ export function buildReport(id: ReportId, data: ReportData, params: ReportParams
         col('status', 'Состояние', 'status', 16),
         col('left', 'До плановой замены, дн.', 'number', 12),
         col('lifecycle', 'Статус в 1С', 'text', 16),
-        PLACE,
       ]
       rows = hoses
         .filter(notRetired)
@@ -246,7 +243,6 @@ export function buildReport(id: ReportId, data: ReportData, params: ReportParams
         START,
         col('until', 'Гарантия до', 'date', 11),
         col('left', 'Осталось, дн.', 'number', 10),
-        PLACE,
       ]
       rows = hoses
         .filter((p) => inService(p) && p.warrantyDays > 0)
@@ -267,7 +263,6 @@ export function buildReport(id: ReportId, data: ReportData, params: ReportParams
         START,
         col('planned', 'Плановая замена', 'date', 12),
         col('overdue', 'Просрочено, дн.', 'number', 10),
-        PLACE,
       ]
       rows = hoses
         .filter((p) => inService(p) && p.status === 'replace' && planned(p) !== null)
@@ -287,7 +282,6 @@ export function buildReport(id: ReportId, data: ReportData, params: ReportParams
         ...HOSE_COLUMNS,
         col('type', 'Наименование', 'text', 12),
         col('status', 'Состояние', 'status', 16),
-        PLACE,
       ]
       rows = hoses
         .filter((p) => inService(p) && planned(p) !== null)

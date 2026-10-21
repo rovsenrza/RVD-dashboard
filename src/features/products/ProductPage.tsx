@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useParams } from 'react-router-dom'
 import { Copy, Pencil, RefreshCw } from 'lucide-react'
 import { ProductStatusBadge } from '@/entities/product'
-import { useProduct } from '@/shared/api/queries'
+import { useEquipment, useProduct } from '@/shared/api/queries'
 import { readOrigin } from '@/shared/lib/origin'
 import { Badge, Button, PageHeader, QueryState, Skeleton } from '@/shared/ui'
 import { ProductAttachments } from '@/features/attachments/ProductAttachments'
@@ -17,6 +17,7 @@ import { ProductLifetime } from './components/ProductLifetime'
 export function ProductPage() {
   const { id = '' } = useParams()
   const query = useProduct(id)
+  const machines = useEquipment()
   const origin = readOrigin({ to: '/products', label: 'К списку изделий' })
   const [editing, setEditing] = useState(false)
   const [requesting, setRequesting] = useState<RequestPreset | null>(null)
@@ -110,6 +111,7 @@ export function ProductPage() {
             <div className="grid gap-5">
               <ProductDetails
                 product={p}
+                machine={machines.data?.find((e) => e.id === p.equipmentId)}
                 onAskDate={
                   p.lifecycle === 'written_off'
                     ? undefined

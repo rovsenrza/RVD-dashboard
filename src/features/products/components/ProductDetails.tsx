@@ -1,18 +1,21 @@
 import type { ReactNode } from 'react'
-import type { Product } from '@/entities/types'
+import type { Equipment, Product } from '@/entities/types'
 import { LIFECYCLE_LABEL, STATUS_TONE, daysLeft } from '@/entities/product'
 import { Badge, Button, Card, DescriptionList } from '@/shared/ui'
 import { formatDate } from '@/shared/lib/utils'
+import { machineName } from '../columns'
 
 /**
- * `onAskDate`: the installation date is the supplier's (1С) — the customer
+ * `machine`: the one the hose is on, when it is. `onAskDate`: the installation date is the supplier's (1С) — the customer
  * cannot edit it, only ask the specialist to correct it.
  */
 export function ProductDetails({
   product: p,
+  machine,
   onAskDate,
 }: {
   product: Product
+  machine?: Equipment
   onAskDate?: () => void
 }) {
   const left = daysLeft(p)
@@ -73,7 +76,9 @@ export function ProductDetails({
     {
       title: 'Установка',
       rows: [
-        ['Место установки', p.installPlace],
+        // No one fills «Место установки» in 1С: the machine instead (customer, 2026-10-22).
+        ['Тип', machine?.type],
+        ['Марка / Модель', machineName(machine)],
         ['Статус в 1С', LIFECYCLE_LABEL[p.lifecycle]],
       ],
     },
