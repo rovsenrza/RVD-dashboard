@@ -187,7 +187,12 @@ export async function runCheck(
   const affected = [
     ...new Set(
       [
-        ...versions.filter((v) => live.has(v.Ref_Key) && known.get(v.Ref_Key) !== v.DataVersion),
+        // Only cached hoses by version: one not shown yet («НаОформлении») would come back every
+        // check. It appears with its first status line from «Изготавливается» on, read below.
+        ...versions.filter(
+          (v) =>
+            live.has(v.Ref_Key) && known.has(v.Ref_Key) && known.get(v.Ref_Key) !== v.DataVersion,
+        ),
         ...lines.filter((l) => live.has(l.Изделие_Key)).map((l) => ({ Ref_Key: l.Изделие_Key })),
         ...reposted.filter((id) => live.has(id)).map((id) => ({ Ref_Key: id })),
       ].map((v) => v.Ref_Key),

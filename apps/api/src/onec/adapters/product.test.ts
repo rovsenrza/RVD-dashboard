@@ -12,14 +12,21 @@ import { toProducts, type ProductSources } from './product.ts'
 
 const TODAY = new Date('2026-09-30T12:00:00')
 
-const sources = (over: Partial<ProductSources> = {}): ProductSources => ({
-  items: [item()],
-  statuses: [],
-  catalogNumbers: [],
-  components,
-  equipment: [equipment()],
-  ...over,
-})
+// Each item is in production unless a test says otherwise: before that the cabinet hides it.
+const made = (items: ProductSources['items']) =>
+  items.map((i) => statusRecord({ Изделие_Key: i.Ref_Key, Статус: 'Изготавливается' }))
+
+const sources = (over: Partial<ProductSources> = {}): ProductSources => {
+  const items = over.items ?? [item()]
+  return {
+    catalogNumbers: [],
+    components,
+    equipment: [equipment()],
+    ...over,
+    items,
+    statuses: over.statuses ?? made(items),
+  }
+}
 
 const one = (over: Partial<ProductSources> = {}) => toProducts(sources(over), { today: TODAY })[0]
 
@@ -158,8 +165,34 @@ describe('dates and lifecycle come from the statuses register', () => {
     expect(p).toMatchObject({ lifecycle: 'shipped', equipmentId: null })
   })
 
-  it('has no dates for an item 1С never released', () => {
-    expect(one()).toMatchObject({ manufacturedAt: null, shippedAt: null, installedAt: null })
+  it('has no shipment or installation for a hose still being made', () => {
+    expect(one()).toMatchObject({
+      manufacturedAt: '2026-01-10',
+      shippedAt: null,
+      installedAt: null,
+      lifecycle: 'manufacturing',
+    })
+  })
+
+  it('hides a hose with no status or still «НаОформлении», unless a newer one replaced it', () => {
+    const shown = (statuses: ProductSources['statuses'], items = [item()]) =>
+      toProducts(sources({ items, statuses })).map((p) => p.id)
+    expect(shown([])).toEqual([])
+    expect(shown([statusRecord({ Статус: '' })])).toEqual([])
+    expect(shown([statusRecord({ Статус: 'НаОформлении' })])).toEqual([])
+    // An unknown status after it is an event, not a stage: still not made.
+    expect(
+      shown([
+        statusRecord({ Статус: 'НаОформлении' }),
+        statusRecord({ Period: '2026-02-01T09:00:00', Статус: 'Ремонт' }),
+      ]),
+    ).toEqual([])
+    expect(shown([statusRecord({ Статус: 'Изготавливается' })])).toEqual(['item-1'])
+    const swap = [item(), item({ Ref_Key: 'new', ЗаменяемоеИзделие_Key: 'item-1' })]
+    expect(shown([statusRecord({ Изделие_Key: 'new', Статус: 'Отгружен' })], swap)).toEqual([
+      'item-1',
+      'new',
+    ])
   })
 
   it('keeps the stage and the machine when 1С records a status the cabinet does not know yet', () => {
@@ -174,8 +207,7 @@ describe('dates and lifecycle come from the statuses register', () => {
     expect(p).toMatchObject({ lifecycle: 'shipped', shippedAt: '2026-06-01', equipmentId: 'eq-1' })
   })
 
-  it('maps the empty status to manufacturing, and a machine missing from the catalogue to none', () => {
-    expect(one({ statuses: [statusRecord({ Статус: '' })] }).lifecycle).toBe('manufacturing')
+  it('maps a machine missing from the catalogue to none', () => {
     const p = one({
       items: [item({ Owner_Key: 'not-in-catalogue' })],
       statuses: [statusRecord({ Статус: 'Отгружен' })],
@@ -264,14 +296,21 @@ describe('health and ownership', () => {
     // The 1С developer, 2026-10-17: the new hose's manufacture is the old one's write-off.
     const inUse = statusRecord({ Статус: 'ВЭксплуатации', Period: '2026-03-01T00:00:00' })
     const fresh = item({ Ref_Key: 'item-2', ЗаменяемоеИзделие_Key: 'item-1' })
-    const [old, made] = toProducts(sources({ items: [item(), fresh], statuses: [inUse] }), {
-      today: TODAY,
-    })
+    const building = statusRecord({ Изделие_Key: 'item-2', Статус: 'Изготавливается' })
+    const [old, made] = toProducts(
+      sources({ items: [item(), fresh], statuses: [inUse, building] }),
+      { today: TODAY },
+    )
     expect(old).toMatchObject({ lifecycle: 'written_off', installedAt: '2026-03-01' })
     expect(made.lifecycle).toBe('manufacturing')
     // A check reads the old hose alone; the cached link comes with it.
     expect(toProducts(sources({ statuses: [inUse] }), { replaced: ['item-1'] })[0].lifecycle).toBe(
       'written_off',
+    )
+    // Nor does one still «НаОформлении»: the request may yet be cancelled.
+    const drafted = statusRecord({ Изделие_Key: 'item-2', Статус: 'НаОформлении' })
+    expect(one({ items: [item(), fresh], statuses: [inUse, drafted] }).lifecycle).toBe(
+      'in_operation',
     )
     // A deleted new hose replaces nothing.
     const deleted = { ...fresh, DeletionMark: true }

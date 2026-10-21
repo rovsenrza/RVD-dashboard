@@ -94,6 +94,20 @@ export function statusesByItem(records: RawStatusRecord[]): Map<string, RawStatu
   return grouped
 }
 
+/** Register statuses before the hose physically exists: a request being drawn up. */
+const NOT_YET = new Set(['', 'НаОформлении'])
+
+/**
+ * Whether the client sees the hose at all: from «Изготавливается» on. One with no
+ * status, or still «НаОформлении», may be a request that gets cancelled or deleted
+ * and only clutters the lists (customer, 2026-10-22). A hose a newer one replaced did exist.
+ */
+const exists = (history: RawStatusRecord[] = [], replaced: Set<string>, item: RawItem) => {
+  if (replaced.has(item.Ref_Key)) return true
+  const stage = [...history].reverse().find((r) => isKnownStatus(r.Статус))
+  return !!stage && !NOT_YET.has(cleanText(stage.Статус))
+}
+
 const lastWith = (records: RawStatusRecord[], status: string) =>
   [...records].reverse().find((r) => r.Статус === status)
 
@@ -116,10 +130,12 @@ export function toProducts(src: ProductSources, options: ProductOptions = {}): P
   const lifecycles = statusesByItem(src.statuses)
   // 1С records no write-off for a swapped hose: a new one naming it as replaced is the
   // write-off, whatever its own status says (the 1С developer, 2026-10-17).
-  const replaced = new Set([...replacedBy(src.items), ...(options.replaced ?? [])])
+  // Only a new hose that exists: a request still being drawn up may yet be cancelled.
+  const made = src.items.filter((i) => exists(lifecycles.get(i.Ref_Key), new Set(), i))
+  const replaced = new Set([...replacedBy(made), ...(options.replaced ?? [])])
 
   return src.items
-    .filter((item) => !item.DeletionMark)
+    .filter((item) => !item.DeletionMark && exists(lifecycles.get(item.Ref_Key), replaced, item))
     .map((item): Product => {
       const history = lifecycles.get(item.Ref_Key) ?? []
       const cat = isRef(item.КаталожныйНомер_Key)
