@@ -26,7 +26,7 @@ export default defineConfig({
     toHaveScreenshot: { animations: 'disabled', caret: 'hide', maxDiffPixelRatio: 0.002 },
   },
   webServer: {
-    command: 'npx vite --port 5198 --strictPort',
+    command: 'npx vite --config apps/web/vite.config.ts --port 5198 --strictPort',
     url: 'http://localhost:5198',
     reuseExistingServer: true,
     env: { VITE_USE_MOCKS: 'true' },

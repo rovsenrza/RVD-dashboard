@@ -7,6 +7,8 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 COPY apps/api/package.json apps/api/
 COPY packages/contracts/package.json packages/contracts/
+# Every workspace's manifest, so the lock file matches; only the API's are installed.
+COPY apps/web/package.json apps/web/
 # tsx runs the TypeScript sources as they are, the way `npm start` does.
 RUN npm ci --workspace=@rvd/api --workspace=@rvd/contracts --include=dev \
   && npm cache clean --force

@@ -26,7 +26,7 @@ export default defineConfig({
       timeout: 60_000,
     },
     {
-      command: 'npx vite --port 5197 --strictPort',
+      command: 'npx vite --config apps/web/vite.config.ts --port 5197 --strictPort',
       url: 'http://localhost:5197',
       reuseExistingServer: false,
       // Set in full: a developer's .env.local must not point this run anywhere else.

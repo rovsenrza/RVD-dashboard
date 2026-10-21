@@ -16,12 +16,12 @@ const dir = path.join(root, 'docs/guide')
 const GUIDES = [
   {
     source: 'instrukciya.md',
-    pdf: 'public/docs/rvd-kabinet-instrukciya.pdf',
+    pdf: 'apps/web/public/docs/rvd-kabinet-instrukciya.pdf',
     footer: 'РВД Кабинет · инструкция для пользователя',
   },
   {
     source: 'postavshchik.md',
-    pdf: 'public/docs/rvd-kabinet-postavshchik.pdf',
+    pdf: 'apps/web/public/docs/rvd-kabinet-postavshchik.pdf',
     footer: 'РВД Кабинет · раздел поставщика',
   },
 ]

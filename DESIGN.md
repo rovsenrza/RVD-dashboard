@@ -177,7 +177,7 @@ A control room, not a card wall. The screen has three materials and nothing else
 
 The world is pinned to the customer's reference (Eurohydroservice ESM): dark sidebar, amber, light content, dense data tables — executed with modern spacing, one workhorse Cyrillic typeface and no chrome the reference does not have. Mode is Operate: engineers and managers at a desk; scanability and consistency beat expression.
 
-Source of truth for tokens: `src/index.css` (`@theme`). Primitives: `src/shared/ui/`. Domain status UI: `src/entities/product/`, `src/entities/request/`.
+Source of truth for tokens: `apps/web/src/index.css` (`@theme`). Primitives: `apps/web/src/shared/ui/`. Domain status UI: `apps/web/src/entities/product/`, `apps/web/src/entities/request/`.
 
 ## Colors
 
@@ -188,11 +188,11 @@ Source of truth for tokens: `src/index.css` (`@theme`). Primitives: `src/shared/
 - **Status** has three tiers per state: the base hue for marks (dots, bars, chart slices), `-soft` for pill grounds, `-ink` for any text set in that status colour. Text on a `-soft` tint or on white is always the `-ink` tier; base hues are never used as text. Status colours are semantic and appear only on pills, bars, chart marks and the tinted KPI numbers — never as section colour or decoration. The one use outside a hose is the state of the data itself: the rail's 1С dot (`status-ok` fresh, `status-warn` while 1С is silent, `status-none` before the first sync) and the 1С banner, a full-width `status-warn-soft` strip with `-ink` text under the header.
 - Hairline `line` divides rows and KPI cells; `line-strong` is the resting outline of inputs and secondary buttons (rendered as an inset ring, not a border). Nothing else is outlined.
 - Tokens are named by role, so a theme only swaps values; components never pick colours per theme. Text on a status base fill (status bar segments) is `on-status`; the danger button fills with `status-replace-ink` and sets its label in `sheet`, which holds AA in both themes.
-- **Dark theme** (`src/index.css`): the same properties redefined under `@media (prefers-color-scheme: dark)` for «Как в системе» and under `:root[data-theme='dark']` for an explicit choice (the user menu's «Тема» control; stored in `localStorage` as `rvd.theme` and applied before first paint by `public/theme.js`, a blocking script rather than an inline one so the CSP forbids inline scripts). Depth order in dark: rail `#0b0b0a` below field `#131312` below sheet `#1b1b1a` below pop `#242422`. Amber and the status base hues are unchanged; `-soft` grounds become dark tints and `-ink` text becomes light, `brand-deep` becomes a light amber `#f6b54d` for links. `src/shared/lib/tokens.test.ts` keeps the two dark blocks identical and asserts AA for every text/ground pair in both themes.
+- **Dark theme** (`apps/web/src/index.css`): the same properties redefined under `@media (prefers-color-scheme: dark)` for «Как в системе» and under `:root[data-theme='dark']` for an explicit choice (the user menu's «Тема» control; stored in `localStorage` as `rvd.theme` and applied before first paint by `apps/web/public/theme.js`, a blocking script rather than an inline one so the CSP forbids inline scripts). Depth order in dark: rail `#0b0b0a` below field `#131312` below sheet `#1b1b1a` below pop `#242422`. Amber and the status base hues are unchanged; `-soft` grounds become dark tints and `-ink` text becomes light, `brand-deep` becomes a light amber `#f6b54d` for links. `apps/web/src/shared/lib/tokens.test.ts` keeps the two dark blocks identical and asserts AA for every text/ground pair in both themes.
 
 ## Typography
 
-One family: **Golos Text** (variable 400–700, self-hosted in `public/fonts/`, Cyrillic + Latin subsets). Fallback stack `ui-sans-serif, system-ui`. No display face; hierarchy comes from size and weight steps on a ~1.125 scale.
+One family: **Golos Text** (variable 400–700, self-hosted in `apps/web/public/fonts/`, Cyrillic + Latin subsets). Fallback stack `ui-sans-serif, system-ui`. No display face; hierarchy comes from size and weight steps on a ~1.125 scale.
 
 - Page title 22/600, tracking −0.02em, `text-wrap: balance`. One per screen, left, with a 13.5px muted description under it.
 - Sheet title 15/600. Table, column-group and detail-section headers are all 12/500 uppercase, tracking +0.025em, `ink-muted`. Body and table cells 14/400. Labels 12.5. Badges 12/500. Nothing below 11px.

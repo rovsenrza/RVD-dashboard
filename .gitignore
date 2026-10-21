@@ -40,7 +40,7 @@ coverage
 .vitest
 
 # MSW worker is generated
-public/mockServiceWorker.js
+apps/web/public/mockServiceWorker.js
 
 # impeccable local artefacts (screenshots, live-mode state)
 .impeccable/review/

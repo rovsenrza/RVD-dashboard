@@ -1,11 +1,11 @@
 ---
 version: 1
 slug: "src-app-layout-layout-tsx"
-primary_target: "src/app/layout/Layout.tsx"
-related_targets: ["src/features/dashboard/DashboardPage.tsx","src/features/products/ProductsPage.tsx","src/index.css"]
+primary_target: "apps/web/src/app/layout/Layout.tsx"
+related_targets: ["apps/web/src/features/dashboard/DashboardPage.tsx","apps/web/src/features/products/ProductsPage.tsx","apps/web/src/index.css"]
 ---
 
-# Surface: app shell + dashboard + registries (src/app, src/features/*)
+# Surface: app shell + dashboard + registries (apps/web/src/app, apps/web/src/features/*)
 
 Mode: Operate. Audience: engineers/managers at a desk, desktop browser, planning hose replacements; mechanics on tablet as secondary.
 Job: see what needs action this month, find any hose in one search, drill to product/equipment, raise a request.

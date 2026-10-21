@@ -30,7 +30,7 @@
   "typographyMeta": {
     "body": {
       "displayName": "Golos Text",
-      "source": "public/fonts/golos.css (self-hosted, variable 400–700, OFL-1.1)",
+      "source": "apps/web/public/fonts/golos.css (self-hosted, variable 400–700, OFL-1.1)",
       "features": "tnum, ss01"
     }
   },

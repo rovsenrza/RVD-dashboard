@@ -12,7 +12,7 @@ React 19 · TypeScript · Vite · Tailwind v4 · React Router · TanStack Query/
 ```bash
 cp .env.example .env.local   # VITE_USE_MOCKS=true — работа без бэкенда
 npm ci
-npm run msw:init             # один раз: генерирует public/mockServiceWorker.js
+npm run msw:init             # один раз: генерирует apps/web/public/mockServiceWorker.js
 npm run dev
 ```
 
@@ -30,7 +30,7 @@ npm run dev
 ## Структура
 
 ```
-src/
+apps/web/src/
   app/          layout, router, providers
   entities/     доменные типы (из ТЗ, не из 1С)
   features/     dashboard, products, equipment, replacements, requests

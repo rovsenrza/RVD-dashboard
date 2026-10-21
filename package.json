@@ -4,11 +4,10 @@
   "version": "1.0.0-rc.3",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "prebuild": "npm run msw:init",
-    "build": "tsc -b && vite build",
-    "preview": "vite preview",
-    "lint": "oxlint src apps packages",
+    "dev": "npm run dev -w @rvd/web",
+    "build": "tsc -b && npm run build -w @rvd/web",
+    "preview": "npm run preview -w @rvd/web",
+    "lint": "oxlint apps/web/src apps/api packages",
     "typecheck": "tsc -b --noEmit",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -17,27 +16,9 @@
     "test:visual": "playwright test",
     "test:visual:update": "playwright test --update-snapshots",
     "guide": "node scripts/build-guide.mjs",
-    "msw:init": "msw init public --save",
+    "msw:init": "npm run msw:init -w @rvd/web",
     "lint:arch": "bash scripts/check-arch.sh",
     "test:e2e": "playwright test -c playwright.live.config.ts"
-  },
-  "dependencies": {
-    "@rvd/contracts": "*",
-    "@tanstack/react-query": "^5.102.8",
-    "@tanstack/react-table": "^8.21.3",
-    "@zxing/browser": "^0.2.1",
-    "@zxing/library": "^0.23.0",
-    "class-variance-authority": "^0.7.1",
-    "clsx": "^2.1.1",
-    "date-fns": "^4.4.0",
-    "lucide-react": "^1.46.0",
-    "react": "^19.2.8",
-    "react-dom": "^19.2.8",
-    "react-router-dom": "^7.18.3",
-    "read-excel-file": "^9.3.10",
-    "recharts": "^3.10.1",
-    "tailwind-merge": "^3.7.0",
-    "write-excel-file": "^4.1.1"
   },
   "devDependencies": {
     "@playwright/test": "^1.63.0",
@@ -59,11 +40,6 @@
   },
   "engines": {
     "node": ">=22"
-  },
-  "msw": {
-    "workerDirectory": [
-      "public"
-    ]
   },
   "workspaces": [
     "packages/*",

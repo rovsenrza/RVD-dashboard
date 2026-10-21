@@ -2,12 +2,19 @@ import path from 'node:path'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { defineConfig, loadEnv } from 'vite'
-import pkg from './package.json' with { type: 'json' }
+// One version for the whole cabinet: the repository's.
+import pkg from '../../package.json' with { type: 'json' }
 
 // https://vite.dev/config/
+// The env files (.env, .env.local) stay at the repository root, beside the API's.
+const envDir = path.resolve(__dirname, '../..')
+
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, process.cwd(), 'VITE_')
+  const env = loadEnv(mode, envDir, 'VITE_')
   return {
+    // Whoever starts it — this workspace or Playwright from the root — the app is this folder.
+    root: __dirname,
+    envDir,
     plugins: [react(), tailwindcss()],
     // The rail shows it; one place to bump at a release.
     define: { __APP_VERSION__: JSON.stringify(pkg.version) },

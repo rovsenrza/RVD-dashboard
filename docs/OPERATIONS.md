@@ -25,7 +25,7 @@ scripts/deploy-beget.sh                                             # демо �
 VITE_API_BASE_URL=https://api.clientrvd.vgiz.ru scripts/deploy-beget.sh live   # с настоящим API
 ```
 
-Скрипт собирает приложение и зеркалирует `dist/` в папку сайта (лишнее там удаляется, кроме `cgi-bin/`). `public/.htaccess` даёт Apache переходы по адресам приложения, кэш и те же заголовки безопасности, что `deploy/nginx.conf`; в режиме live скрипт добавляет адрес API в CSP.
+Скрипт собирает приложение и зеркалирует `dist/` в папку сайта (лишнее там удаляется, кроме `cgi-bin/`). `apps/web/public/.htaccess` даёт Apache переходы по адресам приложения, кэш и те же заголовки безопасности, что `deploy/nginx.conf`; в режиме live скрипт добавляет адрес API в CSP.
 
 На этом хостинге нет Node.js, PostgreSQL, Docker и cron (фоновые процессы — только через панель Beget), поэтому **API и база должны жить отдельно** — например, VPS с `deploy/docker-compose.prod.yml` под поддоменом `api.clientrvd.vgiz.ru`: поддомен того же сайта нужен, чтобы refresh-cookie (SameSite=Lax) доходил до API. У API тогда: `CORS_ORIGIN=https://clientrvd.vgiz.ru`, `PUBLIC_API_PATH=https://api.clientrvd.vgiz.ru`, `COOKIE_SECURE=true`.
 
