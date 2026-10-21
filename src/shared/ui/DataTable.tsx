@@ -386,7 +386,12 @@ export function DataTable<T>({
                         >
                           {i === 0 && selection ? (
                             <span className="inline-flex items-center gap-1.5">
-                              {rowBox(row.original)}
+                              {/* A row that can't be ticked keeps the box's room, so the column stays aligned. */}
+                              {rowBox(row.original) ?? (
+                                <span aria-hidden className="-my-2 -ml-2 inline-flex p-2">
+                                  <span className="size-4.5 pointer-coarse:size-5.5" />
+                                </span>
+                              )}
                               <CellText cell={cell} />
                             </span>
                           ) : (
