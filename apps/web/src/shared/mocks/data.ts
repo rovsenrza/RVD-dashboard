@@ -230,7 +230,9 @@ export const replacements: Replacement[] = Array.from({ length: 94 }, (_, i) => 
     operatingHours: rand() < 0.6 ? Math.floor(rand() * 12000) : null,
     // Trucks count kilometres, everything else engine hours.
     usageUnit: machine.type === 'Самосвал' ? 'km' : 'hours',
-    performedBy: pick(['Иванов И.', 'Петров П.', 'Сидоров С.']),
+    // The client picks the performer in the cabinet; the draw keeps the demo's sequence.
+    performerId: rand() < 0 ? '' : null,
+    performedBy: null,
     comment: null,
     attachments: [],
   }

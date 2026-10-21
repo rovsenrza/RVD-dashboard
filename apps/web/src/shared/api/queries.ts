@@ -22,6 +22,7 @@ import type {
   Product,
   LifecycleRecord,
   Replacement,
+  StaffMember,
   ServiceRequest,
   SupportMessage,
   SyncStatus,
@@ -81,6 +82,7 @@ export const keys = {
   equipmentReplacements: (id: string) => ['replacements', 'equipment', id] as const,
   requests: (branch: string | null) => ['requests', branch] as const,
   users: ['admin', 'users'] as const,
+  staff: ['staff'] as const,
   supplierCompanies: ['supplier', 'companies'] as const,
   onecClients: ['supplier', 'clients'] as const,
   mailboxes: ['supplier', 'mailboxes'] as const,
@@ -243,6 +245,23 @@ export const useReplacements = () => {
   return useQuery({
     queryKey: keys.replacements(branch),
     queryFn: () => api.get<Replacement[]>(scoped('/replacements', branch)),
+  })
+}
+
+/** The company's staff a swap can be credited to. */
+export const useStaff = () =>
+  useQuery({ queryKey: keys.staff, queryFn: () => api.get<StaffMember[]>('/staff') })
+
+/** Who swapped the hose on the machine — the client's own record, 1С does not keep it. */
+export const useSetPerformer = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: ({ id, performerId }: { id: string; performerId: string | null }) =>
+      api.patch<Replacement>(`/replacements/${id}`, { performerId }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['replacements'] })
+      qc.invalidateQueries({ queryKey: keys.audit })
+    },
   })
 }
 

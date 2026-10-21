@@ -173,10 +173,18 @@ export interface Replacement {
   operatingHours: number | null
   /** Моточасы for most machines, kilometres for trucks */
   usageUnit: 'hours' | 'km'
+  /** Who swapped it on the machine — one of the client's staff, picked in the cabinet */
+  performerId: string | null
   performedBy: string | null
   comment: string | null
   /** Фото снятого рукава, акт — что механик приложил к замене */
   attachments: Attachment[]
+}
+
+/** A colleague a swap can be credited to. */
+export interface StaffMember {
+  id: string
+  name: string
 }
 
 export type RequestStatus = 'new' | 'in_progress' | 'done' | 'rejected'
@@ -329,6 +337,7 @@ export interface CabinetSettings {
 
 export type AuditAction =
   | 'installation.update'
+  | 'replacement.update'
   | 'request.create'
   | 'user.create'
   | 'user.update'

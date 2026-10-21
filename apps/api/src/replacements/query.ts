@@ -1,4 +1,5 @@
-import type { Replacement } from '@rvd/contracts'
+import type { Replacement, StaffMember } from '@rvd/contracts'
+import { AuthRejected } from '../auth/service.ts'
 import type { Db } from '../db/pool.ts'
 
 /**
@@ -32,6 +33,8 @@ interface Row {
   reason: string | null
   operating_hours: number | null
   usage_unit: 'hours' | 'km' | null
+  performer_id: string | null
+  performer: string | null
 }
 
 /** Which swaps to list; each narrows the client's journal. */
@@ -46,7 +49,8 @@ export interface ReplacementFilter {
 /**
  * «История замен», newest first. 1С keeps no reason, usage or performer for a swap: the
  * reason and running hours are what the client wrote in the latest replacement request
- * naming the hose taken off (customer, 2026-10-08).
+ * naming the hose taken off (customer, 2026-10-08); the performer is the client's own
+ * pick in the cabinet (customer, 2026-10-22).
  */
 export async function listReplacements(
   db: Db,
@@ -57,8 +61,10 @@ export async function listReplacements(
      select s.id, s.old_id, s.old_serial, s.new_serial, s.equipment_id, e.garage_number,
        to_char(s.date, 'YYYY-MM-DD') as day, asked.line ->> 'reason' as reason,
        (asked.line ->> 'operatingHours')::int as operating_hours,
-       asked.line ->> 'usageUnit' as usage_unit
+       asked.line ->> 'usageUnit' as usage_unit, rl.performer_id, u.name as performer
      from swaps s left join equipment e on e.id = s.equipment_id
+     left join replacement_local rl on rl.product_id = s.id
+     left join users u on u.id = rl.performer_id
      left join lateral (
        select l.line from requests r cross join jsonb_array_elements(r.positions) as l(line)
         where r.kind = 'replace' and l.line ->> 'productId' = s.old_id
@@ -81,10 +87,50 @@ export async function listReplacements(
     reason: r.reason,
     operatingHours: r.operating_hours,
     usageUnit: r.usage_unit ?? 'hours',
-    performedBy: null,
+    performerId: r.performer_id,
+    performedBy: r.performer,
     comment: null,
     attachments: [],
   }))
+}
+
+/** Whom a swap may be credited to: the company's active staff. */
+export async function listStaff(db: Db, companyId: string): Promise<StaffMember[]> {
+  const { rows } = await db.query<StaffMember>(
+    'select id, name from users where company_id = $1 and active order by name, id',
+    [companyId],
+  )
+  return rows
+}
+
+/**
+ * Records who swapped the hose on the machine, or clears it with null. The swap must be
+ * one the reader sees, the performer one of their company's active staff.
+ */
+export async function savePerformer(
+  db: Db,
+  swapId: string,
+  performerId: unknown,
+  scope: { clients?: string[]; companyId: string },
+): Promise<Replacement> {
+  if (performerId !== null && typeof performerId !== 'string')
+    throw new AuthRejected(400, 'Укажите, кто выполнил замену')
+  const swap = (await listReplacements(db, { clients: scope.clients, product: swapId })).find(
+    (r) => r.id === swapId,
+  )
+  if (!swap) throw new AuthRejected(404, 'Замена не найдена')
+  if (performerId) {
+    const staff = await listStaff(db, scope.companyId)
+    if (!staff.some((m) => m.id === performerId))
+      throw new AuthRejected(400, 'Такого сотрудника нет в компании')
+  }
+  await db.query(
+    `insert into replacement_local (product_id, performer_id) values ($1, $2)
+     on conflict (product_id) do update set performer_id = $2, updated_at = now()`,
+    [swapId, performerId],
+  )
+  const after = await listReplacements(db, { clients: scope.clients, product: swapId })
+  return after.find((r) => r.id === swapId)!
 }
 
 export interface ReplacementTotals {

@@ -2,6 +2,7 @@ import type { AuditAction, AuditTargetKind } from '@/entities/types'
 
 export const AUDIT_ACTION_LABEL: Record<AuditAction, string> = {
   'installation.update': 'Изменён факт установки',
+  'replacement.update': 'Указан исполнитель замены',
   'request.create': 'Создана заявка',
   'user.create': 'Добавлен пользователь',
   'user.update': 'Изменён пользователь',

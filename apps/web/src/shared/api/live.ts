@@ -70,6 +70,8 @@ export const LIVE_ROUTES = [
   ['get', '/me/notification-prefs'],
   ['patch', '/me/notification-prefs'],
   ['get', '/replacements'],
+  ['patch', '/replacements/:id'],
+  ['get', '/staff'],
   ['get', '/requests'],
   ['post', '/requests'],
 ] as const

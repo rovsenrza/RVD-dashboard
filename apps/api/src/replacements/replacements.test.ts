@@ -110,6 +110,7 @@ describe.skipIf(!hasDb)('the replacement journal from 1С links', () => {
       reason: null,
       operatingHours: null,
       usageUnit: 'hours',
+      performerId: null,
       performedBy: null,
       comment: null,
       attachments: [],
@@ -183,5 +184,34 @@ describe.skipIf(!hasDb)('the replacement journal from 1С links', () => {
     // A swap nobody asked about keeps 1С's silence.
     const other = (await get('/replacements')) as Replacement[]
     expect(other.find((r) => r.oldProductId === 'old2')).toMatchObject({ reason: null })
+  })
+
+  it('keeps who swapped the hose: one of the company’s active staff, picked in the cabinet', async () => {
+    await db.query(
+      `insert into companies (id, name, onec_client_key) values ('demo', 'Демо', 'k-demo'),
+         ('other', 'Чужие', 'k-other')`,
+    )
+    await db.query(
+      `insert into users (id, company_id, name, email, password_hash, role, active) values
+         ('m1', 'demo', 'Иванов И.', 'm1@x.ru', '-', 'mechanic', true),
+         ('m2', 'demo', 'Уволен У.', 'm2@x.ru', '-', 'mechanic', false),
+         ('x1', 'other', 'Чужой Ч.', 'x1@x.ru', '-', 'mechanic', true)`,
+    )
+    expect(await get('/staff')).toEqual([{ id: 'm1', name: 'Иванов И.' }])
+
+    const set = (id: string, performerId: string | null) =>
+      app.inject({ method: 'PATCH', url: `/replacements/${id}`, payload: { performerId } })
+    const done = await set('new1', 'm1')
+    expect(done.statusCode).toBe(200)
+    expect(done.json()).toMatchObject({ id: 'new1', performerId: 'm1', performedBy: 'Иванов И.' })
+    expect(((await get('/products/old1/replacements')) as Replacement[])[0]).toMatchObject({
+      performedBy: 'Иванов И.',
+    })
+    // Someone switched off, of another company, or a swap the reader does not see.
+    expect((await set('new1', 'm2')).statusCode).toBe(400)
+    expect((await set('new1', 'x1')).statusCode).toBe(400)
+    expect((await set('theirs', 'm1')).statusCode).toBe(404)
+    // Cleared again.
+    expect((await set('new1', null)).json()).toMatchObject({ performerId: null, performedBy: null })
   })
 })

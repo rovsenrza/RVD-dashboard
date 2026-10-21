@@ -80,7 +80,7 @@ import { dashboardSummary } from './dashboard/query.ts'
 import { equipmentProducts, getEquipment, listEquipment } from './equipment/query.ts'
 import { productLifetime } from './products/lifetime.ts'
 import { getProduct, listProducts, type Clock } from './products/query.ts'
-import { listReplacements } from './replacements/query.ts'
+import { listReplacements, listStaff, savePerformer } from './replacements/query.ts'
 import { companyModels, companyReport } from './reports/query.ts'
 import { syncStatus } from './sync/health.ts'
 import {
@@ -908,6 +908,35 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
 
     app.get<{ Params: { id: string } }>('/equipment/:id/replacements', async (req) =>
       listReplacements(db, { clients: clientsOf(req), equipment: req.params.id }),
+    )
+
+    // Who swapped a hose on the machine: 1С does not keep it, the client picks one of its staff.
+    app.get('/staff', async (req) => listStaff(db, req.identity!.companyId))
+
+    app.patch<{ Params: { id: string }; Body: { performerId?: unknown } }>(
+      '/replacements/:id',
+      async (req, reply) =>
+        answering(reply, async () => {
+          const performerId = req.body?.performerId ?? null
+          const before = (
+            await listReplacements(db, { clients: clientsOf(req), product: req.params.id })
+          ).find((r) => r.id === req.params.id)
+          const after = await savePerformer(db, req.params.id, performerId, {
+            clients: clientsOf(req),
+            companyId: req.identity!.companyId,
+          })
+          const changes = auditChanges(
+            { 'Кто выполнил замену': before?.performedBy ?? null },
+            { 'Кто выполнил замену': after.performedBy },
+          )
+          if (changes.length)
+            await audit(req, {
+              action: 'replacement.update',
+              target: { kind: 'product', id: after.id, label: `№ ${after.newSerialNumber}` },
+              changes,
+            })
+          return after
+        }),
     )
 
     app.get<{ Querystring: { days?: string } }>('/dashboard/summary', async (req) =>

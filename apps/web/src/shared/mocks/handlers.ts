@@ -262,6 +262,30 @@ export const handlers = [
     )
     return HttpResponse.json(newestFirst(replacements.filter((r) => ours.has(r.equipmentId))))
   }),
+  http.get(api('/staff'), () =>
+    HttpResponse.json(users.filter((u) => u.active).map(({ id, name }) => ({ id, name }))),
+  ),
+  http.patch(api('/replacements/:id'), async ({ params, request }) => {
+    const r = replacements.find((x) => x.id === params.id)
+    if (!r) return new HttpResponse(null, { status: 404 })
+    const { performerId } = (await request.json()) as { performerId: string | null }
+    const who = performerId ? users.find((u) => u.id === performerId && u.active) : null
+    if (performerId && !who)
+      return HttpResponse.json({ message: 'Такого сотрудника нет в компании' }, { status: 400 })
+    const changes = diff(
+      { 'Кто выполнил замену': r.performedBy },
+      { 'Кто выполнил замену': who?.name ?? null },
+    )
+    r.performerId = who?.id ?? null
+    r.performedBy = who?.name ?? null
+    if (changes.length)
+      record({
+        action: 'replacement.update',
+        target: { kind: 'product', id: r.id, label: `№ ${r.newSerialNumber}` },
+        changes,
+      })
+    return HttpResponse.json(r)
+  }),
   http.get(api('/products/:id/attachments'), ({ params }) =>
     HttpResponse.json(attachmentsOf({ kind: 'product', id: params.id as string })),
   ),
