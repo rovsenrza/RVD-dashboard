@@ -94,7 +94,7 @@ const statusesOf = (db: Db, client: ODataClient) =>
 const ORDER_DAYS = 3
 
 const ordersOf = (db: Db, client: ODataClient, since?: string) =>
-  fetchOrders(client, since).then((orders) => importOrders(db, orders))
+  fetchOrders(client, since).then((orders) => importOrders(db, orders, { complete: !since }))
 
 /**
  * The changed hoses adapted. A hose named as replaced is written off (the 1С developer,

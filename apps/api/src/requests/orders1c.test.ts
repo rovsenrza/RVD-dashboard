@@ -15,6 +15,8 @@ const ZERO = '00000000-0000-0000-0000-000000000000'
 
 const order = (Ref_Key: string, over: Partial<RawOrder> = {}): RawOrder => ({
   Ref_Key,
+  DeletionMark: false,
+  Posted: true,
   Number: `СВЦБ-${Ref_Key.slice(0, 3)}  `,
   Date: '2025-08-12T23:30:00',
   Клиент_Key: 'k1',
@@ -96,5 +98,25 @@ describe.skipIf(!hasDb)('orders made in 1С, in «Заявки»', () => {
     const [b] = await rows()
     expect(b).toMatchObject({ status: 'done', shipment_status: 'shipped' })
     expect(b.closed_at).not.toBeNull()
+  })
+
+  it('shows no drafts or marked orders, and takes out one shown before', async () => {
+    const D = '66666666-6666-6666-6666-666666666666'
+    expect(await importOrders(db, [order(D, { Posted: false })])).toBe(0)
+    expect((await rows()).map((r) => r.id)).not.toContain(`1c-${D}`)
+    // B was shown; 1С marks it for deletion.
+    expect(await importOrders(db, [order(B, { DeletionMark: true })])).toBe(1)
+    expect((await rows()).map((r) => r.id)).not.toContain(`1c-${B}`)
+  })
+
+  it('takes out an order 1С no longer has once it reads them all, never the cabinet’s own', async () => {
+    const E = '77777777-7777-7777-7777-777777777777'
+    await importOrders(db, [order(E)])
+    expect((await rows()).map((r) => r.id)).toContain(`1c-${C}`)
+    // A recent slice says nothing of the orders outside it.
+    await importOrders(db, [order(E)])
+    expect((await rows()).map((r) => r.id)).toContain(`1c-${C}`)
+    await importOrders(db, [order(E)], { complete: true })
+    expect((await rows()).map((r) => r.id)).toEqual(['1c-' + E, 'mine'])
   })
 })

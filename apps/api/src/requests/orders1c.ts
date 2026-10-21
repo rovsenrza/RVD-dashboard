@@ -7,6 +7,9 @@ import { requestStatusFrom1C } from '../onec/orders.ts'
 /** «Заказ клиента» as the cabinet reads it, with its lines. */
 export interface RawOrder {
   Ref_Key: string
+  DeletionMark: boolean
+  /** An order not posted is a draft */
+  Posted: boolean
   Number: string
   Date: string
   Клиент_Key: string
@@ -16,11 +19,16 @@ export interface RawOrder {
   Изделия?: { Изделие_Key: string; Техника_Key: string; КаталожныйНомер_Key: string }[]
 }
 
-/** Reads the orders 1С holds, all of them or those dated since a day. */
+/**
+ * Reads the orders 1С holds, all of them or those dated since a day — the marked
+ * and the drafts too, so that one the cabinet already shows can be taken out.
+ */
 export function fetchOrders(client: ODataClient, since?: string): Promise<RawOrder[]> {
   return client.all<RawOrder>('Document_ЗаказыКлиента', {
     select: [
       'Ref_Key',
+      'DeletionMark',
+      'Posted',
       'Number',
       'Date',
       'Клиент_Key',
@@ -29,7 +37,7 @@ export function fetchOrders(client: ODataClient, since?: string): Promise<RawOrd
       'Комментарий',
       'Изделия',
     ],
-    filter: `DeletionMark eq false${since ? ` and Date ge datetime'${since}T00:00:00'` : ''}`,
+    filter: since ? `Date ge datetime'${since}T00:00:00'` : undefined,
   })
 }
 
@@ -41,10 +49,28 @@ const ref = (key: string | undefined) => (key && isRef(key) ? key : null)
  * is a request of kind `order`, already delivered, under `1c-<Ref_Key>`; a
  * later run refreshes its status and shipment, and stamps `closed_at` when it
  * first sees the order closed, as for the cabinet's requests. Orders the
- * cabinet itself sent are left to their own rows. Returns the rows written.
+ * cabinet itself sent are left to their own rows.
+ *
+ * Drafts and orders marked for deletion are not shown, and one shown before goes
+ * (customer, 2026-10-22). With `complete` — every order 1С holds, not a recent
+ * slice — an order 1С no longer has at all goes too. Returns the rows written or removed.
  */
-export async function importOrders(db: Db, orders: RawOrder[]): Promise<number> {
-  if (!orders.length) return 0
+export async function importOrders(
+  db: Db,
+  all: RawOrder[],
+  { complete = false }: { complete?: boolean } = {},
+): Promise<number> {
+  if (!all.length) return 0
+  const orders = all.filter((o) => o.Posted && !o.DeletionMark)
+  const hidden = all.filter((o) => !o.Posted || o.DeletionMark).map((o) => `1c-${o.Ref_Key}`)
+  const gone = await db.query(
+    complete
+      ? `delete from requests where kind = 'order' and (id = any($1) or onec_ref <> all($2))`
+      : `delete from requests where kind = 'order' and id = any($1)`,
+    complete ? [hidden, orders.map((o) => o.Ref_Key)] : [hidden],
+  )
+  const removed = gone.rowCount ?? 0
+  if (!orders.length) return removed
   // What each line's hose is, for the catalogue number the list shows.
   const items = [
     ...new Set(orders.flatMap((o) => (o.Изделия ?? []).map((l) => ref(l.Изделие_Key)))),
@@ -106,5 +132,5 @@ export async function importOrders(db: Db, orders: RawOrder[]): Promise<number> 
     `delete from requests o where o.kind = 'order'
        and exists (select 1 from requests c where c.onec_ref = o.onec_ref and c.kind <> 'order')`,
   )
-  return result.rowCount ?? 0
+  return removed + (result.rowCount ?? 0)
 }
