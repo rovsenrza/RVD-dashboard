@@ -8,8 +8,8 @@ import type {
   Replacement,
 } from './types'
 
-/** The swap reason that counts as a failure. */
-const FAILURE = 'Поломка'
+/** The swap reasons that count as a failure: a breakdown, and the warranty causes. */
+const FAILURES = new Set(['Поломка', 'Ошибка в обжимке', 'Заводской брак'])
 
 const mostCommon = (values: (string | null)[]) => {
   const counts = new Map<string, number>()
@@ -100,7 +100,8 @@ export function modelStats(
         replacements: swaps.length,
         replacementsPerMachine: round1(swaps.length / machines.length),
         failureShare: reasoned.length
-          ? reasoned.filter((r) => r.reason === FAILURE).length / reasoned.length
+          ? reasoned.filter((r) => r.reason !== null && FAILURES.has(r.reason)).length /
+            reasoned.length
           : null,
         avgServiceDays: served.length
           ? Math.round(served.reduce((a, b) => a + b, 0) / served.length)

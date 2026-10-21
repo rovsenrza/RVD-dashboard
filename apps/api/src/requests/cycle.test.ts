@@ -105,6 +105,7 @@ describe.skipIf(!hasDb)('a request’s full cycle through 1С (stand-in)', () =>
       positions: [
         {
           productId: 'h1',
+          reason: 'Износ',
           catalogNumberId: null,
           catalogNumber: null,
           equipmentId: null,

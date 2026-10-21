@@ -54,11 +54,17 @@ test('a company works the cabinet end to end on the API', async ({ page }) => {
   await expect(thumb).toBeVisible()
   await expect.poll(() => thumb.evaluate((img: HTMLImageElement) => img.naturalWidth)).toBe(1)
 
-  // A replacement request waits for 1С (no order service in this run).
+  // A replacement request, its reason a must (customer, 2026-10-22), goes to the manager by mail.
   await page.getByRole('button', { name: 'Создать заявку на замену' }).click()
+  await page.getByLabel(/Причина замены/).selectOption('Заводской брак')
   await page.getByRole('button', { name: 'Создать заявку', exact: true }).click()
   await page.goto('/requests')
-  await expect(page.getByText('Отправляется в 1С').filter({ visible: true }).first()).toBeVisible()
+  await expect(
+    page
+      .getByText(/^Отправля/)
+      .filter({ visible: true })
+      .first(),
+  ).toBeVisible()
 
   // The administrator's journal holds every step.
   await page.goto('/admin?tab=audit')

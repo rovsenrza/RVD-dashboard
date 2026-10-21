@@ -323,7 +323,7 @@ export function RequestForm({
                           aria-label={`Причина замены № ${p.serialNumber}`}
                           value={u.reason}
                           onChange={(e) => patchUsage(p.id, { reason: e.target.value })}
-                          placeholder="Причина не указана"
+                          placeholder="Выберите причину"
                           options={REPLACEMENT_REASONS.map((r) => ({ value: r, label: r }))}
                         />
                         <Input

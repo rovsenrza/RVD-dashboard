@@ -19,6 +19,7 @@ const line = (part: Partial<RequestPosition>): RequestPosition => ({
   catalogNumber: '07098-010A9',
   equipmentId: null,
   quantity: 1,
+  reason: 'Износ',
   ...part,
 })
 const draft = (kind: RequestDraft['kind'], positions: RequestPosition[]): RequestDraft => ({
@@ -92,7 +93,10 @@ describe('requestProblem', () => {
     expect(
       replace({ reason: REPLACEMENT_REASONS[3], operatingHours: 2241, usageUnit: 'hours' }),
     ).toBeNull()
-    expect(replace({ reason: null, operatingHours: null })).toBeNull()
+    expect(replace({ operatingHours: null })).toBeNull()
+    // A reason is a must (customer, 2026-10-22).
+    expect(replace({ reason: null })).toMatch(/укажите причину замены/)
+    expect(replace({ reason: ' ' })).toMatch(/укажите причину замены/)
     expect(replace({ reason: 'Просто так' })).toMatch(/причину замены из списка/)
     expect(replace({ operatingHours: -1 })).toMatch(/целое число/)
     expect(replace({ operatingHours: 12.5 })).toMatch(/целое число/)

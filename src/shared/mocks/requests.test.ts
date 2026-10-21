@@ -47,8 +47,8 @@ describe('creating a request', () => {
       kind: 'replace',
       // The client's copy of number and machine is not trusted: the hose decides.
       positions: [
-        line({ productId: live.id, catalogNumber: 'чужой', quantity: 3 }),
-        line({ productId: archived.id }),
+        line({ productId: live.id, catalogNumber: 'чужой', quantity: 3, reason: 'Износ' }),
+        line({ productId: archived.id, reason: 'Заводской брак' }),
       ],
     })
     expect(status).toBe(201)

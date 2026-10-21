@@ -11,10 +11,14 @@ export const isSpreadsheet = (fileName: string) => /\.xlsx?$/i.test(fileName.tri
 /**
  * Why a hose is replaced (ТЗ 3.5, PRODUCT.md). 1С keeps no reason for a swap, so the client
  * gives one in the replacement request (customer, 2026-10-08) and the journal shows it.
+ * Required, and a warranty case names its cause (customer, 2026-10-22): the first two.
+ * 1С's own catalogue of reasons is to come by OData and will replace this list.
  */
+export const WARRANTY_REASONS = ['Ошибка в обжимке', 'Заводской брак']
+
 export const REPLACEMENT_REASONS = [
+  ...WARRANTY_REASONS,
   'Плановая замена',
-  'Гарантийная замена',
   'Поломка',
   'Износ',
   'Капитальный ремонт',
@@ -24,9 +28,10 @@ export const REPLACEMENT_REASONS = [
 /** Running hours or kilometres a client may give: whole, from nought to a machine's lifetime. */
 export const MAX_OPERATING_HOURS = 1_000_000
 
-/** What is wrong with a replacement line's reason and running hours, or null; both may be left out. */
+/** What is wrong with a replacement line's reason and running hours, or null; the hours may be left out. */
 function usageProblem(line: RequestPosition, serial: string): string | null {
-  if (line.reason != null && !REPLACEMENT_REASONS.includes(line.reason))
+  if (line.reason == null || !line.reason.trim()) return `№ ${serial}: укажите причину замены`
+  if (!REPLACEMENT_REASONS.includes(line.reason))
     return `№ ${serial}: выберите причину замены из списка`
   const hours = line.operatingHours
   if (hours != null && !(Number.isInteger(hours) && hours >= 0 && hours <= MAX_OPERATING_HOURS))

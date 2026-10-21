@@ -165,6 +165,7 @@ describe.skipIf(!hasDb)('a company of several 1С clients, its branches', () => 
       kind: 'replace',
       positions: ids.map((productId) => ({
         productId,
+        reason: 'Износ',
         catalogNumberId: null,
         catalogNumber: null,
         equipmentId: null,

@@ -16,6 +16,7 @@ const hoseLine = (productId: string): RequestPosition => ({
   catalogNumber: 'forged',
   equipmentId: 'forged',
   quantity: 5,
+  reason: 'Износ',
 })
 
 describe.skipIf(!hasDb)('requests to 1С', () => {

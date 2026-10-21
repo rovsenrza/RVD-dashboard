@@ -181,6 +181,7 @@ describe.skipIf(!hasDb)('company settings and the action log on the server', () 
       positions: [
         {
           productId: 'h1',
+          reason: 'Износ',
           catalogNumberId: null,
           catalogNumber: null,
           equipmentId: null,
