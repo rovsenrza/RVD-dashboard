@@ -18,6 +18,7 @@ import {
 import { fetchOrders, importOrders } from '../requests/orders1c.ts'
 import { fetchOrderStates, refreshRequestStatuses } from '../requests/statuses.ts'
 import { readHealth, recordSuccess } from './health.ts'
+import { optional, spareFor, type SetFailure } from './spare.ts'
 import { patchCache, recordDataIssues, storeCache, type Cache } from './store.ts'
 
 export interface SyncResult {
@@ -35,6 +36,8 @@ export interface SyncResult {
   orders: number
   /** Data 1С keeps twice and differently (question 24); only a rebuild looks */
   discrepancies?: number
+  /** Sets taken from their last good copy, steps skipped: the rest synced (2026-10-22) */
+  failed: SetFailure[]
   ms: number
 }
 
@@ -102,8 +105,15 @@ const ordersOf = (db: Db, client: ODataClient, since?: string) =>
  * alone keeps the write-off a cached hose's link gives it. A link 1С takes back waits
  * for the nightly rebuild.
  */
-async function adaptSome(db: Db, client: ODataClient, ids: string[], live: Set<string>) {
-  const sources = await fetchSourcesFor(client, ids)
+async function adaptSome(
+  db: Db,
+  client: ODataClient,
+  ids: string[],
+  live: Set<string>,
+  failed: SetFailure[],
+) {
+  const spare = spareFor(db, failed)
+  const sources = await fetchSourcesFor(client, ids, spare)
   const named = replacedBy(sources.items).filter((id) => live.has(id) && !ids.includes(id))
   const { rows } = await db.query<{ id: string }>(
     `select distinct replaced_product_id as id from products
@@ -111,7 +121,7 @@ async function adaptSome(db: Db, client: ODataClient, ids: string[], live: Set<s
     [ids],
   )
   return adapt(
-    named.length ? await fetchSourcesFor(client, [...ids, ...new Set(named)]) : sources,
+    named.length ? await fetchSourcesFor(client, [...ids, ...new Set(named)], spare) : sources,
     rows.map((r) => r.id),
   )
 }
@@ -127,19 +137,23 @@ export async function runSync(
   states: ODataClient = client,
 ): Promise<SyncResult> {
   const started = Date.now()
+  // Only the items and their register are a must; any other set or step that fails is
+  // noted, stood in for or skipped, and the rest syncs (1С developer, 2026-10-22).
+  const failed: SetFailure[] = []
   const [sources, clients, documents] = await Promise.all([
-    fetchSources(client),
-    fetchClients(client),
-    fetchReleaseVersions(client),
+    fetchSources(client, spareFor(db, failed)),
+    optional(failed, 'Catalog_Клиенты', () => fetchClients(client), null),
+    optional(failed, 'Document_Выпуск (версии)', () => fetchReleaseVersions(client), []),
   ])
   const cache = adapt(sources)
   await storeCache(db, cache, Date.now() - started)
   await storeDocumentVersions(db, documents)
-  await recordSuccess(db, true, markOf(sources.statuses))
-  const orders = await ordersOf(db, client)
-  const requestUpdates = await statusesOf(db, states)
-  const discrepancies = findDiscrepancies({ ...sources, clients })
-  await recordDataIssues(db, discrepancies)
+  const orders = await optional(failed, 'Document_ЗаказыКлиента', () => ordersOf(db, client), 0)
+  const requestUpdates = await optional(failed, 'статусы заявок', () => statusesOf(db, states), 0)
+  // Without the clients' names the letter would name no one: it waits for the next rebuild.
+  const discrepancies = clients ? findDiscrepancies({ ...sources, clients }) : []
+  if (clients) await recordDataIssues(db, discrepancies)
+  await recordSuccess(db, true, markOf(sources.statuses), failed)
   return {
     mode: 'full',
     products: cache.products.length,
@@ -149,6 +163,7 @@ export async function runSync(
     requestUpdates,
     orders,
     discrepancies: discrepancies.length,
+    failed,
     ms: Date.now() - started,
   }
 }
@@ -168,11 +183,12 @@ export async function runCheck(
   const started = Date.now()
   const { register_mark: mark } = await readHealth(db)
   if (!mark) return runSync(db, client, states)
+  const failed: SetFailure[] = []
   const [versions, lines, cached, documents, seenDocuments] = await Promise.all([
     fetchVersions(client),
     fetchRegisterSince(client, earlier(mark, MARGIN_MS)),
     db.query<{ id: string; onec_version: string | null }>('select id, onec_version from products'),
-    fetchReleaseVersions(client),
+    optional(failed, 'Document_Выпуск (версии)', () => fetchReleaseVersions(client), []),
     db.query<{ ref: string; version: string }>('select ref, version from onec_documents'),
   ])
   // A «Выпуск» reposted since the last run, even back-dated: its hoses are read again.
@@ -206,20 +222,25 @@ export async function runCheck(
   let equipment = 0
   if (affected.length || removed.length) {
     const patch = affected.length
-      ? await adaptSome(db, client, affected, live)
+      ? await adaptSome(db, client, affected, live, failed)
       : { products: [], history: new Map(), equipment: undefined }
     await patchCache(db, { ...patch, removed }, Date.now() - started)
     products = patch.products.length
     equipment = patch.equipment?.length ?? 0
   }
-  await recordSuccess(db, false, markOf(lines))
   await storeDocumentVersions(
     db,
     documents.filter((d) => seen.get(d.Ref_Key) !== d.DataVersion),
   )
   const since = new Date(Date.now() - ORDER_DAYS * 86_400_000).toISOString().slice(0, 10)
-  const orders = await ordersOf(db, client, since)
-  const requestUpdates = await statusesOf(db, states)
+  const orders = await optional(
+    failed,
+    'Document_ЗаказыКлиента',
+    () => ordersOf(db, client, since),
+    0,
+  )
+  const requestUpdates = await optional(failed, 'статусы заявок', () => statusesOf(db, states), 0)
+  await recordSuccess(db, false, markOf(lines), failed)
   return {
     mode: 'check',
     products,
@@ -228,6 +249,7 @@ export async function runCheck(
     removed: removed.length,
     requestUpdates,
     orders,
+    failed,
     ms: Date.now() - started,
   }
 }

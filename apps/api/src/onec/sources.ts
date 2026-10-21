@@ -38,15 +38,33 @@ const ORDER_FIELDS = ['Ref_Key', 'Number']
  */
 export const FILTER_BUDGET = 1500
 
+/**
+ * Reads one set that the sync can do without for a while: on failure it gives the
+ * set's last good copy instead, so one set 1С stops giving does not stop the rest
+ * (1С developer, 2026-10-22). `keep` marks a read of only some rows: it is not
+ * saved as the copy, and a failure gives the copy's rows it keeps. The items and
+ * their register are never read through it — without them there is nothing to sync.
+ */
+export type Spare = <T>(
+  entity: string,
+  fetch: () => Promise<T[]>,
+  keep?: (row: T) => boolean,
+) => Promise<T[]>
+
+/** No stand-in: a failure fails the sync, as a bare client does. */
+const asIs: Spare = (_entity, fetch) => fetch()
+
 /** The small reference sets — catalogue numbers, components, machines — read whole each time. */
-async function fetchReference(client: ODataClient) {
+async function fetchReference(client: ODataClient, spare: Spare) {
+  const whole = <T>(entity: string, select?: string[]) =>
+    spare<T>(entity, () => client.all<T>(entity, select ? { select } : {}))
   const [catalogNumbers, components, equipment, brands, models, types] = await Promise.all([
-    client.all('Catalog_КаталожныеНомера'),
-    client.all('Catalog_Комплектующие'),
-    client.all('Catalog_Техника'),
-    client.all('Catalog_Марки'),
-    client.all<RawNamed>('Catalog_Модели', { select: ['Ref_Key', 'Description'] }),
-    client.all('Catalog_ТипТехники'),
+    whole('Catalog_КаталожныеНомера'),
+    whole('Catalog_Комплектующие'),
+    whole('Catalog_Техника'),
+    whole('Catalog_Марки'),
+    whole<RawNamed>('Catalog_Модели', ['Ref_Key', 'Description']),
+    whole('Catalog_ТипТехники'),
   ])
   return { catalogNumbers, components, equipment, brands, models, types }
 }
@@ -55,13 +73,15 @@ async function fetchReference(client: ODataClient) {
  * Reads every set the adapters need. Nothing is joined here: the raw rows go to
  * the adapters as they are, so a wrong assumption shows up in one place.
  */
-export async function fetchSources(client: ODataClient): Promise<Sources> {
+export async function fetchSources(client: ODataClient, spare: Spare = asIs): Promise<Sources> {
   const [items, statuses, releases, orders, reference] = await Promise.all([
     client.all('Catalog_Изделия', { pageSize: 500 }),
     client.all(REGISTER, { select: STATUS_FIELDS }),
-    client.all('Document_Выпуск', { select: RELEASE_FIELDS }),
-    client.all('Document_ЗаказыКлиента', { select: ORDER_FIELDS }),
-    fetchReference(client),
+    spare('Document_Выпуск', () => client.all('Document_Выпуск', { select: RELEASE_FIELDS })),
+    spare('Document_ЗаказыКлиента', () =>
+      client.all('Document_ЗаказыКлиента', { select: ORDER_FIELDS }),
+    ),
+    fetchReference(client, spare),
   ])
   return { items, statuses, releases, orders, ...reference } as Sources
 }
@@ -143,30 +163,31 @@ export const fetchRegisterSince = (client: ODataClient, since: string) =>
  * The same sets as `fetchSources`, for the given items only: the items, all
  * their register lines and the documents those name; the reference sets whole.
  */
-export async function fetchSourcesFor(client: ODataClient, ids: string[]): Promise<Sources> {
+export async function fetchSourcesFor(
+  client: ODataClient,
+  ids: string[],
+  spare: Spare = asIs,
+): Promise<Sources> {
   const [items, statuses, reference] = await Promise.all([
     byKeys<ProductSources['items'][number]>(client, 'Catalog_Изделия', 'Ref_Key', ids),
     byKeys<RawStatusRecord>(client, REGISTER, 'Изделие_Key', ids, STATUS_FIELDS),
-    fetchReference(client),
+    fetchReference(client, spare),
   ])
   const recorders = (type: string) => [
     ...new Set(statuses.filter((s) => s.Recorder_Type.endsWith(type)).map((s) => s.Recorder)),
   ]
+  const documents = <T extends { Ref_Key: string }>(entity: string, fields: string[]) => {
+    const keys = recorders(entity)
+    const wanted = new Set(keys)
+    return spare<T>(
+      entity,
+      () => byKeys<T>(client, entity, 'Ref_Key', keys, fields),
+      (d) => wanted.has(d.Ref_Key),
+    )
+  }
   const [releases, orders] = await Promise.all([
-    byKeys<RawRelease>(
-      client,
-      'Document_Выпуск',
-      'Ref_Key',
-      recorders('Document_Выпуск'),
-      RELEASE_FIELDS,
-    ),
-    byKeys<RawOrder>(
-      client,
-      'Document_ЗаказыКлиента',
-      'Ref_Key',
-      recorders('Document_ЗаказыКлиента'),
-      ORDER_FIELDS,
-    ),
+    documents<RawRelease>('Document_Выпуск', RELEASE_FIELDS),
+    documents<RawOrder>('Document_ЗаказыКлиента', ORDER_FIELDS),
   ])
   return { items, statuses, releases, orders, ...reference } as Sources
 }

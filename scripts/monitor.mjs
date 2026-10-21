@@ -62,6 +62,10 @@ try {
 }
 if (health?.onecUnavailableSince && minutesSince(health.onecUnavailableSince) > STALE_MINUTES)
   problems.push(`1С недоступна с ${msk(health.onecUnavailableSince)}, кабинет показывает кэш`)
+if (health?.onecPartial?.length)
+  problems.push(
+    `1С не отдаёт часть обмена: ${health.onecPartial.join(', ')} — взята последняя копия, остальное синхронизируется`,
+  )
 if (health && !health.syncedAt) problems.push('Синхронизация с 1С ещё ни разу не прошла')
 else if (health && minutesSince(health.syncedAt) > STALE_MINUTES)
   problems.push(`Данные 1С не обновлялись с ${msk(health.syncedAt)}`)

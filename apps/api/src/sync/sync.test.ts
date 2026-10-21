@@ -16,7 +16,7 @@ import { ODataClient } from '../onec/client.ts'
 import { hasDb, isolatedDb } from '../test/db.ts'
 import { readHealth } from './health.ts'
 import { startSync } from './scheduler.ts'
-import { runCheck } from './sync.ts'
+import { runCheck, runSync } from './sync.ts'
 
 const id = (n: number) => `00000000-0000-0000-0000-${String(n).padStart(12, '0')}`
 const [A, B, C, DOC] = [id(1), id(2), id(3), id(9)]
@@ -28,6 +28,8 @@ type Row = object
 function fakeOneC(sets: Record<string, Row[]>) {
   const asked: string[] = []
   let down = false
+  /** Sets 1С refuses, as it refused «Модели» on 2026-10-21 */
+  const refused = new Set<string>()
   const matches = (filter: string) => (row: Row) =>
     filter.split(' or ').some((any) =>
       any.split(' and ').every((part) => {
@@ -49,6 +51,7 @@ function fakeOneC(sets: Record<string, Row[]>) {
     const entity = decodeURIComponent(u.pathname.split('/').pop()!)
     const filter = u.searchParams.get('$filter')
     asked.push(filter ? `${entity} ? ${filter}` : entity)
+    if (refused.has(entity)) return new Response('{"odata.error":{}}', { status: 403 })
     let rows = (sets[entity] ?? []).filter(filter ? matches(filter) : () => true)
     const skip = Number(u.searchParams.get('$skip') ?? 0)
     rows = rows.slice(skip, skip + Number(u.searchParams.get('$top') ?? rows.length))
@@ -62,7 +65,7 @@ function fakeOneC(sets: Record<string, Row[]>) {
     retries: 0,
     sleep: async () => undefined,
   })
-  return { client, sets, asked, setDown: (value: boolean) => (down = value) }
+  return { client, sets, asked, refused, setDown: (value: boolean) => (down = value) }
 }
 
 describe.skipIf(!hasDb)('the sync keeps up with 1С (Д26)', () => {
@@ -202,6 +205,37 @@ describe.skipIf(!hasDb)('the sync keeps up with 1С (Д26)', () => {
     onec.setDown(false)
     await runCheck(db, onec.client)
     expect((await app.inject('/sync')).json()).toMatchObject({ unavailableSince: null })
+    await app.close()
+  })
+
+  it('goes on without a set 1С refuses, from its last copy, and says which', async () => {
+    onec.refused.add('Catalog_Техника')
+    const app = buildApp({
+      logLevel: 'silent',
+      db,
+      clock: () => ({ today: '2026-10-03', rules: DEFAULT_RULES }),
+    })
+    try {
+      const result = await runSync(db, onec.client)
+      expect(result.failed.map((f) => f.entity)).toEqual(['Catalog_Техника'])
+      expect(result.products).toBeGreaterThan(0)
+      expect(await cached()).toHaveLength(result.products)
+      // The machines are the last ones read, not none.
+      const { rows } = await db.query('select count(*)::int as n from equipment')
+      expect(rows[0].n).toBe(1)
+      expect((await app.inject('/health')).json()).toMatchObject({
+        status: 'degraded',
+        onecPartial: ['Catalog_Техника'],
+      })
+      // A check reads the reference sets too, and stands in the same way.
+      onec.refused.add('Document_ЗаказыКлиента')
+      const check = await runCheck(db, onec.client)
+      expect(check.failed.map((f) => f.entity)).toContain('Document_ЗаказыКлиента')
+    } finally {
+      onec.refused.clear()
+    }
+    await runCheck(db, onec.client)
+    expect((await app.inject('/health')).json()).toMatchObject({ status: 'ok', onecPartial: [] })
     await app.close()
   })
 

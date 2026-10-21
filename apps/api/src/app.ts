@@ -297,11 +297,13 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
     const sync = await syncStatus(db, options.sync?.running() ?? false).catch(() => null)
     if (!sync) return reply.code(503).send({ status: 'down', uptime, db: 'down' })
     return {
-      status: sync.unavailableSince ? 'degraded' : 'ok',
+      status: sync.unavailableSince || sync.partial.length ? 'degraded' : 'ok',
       uptime,
       db: 'ok',
       syncedAt: sync.syncedAt,
       onecUnavailableSince: sync.unavailableSince,
+      // Sets 1С did not give on the last run, synced from their last copy (2026-10-22).
+      onecPartial: sync.partial,
     }
   })
 
