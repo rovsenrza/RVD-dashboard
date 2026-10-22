@@ -325,10 +325,45 @@ function StatusByModel({ models }: { models: ModelStats[] }) {
   )
 }
 
+const AXIS_WIDTH = 168
+/** Characters of 12.5px type that fit the axis, so a long name ends in «…» rather than off the card. */
+const fit = (text: string, max = 24) => (text.length > max ? `${text.slice(0, max - 1)}…` : text)
+
+/**
+ * A unit on the axis as two left-aligned lines, garage number over model: Recharts wraps
+ * a long name on its own and pushes it off the card's left edge (customer, 2026-10-24).
+ */
+function UnitTick({ x, y, payload }: { x?: number; y?: number; payload?: { value: string } }) {
+  const [garage, model] = (payload?.value ?? '').split('\n')
+  const left = (x ?? 0) - AXIS_WIDTH + 12
+  return (
+    <text x={left} y={y} fontSize={12.5} fill="var(--color-ink-secondary)">
+      <title>{model ? `${garage} · ${model}` : garage}</title>
+      {model ? (
+        <>
+          <tspan x={left} dy={-3}>
+            {fit(garage)}
+          </tspan>
+          <tspan x={left} dy={15}>
+            {fit(model)}
+          </tspan>
+        </>
+      ) : (
+        <tspan x={left} dy={4}>
+          {fit(garage)}
+        </tspan>
+      )}
+    </text>
+  )
+}
+
 /** One series, one colour: models are named on the axis, the value sits at the bar's end. */
 function ReplacementsPerMachine({ models }: { models: ModelStats[] }) {
   const still = useReducedMotion()
-  const data = models.map((m) => ({ model: nameOf(m), value: m.replacements }))
+  const data = models.map((m) => ({
+    model: m.garageNumber ? `${m.garageNumber}\n${m.model}` : m.model,
+    value: m.replacements,
+  }))
   return (
     <Card title="Замен за период">
       <div style={{ height: 56 + data.length * 44 }}>
@@ -342,8 +377,8 @@ function ReplacementsPerMachine({ models }: { models: ModelStats[] }) {
             <YAxis
               type="category"
               dataKey="model"
-              width={150}
-              tick={{ fontSize: 12.5, fill: 'var(--color-ink-secondary)' }}
+              width={AXIS_WIDTH}
+              tick={<UnitTick />}
               axisLine={false}
               tickLine={false}
             />
@@ -352,6 +387,7 @@ function ReplacementsPerMachine({ models }: { models: ModelStats[] }) {
               cursor={{ fill: 'var(--color-wash)' }}
               wrapperStyle={{ zIndex: 20 }}
               formatter={(v) => [String(v), 'Замен']}
+              labelFormatter={(l) => String(l).replace('\n', ' · ')}
               contentStyle={{
                 borderRadius: 10,
                 border: 'none',
