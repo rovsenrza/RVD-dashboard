@@ -30,7 +30,9 @@ export function Checkbox({
   return (
     <label
       className={cn(
-        'flex cursor-pointer items-start gap-2.5 text-sm has-disabled:cursor-default has-disabled:opacity-55',
+        // `relative` keeps the hidden input in its row: unanchored inside a scrolled list it
+        // sits where the row would be unscrolled, and Chrome scrolls the page there on focus.
+        'relative flex cursor-pointer items-start gap-2.5 text-sm has-disabled:cursor-default has-disabled:opacity-55',
         className,
       )}
     >
