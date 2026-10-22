@@ -30,11 +30,6 @@ export const productColumns = (machines: ReadonlyMap<string, Equipment>) => [
       </span>
     ),
   }),
-  col.accessor('manufacturer', {
-    header: 'Производитель',
-    meta: { mobile: 'hide' },
-    cell: (c) => <span className="text-ink-secondary">{c.getValue()}</span>,
-  }),
   col.accessor('shippedAt', {
     header: 'Отгрузка',
     meta: { mobile: 'hide' },

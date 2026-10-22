@@ -27,16 +27,9 @@ export function ProductDetails({
         ['Ваш внутренний №', p.clientNumber],
         ['Каталожный № (OEM)', p.catalogNumber],
         ['Номенклатурный №', p.nomenclatureNumber],
-      ],
-    },
-    {
-      title: 'Характеристики',
-      rows: [
+        // Diameter, braids, parameters and maker are the supplier's, not the client's
+        // (customer, 2026-10-24).
         ['Наименование', p.type],
-        ['Диаметр', `${p.diameter} мм`],
-        ['Оплётки / навивки', p.braidCount],
-        ['Параметры', p.specs],
-        ['Производитель', p.manufacturer],
       ],
     },
     {

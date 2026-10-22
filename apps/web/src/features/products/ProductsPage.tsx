@@ -52,7 +52,6 @@ const exportColumns = (machines: ReadonlyMap<string, Equipment>): ExportColumn<P
   { header: 'Ваш внутренний №', value: (p) => p.clientNumber, width: 14 },
   { header: 'Каталожный № (OEM)', value: (p) => p.catalogNumber, width: 18 },
   { header: 'Наименование', value: (p) => p.type, width: 12 },
-  { header: 'Производитель', value: (p) => p.manufacturer, width: 14 },
   { header: 'Отгружено', value: (p) => p.shippedAt, type: 'date', width: 11 },
   { header: 'Установлено', value: (p) => p.installedAt, type: 'date', width: 11 },
   {
@@ -213,7 +212,7 @@ export function ProductsPage() {
             onRowClick={(p) => navigate(`/products/${p.id}`)}
             stickyFirstColumn
             tools
-            hiddenByDefault={['clientNumber', 'manufacturer']}
+            hiddenByDefault={['clientNumber']}
             server={{
               total: data.total,
               pageIndex,

@@ -43,7 +43,7 @@ export function ProductPage() {
                 )}
               </>
             }
-            description={[p.type, p.manufacturer].filter(Boolean).join(' · ')}
+            description={p.type}
             actions={
               <>
                 {/* Phones: both actions share the pinned bar; the edit keeps only its icon. */}
