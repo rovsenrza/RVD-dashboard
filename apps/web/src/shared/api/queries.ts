@@ -33,6 +33,7 @@ import type {
   OnecClient,
   SupplierCompany,
   SupplierMailbox,
+  OnecAddress,
 } from '@/entities/types'
 import { useSession } from '@/app/session'
 import { api } from './client'
@@ -86,6 +87,7 @@ export const keys = {
   supplierCompanies: ['supplier', 'companies'] as const,
   onecClients: ['supplier', 'clients'] as const,
   mailboxes: ['supplier', 'mailboxes'] as const,
+  onecAddress: ['supplier', 'onec'] as const,
   branches: ['admin', 'branches'] as const,
   settings: ['admin', 'settings'] as const,
   audit: ['admin', 'audit'] as const,
@@ -689,6 +691,22 @@ export const useSupplierResetPassword = () =>
     mutationFn: (userId: string) =>
       api.post<PasswordDelivery>(`/supplier/users/${userId}/reset-password`, {}),
   })
+
+/** Where the cabinet reads 1С (customer, 2026-10-24). */
+export const useOnecAddress = () =>
+  useQuery({ queryKey: keys.onecAddress, queryFn: () => api.get<OnecAddress>('/supplier/onec') })
+
+/** A new address is kept only once 1С answers there; the server checks it first. */
+export const useSaveOnecAddress = () => {
+  const qc = useQueryClient()
+  return useMutation({
+    mutationFn: (url: string) => api.put<OnecAddress>('/supplier/onec', { url }),
+    onSuccess: (saved) => {
+      qc.setQueryData(keys.onecAddress, saved)
+      qc.invalidateQueries({ queryKey: keys.sync })
+    },
+  })
+}
 
 export const useMailboxes = () =>
   useQuery({

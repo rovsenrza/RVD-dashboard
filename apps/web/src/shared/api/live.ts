@@ -28,6 +28,8 @@ export const LIVE_ROUTES = [
   ['post', '/supplier/users/:id/reset-password'],
   ['get', '/supplier/mailboxes'],
   ['put', '/supplier/mailboxes'],
+  ['get', '/supplier/onec'],
+  ['put', '/supplier/onec'],
   ['get', '/me'],
   ['get', '/admin/users'],
   ['post', '/admin/users'],

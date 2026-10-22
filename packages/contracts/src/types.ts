@@ -181,6 +181,13 @@ export interface Replacement {
   attachments: Attachment[]
 }
 
+/** Where the cabinet reads 1С; `changedBy` null — the server's own setting */
+export interface OnecAddress {
+  url: string
+  changedBy: string | null
+  changedAt: string | null
+}
+
 /** A colleague a swap can be credited to. */
 export interface StaffMember {
   id: string

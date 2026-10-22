@@ -96,6 +96,10 @@ export const router = createBrowserRouter([
         lazy: page(() => import('@/features/supplier/MailPage'), 'MailPage'),
       },
       {
+        path: 'supplier/onec',
+        lazy: page(() => import('@/features/supplier/OnecPage'), 'OnecPage'),
+      },
+      {
         path: 'supplier/staff',
         lazy: page(() => import('@/features/supplier/StaffPage'), 'StaffPage'),
       },

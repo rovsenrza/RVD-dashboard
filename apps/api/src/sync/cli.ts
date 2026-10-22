@@ -1,6 +1,7 @@
 import { loadConfig } from '../config.ts'
 import { migrate } from '../db/migrate.ts'
 import { createPool } from '../db/pool.ts'
+import { onecAddress } from '../onec/address.ts'
 import { ODataClient } from '../onec/client.ts'
 import { recordFailure } from './health.ts'
 import { runCheck, runSync } from './sync.ts'
@@ -11,7 +12,8 @@ const config = loadConfig()
 const db = createPool(config.DATABASE_URL)
 await migrate(db)
 const client = new ODataClient({
-  baseUrl: config.ODATA_URL,
+  // Where the supplier's staff pointed the cabinet, else ODATA_URL.
+  baseUrl: (await onecAddress(db, config.ODATA_URL)).url,
   user: config.ODATA_USER,
   password: config.ODATA_PASSWORD,
   timeoutMs: config.ODATA_TIMEOUT_MS,

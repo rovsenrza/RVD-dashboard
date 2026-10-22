@@ -17,6 +17,13 @@ describe.skipIf(!hasDb)('the supplier’s section (customer, 2026-10-22)', () =>
   let drop: () => Promise<void>
   let app: ReturnType<typeof buildApp>
   const letters: Mail[] = []
+  const moved: string[] = []
+  // 1С answers only at its new address; anything else is a server that is not there.
+  const fake1c = (async (url: string | URL) => {
+    if (String(url).startsWith('https://new.1c.test/base/odata/'))
+      return new Response(JSON.stringify({ value: [{ Ref_Key: K1 }] }), { status: 200 })
+    throw new TypeError('fetch failed')
+  }) as typeof fetch
 
   const call = (
     method: 'GET' | 'POST' | 'PATCH' | 'PUT',
@@ -67,6 +74,13 @@ describe.skipIf(!hasDb)('the supplier’s section (customer, 2026-10-22)', () =>
       db,
       auth: { secret: SECRET },
       mail: { cabinetUrl: 'https://cabinet.test', send: async (m) => void letters.push(m) },
+      onec: {
+        fallbackUrl: 'https://old.1c.test/base/odata/standard.odata',
+        user: 'u',
+        password: 'p',
+        fetch: fake1c,
+        moveTo: (url) => void moved.push(url),
+      },
     })
     const s = await signIn('master@vgiz.ru', 'мастер-пароль-1')
     staff = { ...s.body, cookie: s.cookie }
@@ -255,5 +269,30 @@ describe.skipIf(!hasDb)('the supplier’s section (customer, 2026-10-22)', () =>
         ])
       ).statusCode,
     ).toBe(400)
+  })
+
+  it('moves the cabinet to 1С’s new address only once it answers there', async () => {
+    const get = async () => (await call('GET', '/supplier/onec', staff.accessToken)).json()
+    expect(await get()).toEqual({
+      url: 'https://old.1c.test/base/odata/standard.odata',
+      changedBy: null,
+      changedAt: null,
+    })
+    const put = (url: unknown) => call('PUT', '/supplier/onec', staff.accessToken, { url })
+    expect((await put('не адрес')).statusCode).toBe(400)
+    // A server that does not answer: nothing kept, the cabinet stays where it was.
+    const down = await put('https://typo.1c.test/base/odata/standard.odata')
+    expect(down.statusCode).toBe(422)
+    expect(moved).toEqual([])
+    expect((await get()).url).toBe('https://old.1c.test/base/odata/standard.odata')
+
+    const ok = await put(' https://new.1c.test/base/odata/standard.odata/ ')
+    expect(ok.statusCode).toBe(200)
+    expect(ok.json()).toMatchObject({
+      url: 'https://new.1c.test/base/odata/standard.odata',
+      changedBy: 'Мастер',
+    })
+    expect(moved).toEqual(['https://new.1c.test/base/odata/standard.odata'])
+    expect((await get()).url).toBe('https://new.1c.test/base/odata/standard.odata')
   })
 })

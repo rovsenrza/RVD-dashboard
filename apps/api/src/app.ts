@@ -80,6 +80,7 @@ import { dashboardSummary } from './dashboard/query.ts'
 import { equipmentProducts, getEquipment, listEquipment } from './equipment/query.ts'
 import { productLifetime } from './products/lifetime.ts'
 import { getProduct, listProducts, type Clock } from './products/query.ts'
+import { onecAddress, saveOnecAddress } from './onec/address.ts'
 import { listReplacements, listStaff, savePerformer } from './replacements/query.ts'
 import { companyModels, companyReport } from './reports/query.ts'
 import { syncStatus } from './sync/health.ts'
@@ -146,6 +147,17 @@ export interface AppOptions {
   }
   /** The sync worker (Д26), when this process runs one */
   sync?: { kick: () => void; running: () => boolean }
+  /**
+   * The 1С publication (customer, 2026-10-24): its address now, the credentials a new one is
+   * checked with, and the running client to move there once it answers.
+   */
+  onec?: {
+    fallbackUrl: string
+    user: string
+    password: string
+    fetch?: typeof fetch
+    moveTo: (url: string) => void
+  }
   /** Letters (question 7): invitations go by mail when this is set, with links to `cabinetUrl` */
   mail?: { send: (mail: Mail) => Promise<void>; cabinetUrl: string }
   /** Behind a proxy: the visitor's address comes from X-Forwarded-For */
@@ -602,6 +614,23 @@ export function buildApp(options: AppOptions = {}): FastifyInstance {
             const password = await resetPassword(db, rows[0].company_id, req.params.id)
             return deliver(req, user, 'reset', password, rows[0].company)
           }),
+      )
+
+      supplier.get('/supplier/onec', async (_req, reply) =>
+        options.onec
+          ? onecAddress(db, options.onec.fallbackUrl)
+          : reply.code(404).send({ message: 'Синхронизация с 1С выключена' }),
+      )
+      supplier.put<{ Body: { url?: unknown } }>('/supplier/onec', async (req, reply) =>
+        answering(reply, async () => {
+          const onec = options.onec
+          if (!onec) throw new AuthRejected(404, 'Синхронизация с 1С выключена')
+          const saved = await saveOnecAddress(db, req.body?.url, req.identity!.name, onec)
+          onec.moveTo(saved.url)
+          req.log.info({ by: req.identity!.email }, 'адрес 1С изменён')
+          options.sync?.kick()
+          return saved
+        }),
       )
 
       supplier.get('/supplier/mailboxes', async () => listMailboxes(db))

@@ -3,6 +3,7 @@ import {
   Bell,
   Building2,
   ClipboardList,
+  DatabaseZap,
   FileChartColumn,
   History,
   LayoutDashboard,
@@ -48,6 +49,7 @@ const ADMIN_NAV: NavItem = { to: '/admin', label: 'Администрирова�
 const STAFF_NAV: NavItem[] = [
   { to: '/supplier', label: 'Компании', icon: Building2, end: true },
   { to: '/supplier/mail', label: 'Почта', icon: Mail },
+  { to: '/supplier/onec', label: 'Подключение к 1С', icon: DatabaseZap },
   { to: '/supplier/staff', label: 'Сотрудники', icon: Users },
 ]
 

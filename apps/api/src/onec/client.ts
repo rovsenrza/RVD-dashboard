@@ -66,7 +66,7 @@ export function str(value: string): string {
 const RETRIABLE = new Set([408, 425, 429, 500, 502, 503, 504])
 
 export class ODataClient {
-  private readonly opts: ODataClientOptions
+  private opts: ODataClientOptions
   private readonly auth: string
   private readonly doFetch: typeof fetch
   private readonly timeoutMs: number
@@ -80,6 +80,14 @@ export class ODataClient {
     this.timeoutMs = opts.timeoutMs ?? 30_000
     this.retries = opts.retries ?? 3
     this.sleep = opts.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)))
+  }
+  /** The publication moved (customer, 2026-10-24): the next request goes to the new address. */
+  moveTo(baseUrl: string): void {
+    this.opts = { ...this.opts, baseUrl }
+  }
+
+  get baseUrl(): string {
+    return this.opts.baseUrl
   }
 
   /** One page of an entity set, with the total when `count` is true. */

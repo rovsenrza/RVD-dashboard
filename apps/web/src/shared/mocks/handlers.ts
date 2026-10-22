@@ -1,7 +1,13 @@
 import { http, HttpResponse, passthrough } from 'msw'
 import { LIVE, LIVE_ROUTES } from '@/shared/api/live'
 import type { InstallationPatch, NewRequest, NewSupportMessage } from '@/shared/api/queries'
-import type { PasswordChange, PasswordDelivery, SyncStatus, UserCreated } from '@/entities/types'
+import type {
+  OnecAddress,
+  PasswordChange,
+  PasswordDelivery,
+  SyncStatus,
+  UserCreated,
+} from '@/entities/types'
 import { ProductListQuery } from '@/entities/product/list'
 import { settingsProblem } from '@/entities/settings'
 import { dashboardPeriod } from '@/entities/dashboard'
@@ -54,6 +60,13 @@ import {
   editComment,
   productLifetime,
 } from './productCard'
+
+/** Where the demo «reads» 1С; the supplier's staff may point it elsewhere. */
+const onecAddress: OnecAddress = {
+  url: 'https://1c.example/base/odata/standard.odata',
+  changedBy: null,
+  changedAt: null,
+}
 
 const api = (path: string) => `*/api${path}`
 
@@ -514,6 +527,19 @@ export const handlers = [
         })
     }
     return HttpResponse.json(mailboxes)
+  }),
+  http.get(api('/supplier/onec'), () => HttpResponse.json(onecAddress)),
+  http.put(api('/supplier/onec'), async ({ request }) => {
+    const { url } = (await request.json()) as { url: string }
+    // The demo has no 1С: any https address «answers», anything else is refused like a dead server.
+    if (!/^https?:\/\/\S+$/.test(url.trim()))
+      return HttpResponse.json({ message: 'Укажите адрес публикации 1С' }, { status: 400 })
+    Object.assign(onecAddress, {
+      url: url.trim().replace(/\/+$/, ''),
+      changedBy: users[0].name,
+      changedAt: new Date().toISOString(),
+    })
+    return HttpResponse.json(onecAddress)
   }),
   http.post(api('/auth/forgot'), () => new HttpResponse(null, { status: 204 })),
 ]

@@ -6,6 +6,7 @@ import { purgeDrafts } from './files/attachments.ts'
 import { clamav, diskStore, eicarOnly } from './files/storage.ts'
 import { smtpMailer, startMail } from './mail/mail.ts'
 import { ODataClient } from './onec/client.ts'
+import { onecAddress } from './onec/address.ts'
 import { HttpOrderService } from './onec/orders.ts'
 import { MailOrderService } from './requests/letter.ts'
 import { startOutbox } from './requests/outbox.ts'
@@ -29,6 +30,13 @@ let outbox: { kick: () => void } | null = null
 let sync: SyncScheduler | null = null
 // Letters (question 7): one sender for invitations, digests and messages to the specialist.
 const mailer = config.SMTP_URL ? smtpMailer(config.SMTP_URL, config.MAIL_FROM) : null
+// The 1С publication: ODATA_URL, unless the supplier's staff moved it (customer, 2026-10-24).
+const onec = new ODataClient({
+  baseUrl: (await onecAddress(db, config.ODATA_URL)).url,
+  user: config.ODATA_USER,
+  password: config.ODATA_PASSWORD,
+  timeoutMs: config.ODATA_TIMEOUT_MS,
+})
 const app = buildApp({
   logLevel: config.LOG_LEVEL,
   db,
@@ -37,6 +45,12 @@ const app = buildApp({
   auth: secret ? { secret, secureCookie: config.COOKIE_SECURE } : { demo: DEMO_IDENTITY },
   requests: { clientKey: config.CABINET_CLIENT_KEY, onCreated: () => outbox?.kick() },
   sync: { kick: () => sync?.kick(), running: () => sync?.running() ?? false },
+  onec: {
+    fallbackUrl: config.ODATA_URL,
+    user: config.ODATA_USER,
+    password: config.ODATA_PASSWORD,
+    moveTo: (url) => onec.moveTo(url),
+  },
   files: { store: files, scan, publicPath: config.PUBLIC_API_PATH },
   // Invitations need the cabinet's address for their links; without it, one-time passwords.
   mail:
@@ -80,12 +94,6 @@ if (mailer)
   })
 // The cache follows 1С (Д26): a check every few minutes, a full rebuild at night.
 if (config.SYNC_ENABLED) {
-  const onec = new ODataClient({
-    baseUrl: config.ODATA_URL,
-    user: config.ODATA_USER,
-    password: config.ODATA_PASSWORD,
-    timeoutMs: config.ODATA_TIMEOUT_MS,
-  })
   sync = startSync(db, onec, {
     intervalMs: config.SYNC_INTERVAL_MS,
     fullHour: config.SYNC_FULL_HOUR,
